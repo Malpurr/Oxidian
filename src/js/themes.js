@@ -141,6 +141,8 @@ export class ThemeManager {
             for (const [prop, value] of Object.entries(vars)) {
                 root.style.setProperty(prop, value);
             }
+            // Update color-scheme for native elements (scrollbars, inputs, etc.)
+            document.documentElement.style.colorScheme = themeName === 'light' ? 'light' : 'dark';
         } else {
             // Try loading custom theme
             this.loadCustomTheme(themeName);

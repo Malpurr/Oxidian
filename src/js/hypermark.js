@@ -864,10 +864,7 @@ const BlockRenderers = {
     const text = block.content.replace(/^#{1,6}\s+/, '');
     const anchor = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
     const inlineHtml = renderInline(text);
-    return `<h${level} id="${anchor}" class="hm-heading hm-h${level}">
-      <a href="#${anchor}" class="hm-anchor" aria-hidden="true">#</a>
-      ${inlineHtml}
-    </h${level}>`;
+    return `<h${level} id="${anchor}" class="hm-heading hm-h${level}">${inlineHtml}</h${level}>`;
   },
 
   /**
@@ -1081,8 +1078,14 @@ const BlockRenderers = {
    */
   frontmatter(block) {
     const lines = block.content.split('\n');
-    const yamlLines = lines.slice(1, -1);
-    const preview = yamlLines.length > 0 ? yamlLines[0] : 'empty';
+    const yamlLines = lines.slice(1, -1).filter(l => l.trim() !== '');
+    
+    // Don't show anything for empty frontmatter
+    if (yamlLines.length === 0) {
+      return '';
+    }
+    
+    const preview = yamlLines[0];
 
     return `<details class="hm-frontmatter">
       <summary class="hm-frontmatter-badge">
@@ -1773,11 +1776,11 @@ const HYPERMARK_STYLES = `
 
 .hm-editor {
   position: relative;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-  font-size: 16px;
-  line-height: 1.65;
-  color: var(--hm-fg, #e0e0e0);
-  background: var(--hm-bg, #1a1a2e);
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+  background: transparent;
   overflow: hidden;
 }
 
@@ -1788,7 +1791,7 @@ const HYPERMARK_STYLES = `
 }
 
 .hm-content {
-  max-width: 780px;
+  max-width: 800px;
   margin: 0 auto;
   padding: 2rem 1rem;
   min-height: 100%;
@@ -1802,17 +1805,16 @@ const HYPERMARK_STYLES = `
 .hm-block-wrapper {
   position: relative;
   padding: 2px 0 2px 28px;
-  border-radius: 4px;
-  transition: background 0.15s ease;
+  border-radius: 0;
   cursor: text;
 }
 
 .hm-block-wrapper:hover {
-  background: var(--hm-hover, rgba(255,255,255,0.03));
+  background: transparent;
 }
 
 .hm-block-wrapper.hm-block-active {
-  background: var(--hm-active-bg, rgba(0,212,170,0.06));
+  background: transparent;
 }
 
 /* --- Drag Handle --- */
@@ -1836,12 +1838,12 @@ const HYPERMARK_STYLES = `
 }
 
 .hm-block-wrapper:hover .hm-drag-handle {
-  opacity: 0.6;
+  opacity: 0.3;
 }
 
 .hm-drag-handle:hover {
-  opacity: 1 !important;
-  background: var(--hm-hover, rgba(255,255,255,0.08));
+  opacity: 0.7 !important;
+  background: rgba(255,255,255,0.05);
 }
 
 .hm-drag-ghost {
@@ -1872,43 +1874,32 @@ body.hm-dragging {
   outline: none;
   background: transparent;
   color: var(--hm-fg, #e0e0e0);
-  font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', Consolas, monospace;
-  font-size: 15px;
-  line-height: 1.6;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
   resize: none;
   overflow: hidden;
-  padding: 4px;
-  border-left: 2px solid var(--hm-accent, #00d4aa);
+  padding: 0;
   border-radius: 0;
 }
 
 .hm-block-textarea:focus {
-  border-left-color: var(--hm-accent, #00d4aa);
+  outline: none;
+  border: none;
+  box-shadow: none;
 }
 
 /* --- Headings --- */
-.hm-heading { margin: 1.2em 0 0.4em; font-weight: 700; position: relative; }
-.hm-h1 { font-size: 2em; border-bottom: 1px solid var(--hm-border, #333); padding-bottom: 0.3em; }
+.hm-heading { margin: 0.6em 0 0.2em; font-weight: 600; }
+.hm-h1 { font-size: 2em; }
 .hm-h2 { font-size: 1.5em; }
 .hm-h3 { font-size: 1.25em; }
 .hm-h4 { font-size: 1.1em; }
 .hm-h5 { font-size: 1em; }
 .hm-h6 { font-size: 0.9em; color: var(--hm-muted, #999); }
 
-.hm-anchor {
-  position: absolute;
-  left: -1.5em;
-  color: var(--hm-accent, #00d4aa);
-  text-decoration: none;
-  opacity: 0;
-  transition: opacity 0.15s;
-  font-weight: 400;
-}
-
-.hm-heading:hover .hm-anchor { opacity: 0.7; }
-
 /* --- Paragraphs --- */
-.hm-paragraph { margin: 0.5em 0; }
+.hm-paragraph { margin: 0; }
 
 /* --- Code Blocks --- */
 .hm-code-block {
@@ -2057,10 +2048,10 @@ body.hm-dragging {
 
 /* --- Frontmatter --- */
 .hm-frontmatter {
-  margin: 0.5em 0;
-  border-radius: 6px;
-  background: var(--hm-code-bg, #16213e);
-  padding: 0.4em 0.8em;
+  margin: 0.3em 0;
+  border-radius: 4px;
+  background: transparent;
+  padding: 0.2em 0;
 }
 
 .hm-frontmatter-badge {
@@ -3230,6 +3221,58 @@ class HyperMarkEditor {
       blocks: this.splitter.blocks.length,
       lines: this.buffer.lineCount,
     };
+  }
+
+  /**
+   * Insert text at the current cursor position (or end of document).
+   * Used by slash commands and toolbar actions in the classic Editor adapter.
+   * @param {string} text
+   */
+  insertAtCursor(text) {
+    if (this.activeBlockId) {
+      const textarea = this._contentEl.querySelector('.hm-block-textarea');
+      if (textarea) {
+        const start = textarea.selectionStart;
+        const value = textarea.value;
+        textarea.value = value.substring(0, start) + text + value.substring(start);
+        textarea.selectionStart = textarea.selectionEnd = start + text.length;
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        textarea.focus();
+        return;
+      }
+    }
+    // No active block — append to end
+    const offset = this.buffer.length;
+    const insertText = (offset > 0 ? '\n' : '') + text;
+    this.buffer.insert(offset, insertText);
+    this.splitter.parse(this.buffer.toString());
+    this._renderAllBlocks();
+    this._dispatchChange();
+  }
+
+  /**
+   * Wrap the current selection with before/after strings.
+   * Used by formatting shortcuts (bold, italic, etc.) in the classic Editor adapter.
+   * @param {string} before
+   * @param {string} after
+   */
+  wrapSelection(before, after) {
+    if (this.activeBlockId) {
+      const textarea = this._contentEl.querySelector('.hm-block-textarea');
+      if (textarea) {
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const value = textarea.value;
+        const selected = value.substring(start, end) || 'text';
+        const replacement = before + selected + after;
+        textarea.value = value.substring(0, start) + replacement + value.substring(end);
+        textarea.selectionStart = start + before.length;
+        textarea.selectionEnd = start + before.length + selected.length;
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        textarea.focus();
+        return;
+      }
+    }
   }
 
   /**

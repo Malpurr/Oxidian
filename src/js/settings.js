@@ -118,6 +118,15 @@ export class SettingsPage {
                             <div class="setting-info"><label>Vim Mode</label><p>Enable Vim keybindings (experimental)</p></div>
                             <div class="setting-control"><label class="toggle"><input type="checkbox" id="set-vim" ${s.editor.vim_mode ? 'checked' : ''}><span class="toggle-slider"></span></label></div>
                         </div>
+                        <div class="setting-row">
+                            <div class="setting-info"><label>Editor Engine</label><p>Classic (textarea) or HyperMark (block-based WYSIWYG)</p></div>
+                            <div class="setting-control">
+                                <select id="set-editor-mode">
+                                    <option value="classic" ${(this.app.editorMode === 'classic') ? 'selected' : ''}>Classic</option>
+                                    <option value="hypermark" ${(this.app.editorMode === 'hypermark') ? 'selected' : ''}>HyperMark</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Appearance -->
@@ -208,6 +217,11 @@ export class SettingsPage {
         const fontFamilyInput = wrapper.querySelector('#set-font-family');
         fontFamilyInput?.addEventListener('change', (e) => {
             document.documentElement.style.setProperty('--font-editor', e.target.value);
+        });
+
+        const editorModeSelect = wrapper.querySelector('#set-editor-mode');
+        editorModeSelect?.addEventListener('change', (e) => {
+            this.app.setEditorMode(e.target.value);
         });
 
         // Encryption toggle

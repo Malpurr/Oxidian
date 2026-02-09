@@ -2213,6 +2213,15 @@ kbd:hover {
     border-radius: 3px;
 }
 
+.command-palette-shortcut {
+    color: var(--text-muted);
+    font-size: 11px;
+    font-family: var(--font-mono);
+    margin-left: auto;
+    padding-left: 12px;
+    white-space: nowrap;
+}
+
 .command-palette-empty {
     padding: 20px 18px;
     color: var(--text-muted);
@@ -3301,9 +3310,7 @@ body.focus-mode .editor-textarea {
     cursor: text;
 }
 
-.hypermark-editor:focus-within {
-    background: color-mix(in srgb, var(--bg-primary) 97%, var(--text-accent));
-}
+/* No background change on focus — seamless like Obsidian */
 
 /* Focus Mode — centred column */
 body.focus-mode .hypermark-editor {
@@ -3315,42 +3322,25 @@ body.focus-mode .hypermark-editor {
 /* ===== Individual Block ===== */
 .hypermark-block {
     position: relative;
-    border-radius: var(--radius-md);
-    padding: 2px 4px 2px 28px; /* room for handle */
-    margin: 1px 0;
-    transition:
-        background var(--transition),
-        box-shadow var(--transition),
-        opacity var(--transition),
-        transform var(--transition);
+    border-radius: 0;
+    padding: 0 0 0 28px; /* room for handle */
+    margin: 0;
     min-height: 1.7em;
 }
 
 /* ---- Rendered (read) state ---- */
 .hypermark-block.rendered {
-    cursor: pointer;
-    animation: hm-block-render-in 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: text;
 }
 
 .hypermark-block.rendered:hover {
-    background: rgba(127, 109, 242, 0.04);
-}
-
-@keyframes hm-block-render-in {
-    from { opacity: 0.6; transform: translateY(-2px); }
-    to   { opacity: 1;   transform: translateY(0); }
+    background: transparent;
 }
 
 /* ---- Active (edit) state ---- */
 .hypermark-block.active {
-    background: rgba(127, 109, 242, 0.06);
-    box-shadow: inset 3px 0 0 var(--text-accent);
-    animation: hm-block-active-in 150ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-@keyframes hm-block-active-in {
-    from { opacity: 0.7; transform: translateY(2px); }
-    to   { opacity: 1;   transform: translateY(0); }
+    background: transparent;
+    box-shadow: none;
 }
 
 .hypermark-block.active textarea {
@@ -3366,20 +3356,6 @@ body.focus-mode .hypermark-editor {
     padding: 0;
     overflow: hidden;
     caret-color: var(--text-accent);
-}
-
-/* Cursor line highlight inside active block */
-.hypermark-block.active::after {
-    content: '';
-    position: absolute;
-    left: 28px;
-    right: 4px;
-    height: 1.7em;
-    background: rgba(127, 109, 242, 0.04);
-    border-radius: 2px;
-    pointer-events: none;
-    top: var(--hm-cursor-top, 2px);
-    transition: top 60ms ease;
 }
 
 /* ===== Block Handle (Drag Grip) ===== */
@@ -3408,14 +3384,14 @@ body.focus-mode .hypermark-editor {
     padding: 1px 4px;
 }
 
-.hypermark-block:hover .hypermark-block-handle,
-.hypermark-block.active .hypermark-block-handle {
-    opacity: 1;
+.hypermark-block:hover .hypermark-block-handle {
+    opacity: 0.3;
 }
 
 .hypermark-block-handle:hover {
-    color: var(--text-accent);
-    background-color: rgba(127, 109, 242, 0.1);
+    opacity: 0.6 !important;
+    color: var(--text-muted);
+    background-color: rgba(255, 255, 255, 0.04);
 }
 
 .hypermark-block-handle:active {
@@ -3450,8 +3426,8 @@ body.focus-mode .hypermark-editor {
 }
 
 @keyframes hm-drop-zone-pulse {
-    0%, 100% { opacity: 1; box-shadow: 0 0 6px rgba(127, 109, 242, 0.4); }
-    50%      { opacity: 0.6; box-shadow: 0 0 2px rgba(127, 109, 242, 0.2); }
+    0%, 100% { opacity: 0.8; }
+    50%      { opacity: 0.4; }
 }
 
 .hypermark-block.dragging {
@@ -3461,10 +3437,7 @@ body.focus-mode .hypermark-editor {
 
 /* ===== Selection Highlighting ===== */
 .hypermark-block.selected {
-    background: rgba(127, 109, 242, 0.1);
-    outline: 1px solid rgba(127, 109, 242, 0.25);
-    outline-offset: -1px;
-    border-radius: var(--radius-md);
+    background: rgba(127, 109, 242, 0.06);
 }
 
 /* ===== Ghost Line — AI Completions ===== */
@@ -3621,15 +3594,7 @@ body.focus-mode .hypermark-editor {
     position: relative;
 }
 
-.hypermark-block.rendered pre::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, var(--text-accent), var(--text-teal));
-    border-radius: var(--radius-md) var(--radius-md) 0 0;
-    opacity: 0.5;
-}
+/* No gradient bar on code blocks — clean like Obsidian */
 
 .hypermark-block.rendered pre code {
     font-family: var(--font-mono);
