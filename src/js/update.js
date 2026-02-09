@@ -89,9 +89,9 @@ export class UpdateManager {
             this.removeBanner();
         });
 
-        // Insert at top of app
-        const appContainer = document.querySelector('.app-container') || document.body;
-        appContainer.prepend(banner);
+        // Insert at top of #content-area so it doesn't break the flex layout
+        const contentArea = document.getElementById('content-area') || document.getElementById('app') || document.body;
+        contentArea.prepend(banner);
         this.bannerEl = banner;
     }
 

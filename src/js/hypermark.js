@@ -437,13 +437,23 @@ class BlockSplitter {
     this.blocks = [];
     /** @private */
     this._idCounter = 0;
-    /** @private */
-    this._blockIdMap = new Map(); // content-hash -> id for stable IDs
   }
 
   /** @private */
   _nextId() {
     return 'blk_' + (++this._idCounter);
+  }
+
+  /**
+   * Generate a stable ID based on block position and type.
+   * This ensures IDs don't change when content is re-parsed without structural changes.
+   * @private
+   * @param {number} from - Start offset
+   * @param {string} type - Block type
+   * @returns {string}
+   */
+  _stableId(from, type) {
+    return 'blk_' + from + '_' + type;
   }
 
   /**
@@ -552,7 +562,7 @@ class BlockSplitter {
         if (end < lines.length) end++; // include closing ---
         const content = lines.slice(i, end).join('\n');
         blocks.push(new Block({
-          id: this._nextId(),
+          id: this._stableId(lineStart, 'frontmatter'),
           type: 'frontmatter',
           from: lineStart,
           to: lineStart + content.length,
@@ -574,7 +584,7 @@ class BlockSplitter {
       // --- Thematic break ---
       if (/^(\*{3,}|-{3,}|_{3,})\s*$/.test(line)) {
         blocks.push(new Block({
-          id: this._nextId(),
+          id: this._stableId(lineStart, 'thematic_break'),
           type: 'thematic_break',
           from: lineStart,
           to: lineStart + line.length,
@@ -590,7 +600,7 @@ class BlockSplitter {
       const headingMatch = line.match(/^(#{1,6})\s+(.*)/);
       if (headingMatch) {
         blocks.push(new Block({
-          id: this._nextId(),
+          id: this._stableId(lineStart, 'heading'),
           type: 'heading',
           from: lineStart,
           to: lineStart + line.length,
@@ -618,7 +628,7 @@ class BlockSplitter {
         }
         const content = lines.slice(i, end).join('\n');
         blocks.push(new Block({
-          id: this._nextId(),
+          id: this._stableId(lineStart, 'code_block'),
           type: 'code_block',
           from: lineStart,
           to: lineStart + content.length,
@@ -637,7 +647,7 @@ class BlockSplitter {
         if (end < lines.length) end++;
         const content = lines.slice(i, end).join('\n');
         blocks.push(new Block({
-          id: this._nextId(),
+          id: this._stableId(lineStart, 'math_block'),
           type: 'math_block',
           from: lineStart,
           to: lineStart + content.length,
@@ -660,8 +670,8 @@ class BlockSplitter {
         const calloutMatch = content.match(/^>\s*\[!(\w+)\]/);
         if (calloutMatch) {
           blocks.push(new Block({
-            id: this._nextId(),
-            type: 'callout',
+            id: this._stableId(lineStart, 'callout'),
+          type: 'callout',
             from: lineStart,
             to: lineStart + content.length,
             content,
@@ -669,8 +679,8 @@ class BlockSplitter {
           }));
         } else {
           blocks.push(new Block({
-            id: this._nextId(),
-            type: 'blockquote',
+            id: this._stableId(lineStart, 'blockquote'),
+          type: 'blockquote',
             from: lineStart,
             to: lineStart + content.length,
             content,
@@ -690,7 +700,7 @@ class BlockSplitter {
         }
         const content = lines.slice(i, end).join('\n');
         blocks.push(new Block({
-          id: this._nextId(),
+          id: this._stableId(lineStart, 'table'),
           type: 'table',
           from: lineStart,
           to: lineStart + content.length,
@@ -726,7 +736,7 @@ class BlockSplitter {
         const content = lines.slice(i, end).join('\n');
         const ordered = /^\s*\d+[.)]/.test(line);
         blocks.push(new Block({
-          id: this._nextId(),
+          id: this._stableId(lineStart, 'list'),
           type: 'list',
           from: lineStart,
           to: lineStart + content.length,
@@ -758,7 +768,7 @@ class BlockSplitter {
         if (end === i) end = i + 1;
         const content = lines.slice(i, end).join('\n');
         blocks.push(new Block({
-          id: this._nextId(),
+          id: this._stableId(lineStart, 'paragraph'),
           type: 'paragraph',
           from: lineStart,
           to: lineStart + content.length,
@@ -2274,6 +2284,9 @@ class HyperMarkEditor {
     // Parse initial content
     this.splitter.parse(this.buffer.toString());
 
+    // Ensure at least one block exists for empty documents
+    this._ensureAtLeastOneBlock();
+
     // Build DOM
     this._buildDOM();
 
@@ -2290,6 +2303,35 @@ class HyperMarkEditor {
 
     // Event bindings
     this._bindEvents();
+  }
+
+  // --- Ensure Document Has Blocks ---
+
+  /**
+   * Ensure at least one editable block exists.
+   * If the document is empty or has no blocks, create an empty paragraph.
+   * @private
+   */
+  _ensureAtLeastOneBlock() {
+    if (this.splitter.blocks.length === 0) {
+      // Document is empty or whitespace-only — create a single empty paragraph block
+      const content = this.buffer.toString();
+      if (content.trim() === '') {
+        // Reset buffer to empty string (no trailing newlines)
+        this.buffer = new RopeBuffer('');
+      }
+      // Manually add a virtual empty paragraph block
+      this.splitter.blocks = [
+        new Block({
+          id: this.splitter._stableId(0, 'paragraph'),
+          type: 'paragraph',
+          from: 0,
+          to: 0,
+          content: '',
+          meta: {},
+        }),
+      ];
+    }
   }
 
   // --- DOM Construction ---
@@ -2322,27 +2364,22 @@ class HyperMarkEditor {
     this._onContentAreaMouseDown = (e) => {
       if (e.target === this._contentEl || e.target === this._scrollEl) {
         e.preventDefault();
+        this._ensureAtLeastOneBlock();
         const blocks = this.splitter.blocks;
         if (blocks.length === 0) {
-          // Empty doc — create first block
-          this.buffer = new RopeBuffer('\n');
-          this.splitter.parse(this.buffer.toString());
-          this._renderAllBlocks();
-          if (this.splitter.blocks.length > 0) {
-            this._focusBlock(this.splitter.blocks[0].id);
-          }
-        } else {
-          // Focus last block, put cursor at end
-          const lastBlock = blocks[blocks.length - 1];
-          this._focusBlock(lastBlock.id);
-          requestAnimationFrame(() => {
-            const ta = this._contentEl.querySelector('.hm-block-textarea');
-            if (ta) {
-              ta.selectionStart = ta.selectionEnd = ta.value.length;
-              ta.focus();
-            }
-          });
+          console.warn('[HyperMark] No blocks after _ensureAtLeastOneBlock — this should not happen');
+          return;
         }
+        // Focus last block, put cursor at end
+        const lastBlock = blocks[blocks.length - 1];
+        this._focusBlock(lastBlock.id);
+        requestAnimationFrame(() => {
+          const ta = this._contentEl.querySelector('.hm-block-textarea');
+          if (ta) {
+            ta.selectionStart = ta.selectionEnd = ta.value.length;
+            ta.focus();
+          }
+        });
       }
     };
     this._contentEl.addEventListener('mousedown', this._onContentAreaMouseDown);
@@ -2371,6 +2408,12 @@ class HyperMarkEditor {
    * @private
    */
   _renderDirect(blocks) {
+    // Validate activeBlockId still exists
+    if (this.activeBlockId && !blocks.find(b => b.id === this.activeBlockId)) {
+      console.warn('[HyperMark] activeBlockId not found in blocks, clearing:', this.activeBlockId);
+      this.activeBlockId = null;
+    }
+
     // Preserve active textarea state
     let activeContent = null;
     let activeCursorPos = null;
@@ -2505,10 +2548,10 @@ class HyperMarkEditor {
     textarea.spellcheck = true;
     textarea.setAttribute('data-block-id', block.id);
 
-    // Auto-resize
+    // Auto-resize — grows with content, minimum one line
     const autoResize = () => {
-      textarea.style.height = 'auto';
-      textarea.style.height = textarea.scrollHeight + 'px';
+      textarea.style.height = '0';
+      textarea.style.height = Math.max(textarea.scrollHeight, 24) + 'px';
     };
 
     // Events
@@ -2552,6 +2595,12 @@ class HyperMarkEditor {
     if (this.activeBlockId === blockId) return;
     if (this.config.readOnly) return;
 
+    const block = this.splitter.blocks.find(b => b.id === blockId);
+    if (!block) {
+      console.warn('[HyperMark] _focusBlock: block not found:', blockId);
+      return;
+    }
+
     // Blur current
     if (this.activeBlockId) {
       this._commitActiveBlock();
@@ -2559,8 +2608,7 @@ class HyperMarkEditor {
 
     this.activeBlockId = blockId;
 
-    const block = this.splitter.blocks.find(b => b.id === blockId);
-    if (block && this.config.onBlockFocus) {
+    if (this.config.onBlockFocus) {
       this.config.onBlockFocus(block);
     }
 
@@ -2585,6 +2633,7 @@ class HyperMarkEditor {
 
     this._commitActiveBlock();
     this.activeBlockId = null;
+    this._ensureAtLeastOneBlock();
     this._renderAllBlocks();
   }
 
@@ -2599,25 +2648,37 @@ class HyperMarkEditor {
     if (!textarea) return;
 
     // Try to find block by activeBlockId; fall back to textarea's data-block-id
-    // (which may have been updated by _onBlockEdit after a re-parse)
     let block = this.splitter.blocks.find(b => b.id === this.activeBlockId);
     if (!block) {
       const taBlockId = textarea.getAttribute('data-block-id');
       if (taBlockId && taBlockId !== this.activeBlockId) {
         block = this.splitter.blocks.find(b => b.id === taBlockId);
+        if (block) {
+          this.activeBlockId = taBlockId;
+        }
       }
     }
-    if (!block) return;
+    if (!block) {
+      console.warn('[HyperMark] _commitActiveBlock: block not found:', this.activeBlockId);
+      return;
+    }
 
     const newContent = textarea.value;
     if (newContent === block.content) return;
 
-    // Apply edit to buffer
-    this.buffer.replace(block.from, block.to, newContent);
+    // Handle virtual empty block
+    if (block.from === block.to && this.buffer.length === 0) {
+      if (newContent.length > 0) {
+        this.buffer.insert(0, newContent);
+      }
+    } else {
+      this.buffer.replace(block.from, block.to, newContent);
+    }
 
     // Re-parse
     const fullText = this.buffer.toString();
-    this.splitter.update(fullText, block.from, block.from + newContent.length, block.to - block.from);
+    this.splitter.parse(fullText);
+    this._ensureAtLeastOneBlock();
 
     this._dispatchChange();
   }
@@ -2631,8 +2692,11 @@ class HyperMarkEditor {
    * @param {string} newContent
    */
   _onBlockEdit(blockId, newContent) {
-    const block = this.splitter.blocks.find(b => b.id === blockId);
-    if (!block) return;
+    let block = this.splitter.blocks.find(b => b.id === blockId);
+    if (!block) {
+      console.warn('[HyperMark] _onBlockEdit: block not found:', blockId);
+      return;
+    }
 
     const oldContent = block.content;
     if (newContent === oldContent) return;
@@ -2648,30 +2712,31 @@ class HyperMarkEditor {
     const editFrom = block.from;
     const editOldTo = block.to;
 
-    // Update buffer
-    this.buffer.replace(editFrom, editOldTo, newContent);
+    // Handle virtual empty block (from === to === 0, buffer may be empty)
+    if (editFrom === editOldTo && this.buffer.length === 0) {
+      // First edit on empty document — just insert
+      this.buffer.insert(0, newContent);
+    } else {
+      // Normal replace
+      this.buffer.replace(editFrom, editOldTo, newContent);
+    }
 
     // Incremental re-parse
     const fullText = this.buffer.toString();
     this.splitter.update(fullText, editFrom, editFrom + newContent.length, editOldTo - editFrom);
+    this._ensureAtLeastOneBlock();
 
-    // After re-parse, block IDs have changed. Find the new block covering the
-    // edited region and update activeBlockId so subsequent edits use correct offsets.
+    // After re-parse, find the block covering the edit region and update activeBlockId
     let newBlockId = blockId;
     const updatedBlock = this.splitter.blocks.find(b => b.id === blockId);
-    if (updatedBlock) {
-      updatedBlock.content = newContent;
-    } else {
+    if (!updatedBlock) {
       // Block ID changed after re-parse — find the block that covers editFrom
       const replacement = this.splitter.blockAt(editFrom);
       if (replacement) {
         newBlockId = replacement.id;
-        // Update activeBlockId so future edits and commits find the right block
         if (this.activeBlockId === blockId) {
           this.activeBlockId = newBlockId;
         }
-        // Update the textarea's data-block-id attribute so _checkSlashTrigger and
-        // _commitActiveBlock can find it
         const textarea = this._contentEl.querySelector(`.hm-block-textarea[data-block-id="${blockId}"]`);
         if (textarea) {
           textarea.setAttribute('data-block-id', newBlockId);
@@ -2816,14 +2881,24 @@ class HyperMarkEditor {
       }
     }
 
-    // Enter on empty block → blur (deactivate block)
+    // Enter → split block at cursor position
     if (e.key === 'Enter' && !e.shiftKey) {
-      const content = textarea.value.trim();
-      if (content === '') {
-        e.preventDefault();
+      // For code blocks, allow normal newlines
+      if (block.type === 'code_block') return;
+
+      e.preventDefault();
+      const cursorPos = textarea.selectionStart;
+      const contentBefore = textarea.value.substring(0, cursorPos);
+      const contentAfter = textarea.value.substring(cursorPos);
+
+      // If block is completely empty, blur instead of creating infinite empty blocks
+      if (textarea.value.trim() === '' && contentBefore.trim() === '') {
         this._blurBlock();
         return;
       }
+
+      this._splitBlockAtCursor(block, contentBefore, contentAfter);
+      return;
     }
 
     // Escape → blur block
@@ -2922,13 +2997,99 @@ class HyperMarkEditor {
     // Re-parse and render
     const fullText = this.buffer.toString();
     this.splitter.parse(fullText);
+    this._ensureAtLeastOneBlock();
     this.activeBlockId = null;
 
-    // Focus the merged block
+    // Focus the merged block, place cursor at the join point
     const newBlocks = this.splitter.blocks;
     if (newBlocks.length > 0) {
       const targetIdx = Math.min(idx - 1, newBlocks.length - 1);
+      const cursorOffset = prevBlock.content.length;
       this._focusBlock(newBlocks[targetIdx].id);
+      requestAnimationFrame(() => {
+        const ta = this._contentEl.querySelector('.hm-block-textarea');
+        if (ta) {
+          ta.selectionStart = ta.selectionEnd = cursorOffset;
+          ta.focus();
+        }
+      });
+    } else {
+      this._renderAllBlocks();
+    }
+
+    this._dispatchChange();
+  }
+
+  /**
+   * Split a block at the cursor position, creating a new block after it.
+   * @private
+   * @param {Block} block - The block being split
+   * @param {string} contentBefore - Content before cursor (stays in current block)
+   * @param {string} contentAfter - Content after cursor (goes to new block)
+   */
+  _splitBlockAtCursor(block, contentBefore, contentAfter) {
+    // Find the current block in splitter (may have changed ID)
+    let currentBlock = this.splitter.blocks.find(b => b.id === block.id);
+    if (!currentBlock) {
+      currentBlock = this.splitter.blockAt(block.from);
+    }
+    if (!currentBlock) {
+      console.warn('[HyperMark] _splitBlockAtCursor: block not found, aborting');
+      return;
+    }
+
+    // Record for undo
+    const oldContent = currentBlock.content;
+    const newBufferContent = contentBefore + '\n' + contentAfter;
+
+    this.history.push(new Transaction({
+      type: 'replace',
+      offset: currentBlock.from,
+      inserted: newBufferContent,
+      deleted: oldContent,
+    }));
+
+    // Replace in buffer
+    this.buffer.replace(currentBlock.from, currentBlock.to, newBufferContent);
+
+    // Re-parse
+    const fullText = this.buffer.toString();
+    this.splitter.parse(fullText);
+    this._ensureAtLeastOneBlock();
+
+    // Find the new block that starts after contentBefore + '\n'
+    const newBlockOffset = currentBlock.from + contentBefore.length + 1;
+    let newBlock = this.splitter.blockAt(newBlockOffset);
+
+    // If contentAfter is empty, the parser may not create a block there.
+    // In that case, find the block right after the current one.
+    if (!newBlock) {
+      const blocks = this.splitter.blocks;
+      const currentIdx = blocks.findIndex(b => b.from <= currentBlock.from && b.to >= currentBlock.from);
+      if (currentIdx >= 0 && currentIdx + 1 < blocks.length) {
+        newBlock = blocks[currentIdx + 1];
+      }
+    }
+
+    // If we still don't have a new block (e.g. contentAfter was empty and got swallowed),
+    // we need to ensure there's a block to focus
+    if (!newBlock) {
+      // Re-parse may have merged things — just focus the block at the offset
+      newBlock = this.splitter.blockAt(currentBlock.from);
+    }
+
+    this.activeBlockId = null;
+
+    if (newBlock) {
+      this._focusBlock(newBlock.id);
+      // Place cursor at the start of the new block
+      requestAnimationFrame(() => {
+        const ta = this._contentEl.querySelector('.hm-block-textarea');
+        if (ta) {
+          ta.selectionStart = ta.selectionEnd = 0;
+          ta.focus();
+        }
+      });
     } else {
       this._renderAllBlocks();
     }
@@ -2994,6 +3155,7 @@ class HyperMarkEditor {
 
     // Re-parse and render
     this.splitter.parse(this.buffer.toString());
+    this._ensureAtLeastOneBlock();
     this.activeBlockId = null;
     this._renderAllBlocks();
     this._dispatchChange();
@@ -3019,6 +3181,7 @@ class HyperMarkEditor {
     }
 
     this.splitter.parse(this.buffer.toString());
+    this._ensureAtLeastOneBlock();
     this.activeBlockId = null;
     this._renderAllBlocks();
     this._dispatchChange();
@@ -3041,6 +3204,7 @@ class HyperMarkEditor {
     }
 
     this.splitter.parse(this.buffer.toString());
+    this._ensureAtLeastOneBlock();
     this.activeBlockId = null;
     this._renderAllBlocks();
     this._dispatchChange();
@@ -3149,6 +3313,7 @@ class HyperMarkEditor {
     this.activeBlockId = null;
     this.buffer = new RopeBuffer(markdown);
     this.splitter.parse(this.buffer.toString());
+    this._ensureAtLeastOneBlock();
     this.history.clear();
     this._renderAllBlocks();
     this._dispatchChange();
@@ -3167,6 +3332,7 @@ class HyperMarkEditor {
       inserted: text,
     }));
     this.splitter.parse(this.buffer.toString());
+    this._ensureAtLeastOneBlock();
     this._renderAllBlocks();
     this._dispatchChange();
   }
