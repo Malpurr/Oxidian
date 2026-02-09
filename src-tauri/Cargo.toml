@@ -1,6 +1,6 @@
 [package]
 name = "oxidian"
-version = "1.2.1"
+version = "1.3.5"
 edition = "2021"
 description = "An open-source Obsidian alternative for notes and daily journaling"
 license = "MIT"

@@ -24,6 +24,17 @@ import { EmbedProcessor } from './embeds.js';
 import { FrontmatterProcessor } from './frontmatter.js';
 import { LinkHandler } from './link-handler.js';
 
+// NEW OBSIDIAN CORE FEATURES
+import { LivePreview } from './live-preview.js';
+import { WikilinksAutoComplete } from './wikilinks.js';
+import { TagAutoComplete } from './tag-autocomplete.js';
+import { DragDrop } from './drag-drop.js';
+import { MultipleCursors } from './multiple-cursors.js';
+import { Folding } from './folding.js';
+import { PropertiesPanel } from './properties-panel.js';
+import { HoverPreview } from './hover-preview.js';
+import { Canvas } from './canvas.js';
+
 // DOM Safety Helpers
 function safeGetElement(id) {
     const el = document.getElementById(id);
@@ -69,6 +80,17 @@ class OxidianApp {
         this.splitPanes = [];
         this.hypermarkEditor = null;
         this.editorMode = localStorage.getItem('oxidian-editor-mode') || 'classic'; // 'classic' | 'hypermark'
+
+        // NEW OBSIDIAN CORE FEATURES
+        this.livePreview = null;
+        this.wikilinksAutoComplete = null;
+        this.tagAutoComplete = null;
+        this.dragDrop = null;
+        this.multipleCursors = null;
+        this.folding = null;
+        this.propertiesPanel = null;
+        this.hoverPreview = null;
+        this.canvas = null;
 
         // Feature state
         this.focusMode = false;
@@ -120,6 +142,17 @@ class OxidianApp {
         this.frontmatterProcessor = new FrontmatterProcessor(this);
         this.linkHandler = new LinkHandler(this);
 
+        // Initialize NEW OBSIDIAN CORE FEATURES
+        this.livePreview = new LivePreview(this);
+        this.wikilinksAutoComplete = new WikilinksAutoComplete(this);
+        this.tagAutoComplete = new TagAutoComplete(this);
+        this.dragDrop = new DragDrop(this);
+        this.multipleCursors = new MultipleCursors(this);
+        this.folding = new Folding(this);
+        this.propertiesPanel = new PropertiesPanel(this);
+        this.hoverPreview = new HoverPreview(this);
+        this.canvas = new Canvas(this);
+
         await this.themeManager.init();
 
         // Load and apply settings
@@ -142,6 +175,7 @@ class OxidianApp {
         });
 
         document.querySelector('.ribbon-btn[data-action="graph"]')?.addEventListener('click', () => this.openGraphView());
+        document.querySelector('.ribbon-btn[data-action="canvas"]')?.addEventListener('click', () => this.openCanvasView());
         document.querySelector('.ribbon-btn[data-action="daily"]')?.addEventListener('click', () => this.openDailyNote());
         document.querySelector('.ribbon-btn[data-action="settings"]')?.addEventListener('click', () => this.openSettingsTab());
         document.querySelector('.ribbon-btn[data-action="focus"]')?.addEventListener('click', () => this.toggleFocusMode());
@@ -174,18 +208,18 @@ class OxidianApp {
         this.renderRecentFiles();
 
         // Sidebar buttons
-        document.getElementById('btn-new-note').addEventListener('click', () => this.showNewNoteDialog());
-        document.getElementById('btn-new-folder').addEventListener('click', () => this.createNewFolder());
-        document.getElementById('btn-refresh').addEventListener('click', () => this.sidebar.refresh());
+        document.getElementById('btn-new-note')?.addEventListener('click', () => this.showNewNoteDialog());
+        document.getElementById('btn-new-folder')?.addEventListener('click', () => this.createNewFolder());
+        document.getElementById('btn-refresh')?.addEventListener('click', () => this.sidebar.refresh());
 
         // Welcome screen
-        document.getElementById('btn-welcome-daily').addEventListener('click', () => this.openDailyNote());
-        document.getElementById('btn-welcome-new').addEventListener('click', () => this.showNewNoteDialog());
+        document.getElementById('btn-welcome-daily')?.addEventListener('click', () => this.openDailyNote());
+        document.getElementById('btn-welcome-new')?.addEventListener('click', () => this.showNewNoteDialog());
 
         // New note dialog
-        document.getElementById('btn-dialog-cancel').addEventListener('click', () => this.hideNewNoteDialog());
-        document.getElementById('btn-dialog-create').addEventListener('click', () => this.createNewNote());
-        document.getElementById('new-note-name').addEventListener('keydown', (e) => {
+        document.getElementById('btn-dialog-cancel')?.addEventListener('click', () => this.hideNewNoteDialog());
+        document.getElementById('btn-dialog-create')?.addEventListener('click', () => this.createNewNote());
+        document.getElementById('new-note-name')?.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') this.createNewNote();
             if (e.key === 'Escape') this.hideNewNoteDialog();
         });
@@ -229,6 +263,9 @@ class OxidianApp {
         // Load initial data
         await this.sidebar.refresh();
         await this.loadTags();
+        
+        // Initialize File Explorer drag & drop after sidebar is loaded
+        this.initFileExplorerDragDrop();
 
         // Initialize plugin loader
         try {
@@ -299,6 +336,8 @@ class OxidianApp {
             this.showGraphPane(pane);
         } else if (tab.type === 'settings') {
             this.showSettingsPane(pane);
+        } else if (tab.type === 'canvas') {
+            this.showCanvasPane(pane);
         }
     }
 
@@ -679,6 +718,9 @@ class OxidianApp {
 
             const textarea = pane.querySelector('.editor-textarea');
             await this.editor.attach(textarea, null);
+            
+            // Attach NEW OBSIDIAN CORE FEATURES to textarea
+            this.attachObsidianFeatures(pane, textarea);
         } else {
             // HyperMark (live preview) — single pane, NO side preview
             pane.innerHTML = `
@@ -707,6 +749,9 @@ class OxidianApp {
 
             // Also attach the classic editor adapter (for getContent/stats)
             this.editor.attachHyperMark(this.hypermarkEditor, null);
+            
+            // Attach NEW OBSIDIAN CORE FEATURES to hypermark editor
+            this.attachObsidianFeatures(pane, null, this.hypermarkEditor);
         }
 
         this.applyViewMode();
@@ -1190,6 +1235,11 @@ class OxidianApp {
 
     handleKeyboard(e) {
         const ctrl = e.ctrlKey || e.metaKey;
+        
+        // Try new feature shortcuts first
+        if (this.handleNewFeatureShortcuts(e)) {
+            return;
+        }
 
         if (ctrl && e.key === 's') {
             e.preventDefault();
@@ -1885,6 +1935,145 @@ class OxidianApp {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    // ===== NEW OBSIDIAN CORE FEATURES INTEGRATION =====
+
+    /**
+     * Attach all Obsidian core features to an editor pane
+     */
+    attachObsidianFeatures(pane, textarea, hypermarkEditor = null) {
+        try {
+            // 1. Initialize Properties Panel (at top of pane)
+            if (this.propertiesPanel) {
+                this.propertiesPanel.init(pane);
+                if (textarea) {
+                    this.propertiesPanel.attachTo(textarea);
+                } else if (hypermarkEditor) {
+                    // For hypermark, we'll need to hook into its content changes
+                    // This is a simplified integration
+                }
+            }
+
+            // 2. Initialize Drag & Drop for Editor
+            if (this.dragDrop && pane) {
+                this.dragDrop.initEditor(pane);
+            }
+
+            // Features that need a textarea
+            if (textarea) {
+                // 3. Wikilinks Auto-Complete
+                if (this.wikilinksAutoComplete) {
+                    this.wikilinksAutoComplete.attachTo(textarea);
+                }
+
+                // 4. Tag Auto-Complete
+                if (this.tagAutoComplete) {
+                    this.tagAutoComplete.attachTo(textarea);
+                }
+
+                // 5. Multiple Cursors
+                if (this.multipleCursors) {
+                    this.multipleCursors.attachTo(textarea);
+                }
+
+                // 6. Folding
+                if (this.folding) {
+                    this.folding.attachTo(textarea);
+                    this.folding.initClickHandler();
+                }
+            }
+
+            // 7. Hover Preview (works on the pane container)
+            if (this.hoverPreview && pane) {
+                this.hoverPreview.init(pane);
+            }
+
+            // 8. Live Preview Mode (if enabled)
+            if (this.viewMode === 'live-preview' && this.livePreview && textarea) {
+                // The live preview is handled in the editor setup, but we could enhance it here
+            }
+
+            console.log('✅ Obsidian core features attached successfully');
+        } catch (err) {
+            console.error('Failed to attach Obsidian features:', err);
+        }
+    }
+
+    /**
+     * Open Canvas view
+     */
+    openCanvasView() {
+        this.tabManager.openTab('__canvas__', 'Canvas', 'canvas');
+    }
+
+    /**
+     * Show canvas in a pane
+     */
+    showCanvasPane(pane = 0) {
+        if (this.isDirty && this.currentFile) {
+            this.saveCurrentFile();
+        }
+
+        this.hideWelcome();
+        this.updateBreadcrumb('');
+
+        if (pane === 0 && !this.tabManager.splitActive) {
+            this.clearPanes();
+            const container = document.getElementById('pane-container');
+            const canvasDiv = document.createElement('div');
+            canvasDiv.className = 'pane canvas-pane';
+            canvasDiv.id = 'left-pane';
+            container.insertBefore(canvasDiv, container.firstChild);
+            this.canvas.init(canvasDiv);
+        } else {
+            const paneId = pane === 0 ? 'left-pane' : 'right-pane';
+            let paneEl = document.getElementById(paneId);
+            if (paneEl) {
+                paneEl.innerHTML = '';
+                paneEl.className = 'pane canvas-pane';
+                this.canvas.init(paneEl);
+            }
+        }
+    }
+
+    /**
+     * Enhanced keyboard shortcuts for new features
+     */
+    handleNewFeatureShortcuts(e) {
+        const ctrl = e.ctrlKey || e.metaKey;
+        const shift = e.shiftKey;
+        
+        // Fold All / Unfold All
+        if (ctrl && shift && e.key === '[') {
+            e.preventDefault();
+            this.folding?.foldAll();
+            return true;
+        } else if (ctrl && shift && e.key === ']') {
+            e.preventDefault();
+            this.folding?.unfoldAll();
+            return true;
+        }
+
+        return false; // Not handled
+    }
+
+    /**
+     * Initialize File Explorer drag & drop
+     */
+    initFileExplorerDragDrop() {
+        const fileTreeContainer = document.getElementById('file-tree');
+        if (this.dragDrop && fileTreeContainer) {
+            this.dragDrop.initFileExplorer(fileTreeContainer);
+        }
+    }
+
+    /**
+     * Invalidate autocomplete caches when files/tags change
+     */
+    invalidateAutoCompleteCaches() {
+        this.wikilinksAutoComplete?.invalidateCache();
+        this.tagAutoComplete?.invalidateCache();
     }
 }
 

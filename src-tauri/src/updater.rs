@@ -3,7 +3,7 @@ use std::fs;
 use std::path::Path;
 
 const GITHUB_API_URL: &str = "https://api.github.com/repos/Malpurr/Oxidian/releases/latest";
-const CURRENT_VERSION: &str = "1.2.1";
+const CURRENT_VERSION: &str = "1.3.5";
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct UpdateInfo {
