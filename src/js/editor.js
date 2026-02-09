@@ -10,13 +10,24 @@ export class Editor {
         this.renderTimeout = null;
         this.previewVisible = true;
         this.currentPath = null;
+        // HyperMark integration
+        this._hypermark = null;
     }
 
     attach(textarea, previewEl) {
+        this._hypermark = null;
         this.textarea = textarea;
         this.previewEl = previewEl;
         this._setupHighlightOverlay();
         this.bindEvents();
+    }
+
+    /** Attach a HyperMarkEditor instance instead of a textarea */
+    attachHyperMark(hypermark, previewEl) {
+        this.textarea = null;
+        this.highlightEl = null;
+        this._hypermark = hypermark;
+        this.previewEl = previewEl;
     }
 
     /** Create a highlight underlay behind the textarea for syntax coloring */
@@ -149,6 +160,12 @@ export class Editor {
     }
 
     setContent(content) {
+        if (this._hypermark) {
+            this._hypermark.setContent(content);
+            this.renderPreview();
+            this.updateStatsFromContent(content);
+            return;
+        }
         if (!this.textarea) return;
         this.textarea.value = content;
         this.renderPreview();
@@ -160,7 +177,25 @@ export class Editor {
     }
 
     getContent() {
+        if (this._hypermark) return this._hypermark.getContent();
         return this.textarea ? this.textarea.value : '';
+    }
+
+    /** Update word/char stats from a content string (used by HyperMark path) */
+    updateStatsFromContent(content) {
+        if (!content) content = '';
+        const words = content.trim() ? content.trim().split(/\s+/).length : 0;
+        const chars = content.length;
+        const readingTime = Math.max(1, Math.ceil(words / 238));
+
+        const wc = document.getElementById('status-word-count');
+        const cc = document.getElementById('status-char-count');
+        const rt = document.getElementById('status-reading-time');
+        if (wc) wc.textContent = `${words} words`;
+        if (cc) cc.textContent = `${chars} characters`;
+        if (rt) rt.textContent = `${readingTime} min read`;
+
+        this.app.updateOutline?.(content);
     }
 
     scheduleRender() {
@@ -376,7 +411,30 @@ export class Editor {
         this.scheduleRender();
     }
 
+    /** Insert markdown text at cursor — delegates to HyperMark if active */
+    insertMarkdown(text) {
+        if (this._hypermark) {
+            this._hypermark.insertAtCursor(text);
+            this.app.markDirty();
+            return;
+        }
+        // Classic fallback
+        if (!this.textarea) return;
+        const start = this.textarea.selectionStart;
+        const value = this.textarea.value;
+        this.textarea.value = value.substring(0, start) + text + value.substring(start);
+        this.textarea.selectionStart = this.textarea.selectionEnd = start + text.length;
+        this.textarea.focus();
+        this.app.markDirty();
+        this.scheduleRender();
+    }
+
     wrapSelection(before, after) {
+        if (this._hypermark) {
+            this._hypermark.wrapSelection(before, after);
+            this.app.markDirty();
+            return;
+        }
         if (!this.textarea) return;
         const start = this.textarea.selectionStart;
         const end = this.textarea.selectionEnd;

@@ -63,6 +63,10 @@
     box-sizing: border-box;
 }
 
+html {
+    color-scheme: dark;
+}
+
 html, body {
     height: 100%;
     overflow: hidden;
@@ -74,6 +78,106 @@ html, body {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+}
+
+/* ===== Global Form Element Dark Theme ===== */
+input, select, textarea, button {
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    outline: none;
+}
+
+input:focus, select:focus, textarea:focus {
+    border-color: var(--text-accent);
+    box-shadow: 0 0 0 2px rgba(127, 109, 242, 0.15);
+}
+
+select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23686a6e' d='M3 5l3 3 3-3'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    padding-right: 28px;
+}
+
+select option {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+/* Range input dark styling */
+input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    border: none;
+    height: 20px;
+    cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+    height: 4px;
+    background: var(--bg-active);
+    border-radius: 2px;
+    border: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--text-accent);
+    border: none;
+    margin-top: -5px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+    transition: transform 100ms ease, box-shadow 100ms ease;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+    box-shadow: 0 0 8px rgba(127, 109, 242, 0.4);
+}
+
+input[type="range"]::-moz-range-track {
+    height: 4px;
+    background: var(--bg-active);
+    border-radius: 2px;
+    border: none;
+}
+
+input[type="range"]::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--text-accent);
+    border: none;
+}
+
+/* Color input dark styling */
+input[type="color"] {
+    -webkit-appearance: none;
+    appearance: none;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    padding: 2px;
+}
+
+input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 2px;
+}
+
+input[type="color"]::-webkit-color-swatch {
+    border: none;
+    border-radius: 2px;
 }
 
 /* ===== Global Smooth Transitions ===== */
@@ -3173,4 +3277,693 @@ body.focus-mode .editor-textarea {
     max-width: 800px;
     margin: 0 auto;
     padding: 40px 32px;
+}
+
+/* ===================================================================
+   HyperMark Editor — Block-Based Hybrid Markdown Editor
+   PIXEL Sprint · 2026-02-09
+   =================================================================== */
+
+/* ===== Editor Container ===== */
+.hypermark-editor {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    padding: 20px 28px;
+    background: var(--bg-primary);
+    font-family: var(--font-editor);
+    font-size: var(--font-size-editor);
+    line-height: 1.7;
+    caret-color: var(--text-accent);
+    position: relative;
+    min-height: 100%;
+    cursor: text;
+}
+
+.hypermark-editor:focus-within {
+    background: color-mix(in srgb, var(--bg-primary) 97%, var(--text-accent));
+}
+
+/* Focus Mode — centred column */
+body.focus-mode .hypermark-editor {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 40px 32px;
+}
+
+/* ===== Individual Block ===== */
+.hypermark-block {
+    position: relative;
+    border-radius: var(--radius-md);
+    padding: 2px 4px 2px 28px; /* room for handle */
+    margin: 1px 0;
+    transition:
+        background var(--transition),
+        box-shadow var(--transition),
+        opacity var(--transition),
+        transform var(--transition);
+    min-height: 1.7em;
+}
+
+/* ---- Rendered (read) state ---- */
+.hypermark-block.rendered {
+    cursor: pointer;
+    animation: hm-block-render-in 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hypermark-block.rendered:hover {
+    background: rgba(127, 109, 242, 0.04);
+}
+
+@keyframes hm-block-render-in {
+    from { opacity: 0.6; transform: translateY(-2px); }
+    to   { opacity: 1;   transform: translateY(0); }
+}
+
+/* ---- Active (edit) state ---- */
+.hypermark-block.active {
+    background: rgba(127, 109, 242, 0.06);
+    box-shadow: inset 3px 0 0 var(--text-accent);
+    animation: hm-block-active-in 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes hm-block-active-in {
+    from { opacity: 0.7; transform: translateY(2px); }
+    to   { opacity: 1;   transform: translateY(0); }
+}
+
+.hypermark-block.active textarea {
+    width: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    resize: none;
+    color: var(--text-primary);
+    font-family: var(--font-editor);
+    font-size: var(--font-size-editor);
+    line-height: 1.7;
+    padding: 0;
+    overflow: hidden;
+    caret-color: var(--text-accent);
+}
+
+/* Cursor line highlight inside active block */
+.hypermark-block.active::after {
+    content: '';
+    position: absolute;
+    left: 28px;
+    right: 4px;
+    height: 1.7em;
+    background: rgba(127, 109, 242, 0.04);
+    border-radius: 2px;
+    pointer-events: none;
+    top: var(--hm-cursor-top, 2px);
+    transition: top 60ms ease;
+}
+
+/* ===== Block Handle (Drag Grip) ===== */
+.hypermark-block-handle {
+    position: absolute;
+    left: 2px;
+    top: 4px;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+    color: var(--text-faint);
+    border-radius: var(--radius-sm);
+    opacity: 0;
+    transition: opacity var(--transition), color var(--transition), background var(--transition);
+    z-index: 2;
+    /* 6-dot grip icon via background */
+    background-image: radial-gradient(circle, currentColor 1.2px, transparent 1.2px);
+    background-size: 6px 6px;
+    background-position: center;
+    background-repeat: repeat;
+    /* 2×3 grid: clip to 12×18 */
+    background-clip: content-box;
+    padding: 1px 4px;
+}
+
+.hypermark-block:hover .hypermark-block-handle,
+.hypermark-block.active .hypermark-block-handle {
+    opacity: 1;
+}
+
+.hypermark-block-handle:hover {
+    color: var(--text-accent);
+    background-color: rgba(127, 109, 242, 0.1);
+}
+
+.hypermark-block-handle:active {
+    cursor: grabbing;
+}
+
+/* ===== Block Drop Zone ===== */
+.hypermark-block.drag-over-above::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: 28px;
+    right: 4px;
+    height: 3px;
+    background: var(--text-accent);
+    border-radius: 2px;
+    animation: hm-drop-zone-pulse 800ms ease-in-out infinite;
+    z-index: 5;
+}
+
+.hypermark-block.drag-over-below::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 28px;
+    right: 4px;
+    height: 3px;
+    background: var(--text-accent);
+    border-radius: 2px;
+    animation: hm-drop-zone-pulse 800ms ease-in-out infinite;
+    z-index: 5;
+}
+
+@keyframes hm-drop-zone-pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 6px rgba(127, 109, 242, 0.4); }
+    50%      { opacity: 0.6; box-shadow: 0 0 2px rgba(127, 109, 242, 0.2); }
+}
+
+.hypermark-block.dragging {
+    opacity: 0.35;
+    transform: scale(0.98);
+}
+
+/* ===== Selection Highlighting ===== */
+.hypermark-block.selected {
+    background: rgba(127, 109, 242, 0.1);
+    outline: 1px solid rgba(127, 109, 242, 0.25);
+    outline-offset: -1px;
+    border-radius: var(--radius-md);
+}
+
+/* ===== Ghost Line — AI Completions ===== */
+.hypermark-ghost-line {
+    color: var(--text-faint);
+    opacity: 0.5;
+    font-style: italic;
+    pointer-events: none;
+    user-select: none;
+    animation: hm-ghost-fade 400ms ease;
+}
+
+@keyframes hm-ghost-fade {
+    from { opacity: 0; }
+    to   { opacity: 0.5; }
+}
+
+.hypermark-ghost-line kbd {
+    font-size: 10px;
+    padding: 1px 5px;
+    margin-left: 8px;
+    opacity: 0.7;
+}
+
+/* ===== Slash-Command Popup ===== */
+.hypermark-slash-popup {
+    position: fixed;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    padding: 4px;
+    min-width: 240px;
+    max-width: 320px;
+    max-height: 360px;
+    overflow-y: auto;
+    box-shadow: var(--shadow-lg);
+    z-index: 500;
+    animation: ctx-enter 120ms cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(12px);
+}
+
+.hypermark-slash-popup.hidden { display: none; }
+
+.hypermark-slash-header {
+    padding: 6px 12px 4px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-faint);
+}
+
+.hypermark-slash-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 12px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: all var(--transition);
+    border-radius: var(--radius-sm);
+}
+
+.hypermark-slash-item:hover,
+.hypermark-slash-item.selected {
+    background: var(--text-accent);
+    color: #fff;
+}
+
+.hypermark-slash-icon {
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    background: var(--bg-surface);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.hypermark-slash-item.selected .hypermark-slash-icon,
+.hypermark-slash-item:hover .hypermark-slash-icon {
+    background: rgba(255,255,255,0.15);
+    color: #fff;
+}
+
+.hypermark-slash-label {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.hypermark-slash-label span:first-child {
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.hypermark-slash-label span:last-child {
+    font-size: 11px;
+    opacity: 0.65;
+}
+
+.hypermark-slash-item.selected .hypermark-slash-label span:last-child,
+.hypermark-slash-item:hover .hypermark-slash-label span:last-child {
+    opacity: 0.8;
+}
+
+/* ===== Block-Type Renderings ===== */
+
+/* --- Headings H1-H6 --- */
+.hypermark-block.rendered h1,
+.hypermark-block.rendered h2,
+.hypermark-block.rendered h3,
+.hypermark-block.rendered h4,
+.hypermark-block.rendered h5,
+.hypermark-block.rendered h6 {
+    color: var(--text-primary);
+    margin: 0;
+    padding: 0;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+.hypermark-block.rendered h1 {
+    font-size: 1.85em;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 6px;
+    margin-bottom: 4px;
+}
+
+.hypermark-block.rendered h2 {
+    font-size: 1.5em;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 4px;
+    margin-bottom: 2px;
+}
+
+.hypermark-block.rendered h3 { font-size: 1.25em; }
+.hypermark-block.rendered h4 { font-size: 1.1em; }
+.hypermark-block.rendered h5 { font-size: 1.0em; }
+.hypermark-block.rendered h6 { font-size: 0.95em; color: var(--text-secondary); }
+
+/* --- Code Blocks --- */
+.hypermark-block.rendered pre {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 14px 16px;
+    overflow-x: auto;
+    margin: 0;
+    position: relative;
+}
+
+.hypermark-block.rendered pre::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--text-accent), var(--text-teal));
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    opacity: 0.5;
+}
+
+.hypermark-block.rendered pre code {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--text-primary);
+    background: none;
+    padding: 0;
+}
+
+/* Language badge */
+.hypermark-code-lang-badge {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-muted);
+    background: var(--bg-active);
+    padding: 2px 8px;
+    border-radius: 3px;
+    pointer-events: none;
+}
+
+/* --- Blockquotes --- */
+.hypermark-block.rendered blockquote {
+    border-left: 3px solid var(--text-purple);
+    padding: 8px 14px;
+    margin: 0;
+    color: var(--text-secondary);
+    background: rgba(203, 166, 247, 0.04);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    font-style: italic;
+}
+
+/* --- Lists --- */
+.hypermark-block.rendered ul,
+.hypermark-block.rendered ol {
+    padding-left: 22px;
+    margin: 0;
+}
+
+.hypermark-block.rendered li {
+    margin-bottom: 2px;
+    line-height: 1.6;
+}
+
+.hypermark-block.rendered ul > li {
+    list-style: none;
+    position: relative;
+}
+
+.hypermark-block.rendered ul > li::before {
+    content: '●';
+    position: absolute;
+    left: -18px;
+    color: var(--text-accent);
+    font-size: 0.5em;
+    top: 0.55em;
+}
+
+.hypermark-block.rendered ul > li > ul > li::before {
+    content: '○';
+    font-size: 0.55em;
+    color: var(--text-muted);
+}
+
+.hypermark-block.rendered ul > li > ul > li > ul > li::before {
+    content: '▪';
+    font-size: 0.6em;
+    color: var(--text-faint);
+}
+
+/* Checkbox / Task styling */
+.hypermark-block.rendered .task-checkbox {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--text-accent);
+    cursor: pointer;
+    margin-right: 6px;
+    vertical-align: middle;
+    transition: transform 100ms ease;
+}
+
+.hypermark-block.rendered .task-checkbox:hover {
+    transform: scale(1.15);
+}
+
+.hypermark-block.rendered .task-done {
+    text-decoration: line-through;
+    color: var(--text-muted);
+}
+
+/* --- Tables --- */
+.hypermark-block.rendered table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    margin: 0;
+}
+
+.hypermark-block.rendered th {
+    background: var(--bg-surface);
+    font-weight: 600;
+    text-align: left;
+    border: 1px solid var(--border-color);
+    padding: 6px 10px;
+    color: var(--text-primary);
+}
+
+.hypermark-block.rendered td {
+    border: 1px solid var(--border-color);
+    padding: 6px 10px;
+}
+
+.hypermark-block.rendered tr:nth-child(even) td {
+    background: rgba(42, 42, 60, 0.25);
+}
+
+.hypermark-block.rendered tr:hover td {
+    background: rgba(127, 109, 242, 0.04);
+}
+
+/* --- Callouts --- */
+.hypermark-callout {
+    border-radius: var(--radius-md);
+    padding: 12px 16px 12px 44px;
+    position: relative;
+    margin: 0;
+    border-left: 3px solid;
+}
+
+.hypermark-callout-icon {
+    position: absolute;
+    left: 14px;
+    top: 13px;
+    font-size: 16px;
+    line-height: 1;
+}
+
+.hypermark-callout-title {
+    font-weight: 600;
+    font-size: 13px;
+    margin-bottom: 4px;
+}
+
+.hypermark-callout-body {
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+/* Callout variants */
+.hypermark-callout.note {
+    background: rgba(137, 180, 250, 0.08);
+    border-color: var(--text-blue);
+    color: var(--text-primary);
+}
+.hypermark-callout.note .hypermark-callout-icon::before { content: 'ℹ️'; }
+.hypermark-callout.note .hypermark-callout-title { color: var(--text-blue); }
+
+.hypermark-callout.warning {
+    background: rgba(249, 226, 175, 0.08);
+    border-color: var(--text-yellow);
+}
+.hypermark-callout.warning .hypermark-callout-icon::before { content: '⚠️'; }
+.hypermark-callout.warning .hypermark-callout-title { color: var(--text-yellow); }
+
+.hypermark-callout.tip {
+    background: rgba(166, 227, 161, 0.08);
+    border-color: var(--text-green);
+}
+.hypermark-callout.tip .hypermark-callout-icon::before { content: '💡'; }
+.hypermark-callout.tip .hypermark-callout-title { color: var(--text-green); }
+
+.hypermark-callout.danger,
+.hypermark-callout.error {
+    background: rgba(243, 139, 168, 0.08);
+    border-color: var(--text-red);
+}
+.hypermark-callout.danger .hypermark-callout-icon::before,
+.hypermark-callout.error .hypermark-callout-icon::before { content: '🔴'; }
+.hypermark-callout.danger .hypermark-callout-title,
+.hypermark-callout.error .hypermark-callout-title { color: var(--text-red); }
+
+.hypermark-callout.example {
+    background: rgba(203, 166, 247, 0.08);
+    border-color: var(--text-purple);
+}
+.hypermark-callout.example .hypermark-callout-icon::before { content: '📝'; }
+.hypermark-callout.example .hypermark-callout-title { color: var(--text-purple); }
+
+.hypermark-callout.quote {
+    background: rgba(220, 221, 222, 0.05);
+    border-color: var(--text-secondary);
+}
+.hypermark-callout.quote .hypermark-callout-icon::before { content: '💬'; }
+.hypermark-callout.quote .hypermark-callout-title { color: var(--text-secondary); }
+
+.hypermark-callout.success {
+    background: rgba(148, 226, 213, 0.08);
+    border-color: var(--text-teal);
+}
+.hypermark-callout.success .hypermark-callout-icon::before { content: '✅'; }
+.hypermark-callout.success .hypermark-callout-title { color: var(--text-teal); }
+
+/* --- Frontmatter (collapsed badge) --- */
+.hypermark-frontmatter-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 4px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all var(--transition);
+    user-select: none;
+}
+
+.hypermark-frontmatter-badge:hover {
+    background: var(--bg-hover);
+    border-color: var(--text-accent);
+    color: var(--text-secondary);
+}
+
+.hypermark-frontmatter-badge::before {
+    content: '---';
+    font-family: var(--font-mono);
+    color: var(--text-faint);
+}
+
+.hypermark-frontmatter-badge .chevron {
+    font-size: 10px;
+    transition: transform var(--transition);
+}
+
+.hypermark-frontmatter-badge.expanded .chevron {
+    transform: rotate(90deg);
+}
+
+/* --- Math Blocks --- */
+.hypermark-block.rendered .math-block {
+    text-align: center;
+    padding: 12px 24px;
+    font-family: var(--font-mono);
+    color: var(--text-primary);
+    background: rgba(42, 42, 60, 0.2);
+    border-radius: var(--radius-md);
+    overflow-x: auto;
+}
+
+.hypermark-block.rendered .math-inline {
+    font-family: var(--font-mono);
+    color: var(--text-teal);
+    background: rgba(148, 226, 213, 0.06);
+    padding: 1px 4px;
+    border-radius: 3px;
+}
+
+/* ===== Inline Renderings (inside rendered blocks) ===== */
+.hypermark-block.rendered a {
+    color: var(--text-accent);
+    text-decoration: none;
+    transition: color var(--transition), text-shadow var(--transition);
+}
+
+.hypermark-block.rendered a:hover {
+    text-decoration: underline;
+    text-shadow: 0 0 8px rgba(127, 109, 242, 0.3);
+}
+
+.hypermark-block.rendered code {
+    background: var(--bg-surface);
+    padding: 2px 5px;
+    border-radius: 3px;
+    font-family: var(--font-mono);
+    font-size: 0.88em;
+    color: var(--text-teal);
+}
+
+.hypermark-block.rendered strong { color: var(--text-primary); }
+.hypermark-block.rendered em { color: var(--text-pink); }
+.hypermark-block.rendered del { color: var(--text-muted); }
+
+.hypermark-block.rendered .wiki-link {
+    color: var(--text-accent);
+    background: rgba(127, 109, 242, 0.1);
+    padding: 1px 4px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all var(--transition-smooth);
+}
+
+.hypermark-block.rendered .wiki-link:hover {
+    background: rgba(127, 109, 242, 0.2);
+    box-shadow: 0 2px 8px rgba(127, 109, 242, 0.2);
+}
+
+.hypermark-block.rendered .tag {
+    color: var(--text-purple);
+    background: rgba(203, 166, 247, 0.12);
+    padding: 1px 8px;
+    border-radius: 10px;
+    font-size: 0.88em;
+    cursor: pointer;
+    border: 1px solid rgba(203, 166, 247, 0.15);
+}
+
+.hypermark-block.rendered img {
+    max-width: 100%;
+    border-radius: var(--radius-md);
+}
+
+.hypermark-block.rendered hr {
+    border: none;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border-light), transparent);
+    margin: 8px 0;
+}
+
+/* ===== Empty Editor Placeholder ===== */
+.hypermark-editor-empty::before {
+    content: 'Start writing... (type / for commands)';
+    color: var(--text-faint);
+    font-style: italic;
+    pointer-events: none;
+    position: absolute;
+    top: 20px;
+    left: 56px;
 }

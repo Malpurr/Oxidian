@@ -12,6 +12,7 @@ import { SlashMenu } from './slash.js';
 import { SettingsPage } from './settings.js';
 import { Onboarding } from './onboarding.js';
 import { PluginLoader } from './plugin-loader.js';
+import { HyperMarkEditor } from './hypermark.js';
 
 class OxidianApp {
     constructor() {
@@ -29,6 +30,8 @@ class OxidianApp {
         this.onboarding = null;
         this.pluginLoader = null;
         this.splitPanes = [];
+        this.hypermarkEditor = null;
+        this.editorMode = localStorage.getItem('oxidian-editor-mode') || 'hypermark'; // 'classic' | 'hypermark'
 
         // Feature state
         this.focusMode = false;
@@ -218,6 +221,8 @@ class OxidianApp {
     // ===== File Operations =====
 
     async openFile(path) {
+        // Cancel pending auto-save timer from previous file
+        clearTimeout(this._autoSaveTimer);
         if (this.isDirty && this.currentFile) {
             await this.saveCurrentFile();
         }
@@ -272,6 +277,8 @@ class OxidianApp {
     }
 
     async loadFileIntoLeftPane(path) {
+        // Cancel pending auto-save timer from previous file
+        clearTimeout(this._autoSaveTimer);
         if (this.isDirty && this.currentFile) {
             await this.saveCurrentFile();
         }
@@ -327,6 +334,7 @@ class OxidianApp {
         try {
             await invoke('save_note', { path: this.rightFile, content: textarea.value });
             this.rightDirty = false;
+            this.tabManager.markClean(this.rightFile);
         } catch (err) {
             console.error('Failed to save right pane:', err);
         }
@@ -406,13 +414,12 @@ class OxidianApp {
 
         // Check if left pane already has an editor
         const leftPane = document.getElementById('left-pane');
-        if (leftPane && leftPane.querySelector('.editor-wrapper')) return;
+        if (leftPane && (leftPane.querySelector('.editor-wrapper') || leftPane.querySelector('.hypermark-editor'))) return;
 
         // Remove non-editor content from left pane (graph, settings) without touching right pane
         if (leftPane) {
             leftPane.remove();
         } else if (!this.tabManager.splitActive) {
-            // No split active and no left pane — clear everything except the drop overlay
             const overlay = container.querySelector('.split-drop-overlay');
             container.innerHTML = '';
             if (overlay) container.appendChild(overlay);
@@ -427,26 +434,93 @@ class OxidianApp {
         const pane = document.createElement('div');
         pane.className = 'pane';
         pane.id = 'left-pane';
-        pane.innerHTML = `
-            <div class="editor-wrapper">
-                <div class="editor-pane-half">
-                    <textarea class="editor-textarea" placeholder="Start writing... (Markdown supported)" spellcheck="true"></textarea>
-                </div>
-                <div class="preview-pane-half">
-                    <div class="preview-content"></div>
-                    <div class="backlinks-section hidden">
-                        <h3>Backlinks</h3>
-                        <div class="backlinks-list"></div>
+
+        if (this.editorMode === 'hypermark') {
+            // HyperMark block editor
+            pane.innerHTML = `
+                <div class="editor-wrapper" style="display:flex;flex:1;overflow:hidden;">
+                    <div class="editor-pane-half" style="flex:1;display:flex;overflow:hidden;">
+                        <div class="hypermark-editor" id="hypermark-root"></div>
+                    </div>
+                    <div class="preview-pane-half">
+                        <div class="preview-content"></div>
+                        <div class="backlinks-section hidden">
+                            <h3>Backlinks</h3>
+                            <div class="backlinks-list"></div>
+                        </div>
                     </div>
                 </div>
-            </div>
-        `;
-        // Insert left pane at the beginning of container
-        container.insertBefore(pane, container.firstChild);
+            `;
+            container.insertBefore(pane, container.firstChild);
 
-        const textarea = pane.querySelector('.editor-textarea');
-        const preview = pane.querySelector('.preview-content');
-        this.editor.attach(textarea, preview);
+            const hmRoot = pane.querySelector('#hypermark-root');
+            const preview = pane.querySelector('.preview-content');
+
+            // Destroy old hypermark instance if any
+            if (this.hypermarkEditor) {
+                this.hypermarkEditor.destroy?.();
+            }
+            this.hypermarkEditor = new HyperMarkEditor(hmRoot, {
+                onChange: (content) => {
+                    this.markDirty();
+                    // Update preview pane
+                    if (preview && content.trim()) {
+                        invoke('render_markdown', { content }).then(html => {
+                            preview.innerHTML = html;
+                        }).catch(() => {});
+                    } else if (preview) {
+                        preview.innerHTML = '<p style="color: var(--text-faint)">Preview will appear here...</p>';
+                    }
+                    // Update outline & stats
+                    this.editor.updateStatsFromContent?.(content);
+                    this.updateOutline?.(content);
+                },
+            });
+
+            // Also attach the classic editor adapter (for getContent/stats)
+            this.editor.attachHyperMark(this.hypermarkEditor, preview);
+        } else {
+            // Classic textarea editor
+            pane.innerHTML = `
+                <div class="editor-wrapper">
+                    <div class="editor-pane-half">
+                        <textarea class="editor-textarea" placeholder="Start writing... (Markdown supported)" spellcheck="true"></textarea>
+                    </div>
+                    <div class="preview-pane-half">
+                        <div class="preview-content"></div>
+                        <div class="backlinks-section hidden">
+                            <h3>Backlinks</h3>
+                            <div class="backlinks-list"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.insertBefore(pane, container.firstChild);
+
+            const textarea = pane.querySelector('.editor-textarea');
+            const preview = pane.querySelector('.preview-content');
+            this.editor.attach(textarea, preview);
+        }
+    }
+
+    /** Switch editor mode between 'classic' and 'hypermark'. Reopens current file. */
+    setEditorMode(mode) {
+        if (mode === this.editorMode) return;
+        this.editorMode = mode;
+        localStorage.setItem('oxidian-editor-mode', mode);
+
+        // Force re-create editor pane with current content
+        const content = this.editor.getContent();
+        const leftPane = document.getElementById('left-pane');
+        if (leftPane) leftPane.remove();
+        if (this.hypermarkEditor) {
+            this.hypermarkEditor.destroy?.();
+            this.hypermarkEditor = null;
+        }
+        this.ensureEditorPane();
+        if (content) {
+            this.editor.setContent(content);
+        }
     }
 
     createSplitLayout() {
@@ -497,6 +571,7 @@ class OxidianApp {
             });
             // Mark right pane dirty and auto-save
             this.rightDirty = true;
+            if (this.rightFile) this.tabManager.markDirty(this.rightFile);
             clearTimeout(rightSaveTimer);
             rightSaveTimer = setTimeout(() => {
                 this.saveRightPaneFile();

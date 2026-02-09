@@ -55,7 +55,12 @@ export class Search {
             this.renderResults(results);
         } catch (err) {
             console.error('Search failed:', err);
-            this.results.innerHTML = `<div class="search-result-item" style="color: var(--text-muted)">Search error: ${err}</div>`;
+            const errDiv = document.createElement('div');
+            errDiv.className = 'search-result-item';
+            errDiv.style.color = 'var(--text-muted)';
+            errDiv.textContent = `Search error: ${err}`;
+            this.results.innerHTML = '';
+            this.results.appendChild(errDiv);
         }
     }
 

@@ -2667,28 +2667,39 @@ function moment(date) {
         _d: d,
         format(fmt) {
             if (!fmt) return d.toISOString();
-            return fmt
-                .replace('YYYY', String(d.getFullYear()))
-                .replace('YY', String(d.getFullYear()).slice(-2))
-                .replace('MMMM', d.toLocaleDateString('en', { month: 'long' }))
-                .replace('MMM', d.toLocaleDateString('en', { month: 'short' }))
-                .replace('MM', String(d.getMonth() + 1).padStart(2, '0'))
-                .replace('M', String(d.getMonth() + 1))
-                .replace('dddd', d.toLocaleDateString('en', { weekday: 'long' }))
-                .replace('ddd', d.toLocaleDateString('en', { weekday: 'short' }))
-                .replace('dd', d.toLocaleDateString('en', { weekday: 'narrow' }))
-                .replace('DD', String(d.getDate()).padStart(2, '0'))
-                .replace(/D(?!e)/, String(d.getDate()))
-                .replace('HH', String(d.getHours()).padStart(2, '0'))
-                .replace('H', String(d.getHours()))
-                .replace('hh', String(d.getHours() % 12 || 12).padStart(2, '0'))
-                .replace(/h(?!o)/, String(d.getHours() % 12 || 12))
-                .replace('mm', String(d.getMinutes()).padStart(2, '0'))
-                .replace('ss', String(d.getSeconds()).padStart(2, '0'))
-                .replace('A', d.getHours() >= 12 ? 'PM' : 'AM')
-                .replace('a', d.getHours() >= 12 ? 'pm' : 'am')
-                .replace('X', String(Math.floor(d.getTime() / 1000)))
-                .replace('x', String(d.getTime()));
+            // Single-pass token replacement to avoid cascading corruption
+            // (e.g. MMMM→"March" then M→"3" corrupting to "3arch")
+            const tokens = {
+                'YYYY': () => String(d.getFullYear()),
+                'YY':   () => String(d.getFullYear()).slice(-2),
+                'MMMM': () => d.toLocaleDateString('en', { month: 'long' }),
+                'MMM':  () => d.toLocaleDateString('en', { month: 'short' }),
+                'MM':   () => String(d.getMonth() + 1).padStart(2, '0'),
+                'M':    () => String(d.getMonth() + 1),
+                'dddd': () => d.toLocaleDateString('en', { weekday: 'long' }),
+                'ddd':  () => d.toLocaleDateString('en', { weekday: 'short' }),
+                'dd':   () => d.toLocaleDateString('en', { weekday: 'narrow' }),
+                'DD':   () => String(d.getDate()).padStart(2, '0'),
+                'Do':   () => String(d.getDate()) + (['th','st','nd','rd'][(d.getDate()%100-20)%10] || ['th','st','nd','rd'][d.getDate()%100] || 'th'),
+                'D':    () => String(d.getDate()),
+                'HH':   () => String(d.getHours()).padStart(2, '0'),
+                'H':    () => String(d.getHours()),
+                'hh':   () => String(d.getHours() % 12 || 12).padStart(2, '0'),
+                'h':    () => String(d.getHours() % 12 || 12),
+                'mm':   () => String(d.getMinutes()).padStart(2, '0'),
+                'ss':   () => String(d.getSeconds()).padStart(2, '0'),
+                'A':    () => d.getHours() >= 12 ? 'PM' : 'AM',
+                'a':    () => d.getHours() >= 12 ? 'pm' : 'am',
+                'X':    () => String(Math.floor(d.getTime() / 1000)),
+                'x':    () => String(d.getTime()),
+            };
+            // Build regex matching longest tokens first
+            const tokenPattern = Object.keys(tokens)
+                .sort((a, b) => b.length - a.length)
+                .map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+                .join('|');
+            const re = new RegExp(tokenPattern, 'g');
+            return fmt.replace(re, (match) => tokens[match]());
         },
         toDate() { return new Date(d); },
         valueOf() { return d.getTime(); },
