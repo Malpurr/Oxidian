@@ -42,7 +42,7 @@ impl SearchIndex {
             .or_else(|_| Index::open_in_dir(&index_path))
             .map_err(|e| format!("Failed to create/open index: {}", e))?;
         
-        let writer = index.writer(3_000_000)
+        let writer = index.writer(15_000_000)
             .map_err(|e| format!("Failed to create index writer: {}", e))?;
 
         Ok(SearchIndex {
@@ -94,7 +94,7 @@ impl SearchIndex {
         writer.commit().map_err(|e| format!("Failed to commit index: {}", e))?;
 
         // Re-create persistent writer for single-note updates
-        self.writer = Some(self.index.writer(3_000_000)
+        self.writer = Some(self.index.writer(15_000_000)
             .map_err(|e| format!("Failed to re-create persistent writer: {}", e))?);
         
         Ok(())
