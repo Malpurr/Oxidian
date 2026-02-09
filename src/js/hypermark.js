@@ -1795,6 +1795,8 @@ const HYPERMARK_STYLES = `
   margin: 0 auto;
   padding: 2rem 1rem;
   min-height: 100%;
+  padding-bottom: 60vh;
+  cursor: text;
 }
 
 .hm-spacer {
@@ -2313,6 +2315,30 @@ class HyperMarkEditor {
     this._scrollEl.appendChild(this._contentEl);
     this._editorEl.appendChild(this._scrollEl);
     this.container.appendChild(this._editorEl);
+
+    // Click on empty space below blocks → focus last block or create new one
+    this._contentEl.addEventListener('click', (e) => {
+      if (e.target === this._contentEl) {
+        const blocks = this.splitter.blocks;
+        if (blocks.length === 0) {
+          // Empty doc — create first block
+          this.buffer = this.buffer.constructor ? new RopeBuffer('\n') : { toString: () => '\n' };
+          this.splitter.reparse(this.buffer);
+          this._renderAllBlocks();
+          if (this.splitter.blocks.length > 0) {
+            this._activateBlock(0);
+          }
+        } else {
+          // Focus last block, put cursor at end
+          const lastIdx = blocks.length - 1;
+          this._activateBlock(lastIdx);
+          const ta = this._contentEl.querySelector('.hm-block-wrapper.active textarea');
+          if (ta) {
+            ta.selectionStart = ta.selectionEnd = ta.value.length;
+          }
+        }
+      }
+    });
   }
 
   // --- Block Rendering ---
