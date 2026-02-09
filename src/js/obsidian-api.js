@@ -3392,8 +3392,8 @@ function createFragment(callback) {
     return frag;
 }
 
-// Install DOM extensions immediately
-installDomExtensions();
+// DOM extensions are installed on-demand by plugin-loader via installDomExtensions()
+// Do NOT auto-install — the toggle/show/hide overrides can conflict with app UI code.
 
 // Set global functions
 window.createEl = createEl;
@@ -3406,15 +3406,34 @@ window.getIconIds = getIconIds;
 window.activeDocument = document;
 window.activeWindow = window;
 
-// ===== Stub helpers for missing references =====
-function getLinkpath(linktext) { return parseLinktext(linktext).path; }
-function getAllTags(cache) { return cache?.tags?.map(t => t.tag) || []; }
-function iterateCacheRefs(cache, cb) { for (const ref of cache?.links || []) cb(ref); for (const ref of cache?.embeds || []) cb(ref); }
-function prepareQuery(query) { return { query, tokens: query.toLowerCase().split(/\s+/), fuzzy: [] }; }
-function fuzzySearch(q, text) { const r = prepareFuzzySearch(q.query || q)(text); return r; }
-function hexToArrayBuffer(hex) { const bytes = new Uint8Array(hex.length / 2); for (let i = 0; i < hex.length; i += 2) bytes[i/2] = parseInt(hex.substr(i, 2), 16); return bytes.buffer; }
-class AbstractTextComponent extends ValueComponent { constructor(inputEl) { super(); this.inputEl = inputEl; } getValue() { return this.inputEl.value; } setValue(v) { this.inputEl.value = v; return this; } setPlaceholder(p) { this.inputEl.placeholder = p; return this; } onChange(cb) { this.inputEl.addEventListener('change', () => cb(this.inputEl.value)); return this; } onChanged() {} }
-class MarkdownSourceView { constructor() {} }
+// ===== Stubs for exported names that need module-level declarations =====
+function requireApiVersion(version) { return true; }
+class WorkspaceParent extends WorkspaceItem {}
+class WorkspaceFloating extends WorkspaceParent { constructor() { super(); } }
+class WorkspaceSidedock extends WorkspaceParent { constructor() { super(); } }
+class WorkspaceRibbon { constructor() {} }
+class MenuSeparator { constructor(menu) { this.menu = menu; } }
+class SettingGroup { constructor(settingEl) { this.settingEl = settingEl; } }
+class SecretComponent extends BaseComponent { constructor(inputEl) { super(); this.inputEl = inputEl || document.createElement('input'); this.inputEl.type = 'password'; } getValue() { return this.inputEl.value; } setValue(v) { this.inputEl.value = v; return this; } }
+class Tasks { constructor() {} }
+function parseFrontMatterEntry(frontmatter, key) { return frontmatter?.[key] ?? null; }
+function removeIcon(iconId) { /* no-op stub */ }
+function setTooltip(el, tooltip, options) { if (el) el.title = tooltip || ''; }
+function prepareSimpleSearch(query) { const lower = query.toLowerCase(); return (text) => text.toLowerCase().includes(lower) ? { score: -1, matches: [] } : null; }
+function renderMath(source, display) { const el = document.createElement('span'); el.textContent = source; return el; }
+function finishRenderMath() { return Promise.resolve(); }
+function loadMathJax() { return Promise.resolve(); }
+function loadMermaid() { return Promise.resolve(); }
+function loadPdfJs() { return Promise.resolve(); }
+function loadPrism() { return Promise.resolve(); }
+function isBoolean(obj) { return typeof obj === 'boolean'; }
+function fish(selector) { return document.querySelector(selector); }
+function fishAll(selector) { return Array.from(document.querySelectorAll(selector)); }
+function ajax(options) { /* no-op stub */ }
+function ajaxPromise(options) { return Promise.resolve(''); }
+function ready(fn) { if (document.readyState !== 'loading') fn(); else document.addEventListener('DOMContentLoaded', fn); }
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+function nextFrame() { return new Promise(r => requestAnimationFrame(r)); }
 
 // ===== Export all as the 'obsidian' module =====
 const ObsidianAPI = {
@@ -3488,5 +3507,5 @@ export {
     loadMathJax, loadMermaid, loadPdfJs, loadPrism,
     createEl, createDiv, createSpan, createSvg, createFragment,
     isBoolean, fish, fishAll, ajax, ajaxPromise, ready, sleep, nextFrame,
-    installDomExtensions, MarkdownSourceView,
+    installDomExtensions,
 };
