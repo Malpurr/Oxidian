@@ -344,8 +344,8 @@ export class PluginLoader {
                 if (!instance._statusBarItems) instance._statusBarItems = [];
             }
 
-            // Call onload
-            instance.onload();
+            // Call load() (not onload!) to properly set _loaded and load children
+            instance.load();
 
             return instance;
         } catch (e) {

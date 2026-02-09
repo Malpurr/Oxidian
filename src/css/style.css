@@ -289,28 +289,14 @@ html, body {
     transform: rotate(90deg);
 }
 
-.tree-folder-children {
-    overflow: hidden;
-    animation: folder-open 200ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-@keyframes folder-open {
-    from { opacity: 0; transform: translateY(-4px); }
-    to { opacity: 1; transform: translateY(0); }
-}
+/* folder-open animation replaced by smooth grid-based collapse */
 
 .tree-item .name {
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-.tree-folder-children {
-    display: none;
-}
-
-.tree-folder-children.open {
-    display: block;
-}
+/* tree-folder-children display handled by grid animation below */
 
 .tree-item[data-depth="0"] { padding-left: 8px; }
 .tree-item[data-depth="1"] { padding-left: 24px; }
@@ -2848,4 +2834,343 @@ kbd:hover {
     height: 1px;
     background: linear-gradient(90deg, transparent, var(--border-light), transparent);
     margin: 24px 0;
+}
+
+/* ===== PIXEL Sprint #2: Editor Syntax Highlighting ===== */
+
+/* Highlight backdrop sits behind the transparent textarea */
+.editor-pane-half {
+    position: relative;
+}
+
+.editor-highlight-backdrop {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    padding: 20px 28px;
+    font-family: var(--font-editor);
+    font-size: var(--font-size-editor);
+    line-height: 1.7;
+    tab-size: 4;
+    color: transparent;
+    background: var(--bg-primary);
+    border: none;
+    overflow: hidden;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.editor-textarea-transparent {
+    position: relative;
+    z-index: 1;
+    background: transparent !important;
+    color: var(--text-primary);
+    /* Keep caret visible but let backdrop show colored syntax */
+}
+
+/* Syntax highlight token colors */
+.hl-heading { color: var(--text-accent); font-weight: 600; }
+.hl-bold { color: var(--text-orange); font-weight: 700; }
+.hl-italic { color: var(--text-pink); font-style: italic; }
+.hl-inline-code { color: var(--text-teal); background: rgba(148, 226, 213, 0.08); border-radius: 3px; padding: 0 2px; }
+.hl-code-fence { color: var(--text-secondary); background: rgba(42, 42, 60, 0.5); border-radius: 4px; display: inline; }
+.hl-code-lang { color: var(--text-accent); font-size: 0.9em; }
+.hl-wikilink { color: var(--text-accent); }
+.hl-tag { color: var(--text-purple); }
+.hl-blockquote { color: var(--text-muted); font-style: italic; }
+.hl-hr { color: var(--text-faint); }
+.hl-list-marker { color: var(--text-accent); font-weight: 600; }
+
+/* Code block internal highlighting */
+.hl-keyword { color: var(--text-purple); font-weight: 500; }
+.hl-string { color: var(--text-green); }
+.hl-comment { color: var(--text-faint); font-style: italic; }
+.hl-number { color: var(--text-orange); }
+
+/* ===== PIXEL Sprint #2: Sidebar Enhancements ===== */
+
+/* Folder icon color */
+.tree-item .folder-icon {
+    color: var(--text-yellow);
+    transition: color var(--transition), transform var(--transition);
+}
+
+.tree-item .folder-icon.folder-open {
+    color: var(--text-accent);
+}
+
+.tree-item:hover .folder-icon {
+    transform: scale(1.1);
+}
+
+/* Indentation guides */
+.tree-folder-children.open {
+    position: relative;
+}
+
+.tree-folder-children.open::before {
+    content: '';
+    position: absolute;
+    left: 20px;
+    top: 0;
+    bottom: 4px;
+    width: 1px;
+    background: var(--border-color);
+    opacity: 0.5;
+    transition: opacity var(--transition);
+}
+
+.tree-folder-children.open:hover::before {
+    opacity: 0.8;
+    background: var(--text-accent);
+}
+
+/* Deeper nesting guides */
+.tree-folder-children .tree-folder-children.open::before { left: 36px; }
+.tree-folder-children .tree-folder-children .tree-folder-children.open::before { left: 52px; }
+.tree-folder-children .tree-folder-children .tree-folder-children .tree-folder-children.open::before { left: 68px; }
+
+/* Smooth collapse/expand animation */
+.tree-folder-children {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 250ms cubic-bezier(0.4, 0, 0.2, 1), opacity 200ms ease;
+    opacity: 0;
+    overflow: hidden;
+}
+
+.tree-folder-children > * {
+    overflow: hidden;
+    min-height: 0;
+}
+
+.tree-folder-children.open {
+    display: grid;
+    grid-template-rows: 1fr;
+    opacity: 1;
+}
+
+/* ===== PIXEL Sprint #2: Tab Drag Reorder Feedback ===== */
+
+/* Dragging tab ghost state */
+.tab.drag-ghost {
+    opacity: 0.4;
+    background: var(--bg-active);
+}
+
+/* Drop insertion indicators */
+.tab.drop-before {
+    box-shadow: inset 3px 0 0 var(--text-accent);
+}
+
+.tab.drop-after {
+    box-shadow: inset -3px 0 0 var(--text-accent);
+}
+
+.tab.drop-before::before,
+.tab.drop-after::before {
+    content: '';
+    position: absolute;
+    top: 4px;
+    bottom: 4px;
+    width: 2px;
+    background: var(--text-accent);
+    border-radius: 1px;
+    z-index: 2;
+    animation: drop-indicator-pulse 600ms ease-in-out infinite;
+}
+
+.tab.drop-before::before { left: 0; }
+.tab.drop-after::before { right: 0; left: auto; }
+
+@keyframes drop-indicator-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* ===== PIXEL Sprint #2: Settings Nav Icons ===== */
+
+.settings-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.settings-nav-item svg {
+    flex-shrink: 0;
+    opacity: 0.6;
+    transition: opacity var(--transition), color var(--transition);
+}
+
+.settings-nav-item:hover svg,
+.settings-nav-item.active svg {
+    opacity: 1;
+    color: var(--text-accent);
+}
+
+/* Settings section headers with icons */
+.settings-section h2 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.settings-section h2 svg {
+    flex-shrink: 0;
+    color: var(--text-accent);
+    opacity: 0.7;
+}
+
+/* ===== PIXEL Sprint #2: General Polish ===== */
+
+/* Smoother file type icon colors */
+.tree-item[data-path$=".png"] .icon,
+.tree-item[data-path$=".jpg"] .icon,
+.tree-item[data-path$=".jpeg"] .icon,
+.tree-item[data-path$=".gif"] .icon,
+.tree-item[data-path$=".svg"] .icon,
+.tree-item[data-path$=".webp"] .icon {
+    color: var(--text-green);
+}
+
+.tree-item[data-path$=".json"] .icon,
+.tree-item[data-path$=".yaml"] .icon,
+.tree-item[data-path$=".toml"] .icon {
+    color: var(--text-yellow);
+}
+
+.tree-item[data-path$=".pdf"] .icon {
+    color: var(--text-red);
+}
+
+/* Subtle hover glow on settings toggle switches */
+.toggle:hover .toggle-slider {
+    box-shadow: 0 0 8px rgba(127, 109, 242, 0.2);
+}
+
+/* Settings content smooth section transitions */
+.settings-section {
+    animation: settings-section-in 200ms ease;
+}
+
+@keyframes settings-section-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== Feature Sprint: Reading Time ===== */
+#status-reading-time {
+    color: var(--text-muted);
+    font-size: 11px;
+}
+
+/* ===== Feature Sprint: Outline Panel ===== */
+.outline-items {
+    padding: 4px 0;
+    overflow-y: auto;
+}
+
+.outline-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 12px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 13px;
+    border-radius: var(--radius-sm);
+    margin: 1px 4px;
+    transition: background var(--transition), color var(--transition);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.outline-item:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.outline-h-level {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-accent);
+    background: rgba(127, 109, 242, 0.1);
+    padding: 1px 5px;
+    border-radius: 3px;
+    flex-shrink: 0;
+    min-width: 24px;
+    text-align: center;
+}
+
+/* ===== Feature Sprint: Bookmarks Panel ===== */
+.bookmarks-items {
+    padding: 4px 0;
+    overflow-y: auto;
+}
+
+.bookmark-item {
+    position: relative;
+}
+
+.bookmark-remove {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-faint);
+    font-size: 16px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity var(--transition), color var(--transition);
+    line-height: 1;
+}
+
+.bookmark-item:hover .bookmark-remove {
+    opacity: 1;
+}
+
+.bookmark-remove:hover {
+    color: var(--text-red);
+}
+
+/* ===== Feature Sprint: Recent Files ===== */
+.recent-items {
+    padding: 4px 0;
+    overflow-y: auto;
+}
+
+.recent-item {
+    position: relative;
+}
+
+.recent-folder {
+    font-size: 10px;
+    color: var(--text-faint);
+    margin-left: auto;
+    padding-right: 8px;
+    flex-shrink: 0;
+}
+
+/* ===== Feature Sprint: Focus Mode ===== */
+#ribbon.hidden,
+#sidebar.hidden,
+#sidebar-resize.hidden,
+#tab-bar.hidden,
+#breadcrumb-bar.hidden,
+#statusbar.hidden {
+    display: none !important;
+}
+
+/* Focus mode editor styling — full width, centered content */
+body.focus-mode #content-area {
+    max-width: 100%;
+}
+
+body.focus-mode .editor-textarea {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 40px 32px;
 }

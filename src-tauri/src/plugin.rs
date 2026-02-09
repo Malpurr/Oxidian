@@ -137,14 +137,14 @@ impl PluginManager {
     }
     
     /// Run on_note_open hooks for all enabled plugins
-    pub fn run_on_note_open(&self, path: &str, content: &str) -> String {
+    pub fn run_on_note_open(&self, _path: &str, content: &str) -> String {
         // In a full WASM implementation, this would call each plugin's exported function
         // For now, return the content unchanged
         content.to_string()
     }
     
     /// Run on_note_save hooks for all enabled plugins
-    pub fn run_on_note_save(&self, path: &str, content: &str) -> String {
+    pub fn run_on_note_save(&self, _path: &str, content: &str) -> String {
         content.to_string()
     }
     

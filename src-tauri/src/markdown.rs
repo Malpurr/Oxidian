@@ -30,9 +30,21 @@ fn preprocess_wiki_links(input: &str) -> String {
     re.replace_all(input, |caps: &regex::Captures| {
         let target = &caps[1];
         let display = caps.get(2).map(|m| m.as_str()).unwrap_or(target);
+        // Escape for safe insertion into HTML attributes and JS string literals
+        let target_escaped = target
+            .replace('&', "&amp;")
+            .replace('"', "&quot;")
+            .replace('<', "&lt;")
+            .replace('>', "&gt;")
+            .replace('\'', "\\'")
+            .replace('\\', "\\\\");
+        let display_escaped = display
+            .replace('&', "&amp;")
+            .replace('<', "&lt;")
+            .replace('>', "&gt;");
         format!(
             r#"<a class="wiki-link" data-target="{}" href="javascript:void(0)" onclick="window.navigateToNote('{}')">{}</a>"#,
-            target, target, display
+            target_escaped, target_escaped, display_escaped
         )
     })
     .to_string()

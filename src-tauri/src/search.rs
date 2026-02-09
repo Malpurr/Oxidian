@@ -68,7 +68,14 @@ impl SearchIndex {
         writer.delete_all_documents()
             .map_err(|e| format!("Failed to clear index: {}", e))?;
         
-        for entry in WalkDir::new(vault_path).into_iter().filter_map(|e| e.ok()) {
+        for entry in WalkDir::new(vault_path).into_iter()
+            .filter_entry(|e| {
+                // Skip hidden directories (e.g. .oxidian, .obsidian, .search_index)
+                let name = e.file_name().to_string_lossy();
+                !(e.file_type().is_dir() && name.starts_with('.'))
+            })
+            .filter_map(|e| e.ok())
+        {
             let path = entry.path();
             if path.extension().map(|e| e == "md").unwrap_or(false) {
                 if let Ok(content) = fs::read_to_string(path) {

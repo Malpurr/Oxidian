@@ -33,17 +33,16 @@ pub fn save_note(state: State<AppState>, path: String, content: String) -> Resul
     let password = state.vault_password.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     let settings = settings::load_settings(&vault_path);
 
-    let save_content = if settings.vault.encryption_enabled {
+    if settings.vault.encryption_enabled {
         if let Some(ref pwd) = *password {
-            encryption::encrypt_file_content(&content, pwd)?
+            let encrypted = encryption::encrypt_file_content(&content, pwd)?;
+            vault::save_note(&vault_path, &path, &encrypted)?;
         } else {
-            content.clone()
+            vault::save_note(&vault_path, &path, &content)?;
         }
     } else {
-        content.clone()
-    };
-
-    vault::save_note(&vault_path, &path, &save_content)?;
+        vault::save_note(&vault_path, &path, &content)?;
+    }
 
     // Update search index with plaintext
     let mut search = state.search_index.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
@@ -359,6 +358,55 @@ pub fn change_password(state: State<AppState>, old_password: String, new_passwor
     // Update stored password
     let mut pwd = state.vault_password.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     *pwd = Some(new_password);
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn disable_encryption(state: State<AppState>) -> Result<(), String> {
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+    let password = state.vault_password.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+
+    let pwd = password.as_ref().ok_or("No password available — vault must be unlocked to disable encryption")?;
+
+    // Decrypt ALL encrypted .md files in the vault
+    for entry in walkdir::WalkDir::new(&*vault_path).into_iter().filter_map(|e| e.ok()) {
+        let path = entry.path();
+        if path.extension().map(|e| e == "md").unwrap_or(false) {
+            if let Ok(content) = std::fs::read_to_string(path) {
+                if content.starts_with('{') && content.contains("\"salt\"") {
+                    match encryption::decrypt_file_content(&content, pwd) {
+                        Ok(plaintext) => {
+                            if let Err(e) = std::fs::write(path, &plaintext) {
+                                log::error!("Failed to write decrypted {}: {}", path.display(), e);
+                            }
+                        }
+                        Err(e) => {
+                            log::warn!("Skipping {} (decrypt failed): {}", path.display(), e);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Remove vault.key verification file
+    let verify_path = std::path::Path::new(&*vault_path)
+        .join(".oxidian")
+        .join("vault.key");
+    if verify_path.exists() {
+        std::fs::remove_file(&verify_path).ok();
+    }
+
+    // Update settings
+    let mut settings = settings::load_settings(&vault_path);
+    settings.vault.encryption_enabled = false;
+    settings::save_settings(&vault_path, &settings)?;
+
+    // Clear stored password
+    drop(password);
+    let mut pwd_state = state.vault_password.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+    *pwd_state = None;
 
     Ok(())
 }

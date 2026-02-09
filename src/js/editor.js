@@ -6,6 +6,7 @@ export class Editor {
         this.app = app;
         this.textarea = null;
         this.previewEl = null;
+        this.highlightEl = null;
         this.renderTimeout = null;
         this.previewVisible = true;
         this.currentPath = null;
@@ -14,7 +15,101 @@ export class Editor {
     attach(textarea, previewEl) {
         this.textarea = textarea;
         this.previewEl = previewEl;
+        this._setupHighlightOverlay();
         this.bindEvents();
+    }
+
+    /** Create a highlight underlay behind the textarea for syntax coloring */
+    _setupHighlightOverlay() {
+        if (!this.textarea) return;
+        const parent = this.textarea.parentElement;
+        if (!parent) return;
+
+        // Ensure parent is positioned
+        if (getComputedStyle(parent).position === 'static') {
+            parent.style.position = 'relative';
+        }
+
+        // Create highlight backdrop
+        const highlight = document.createElement('pre');
+        highlight.className = 'editor-highlight-backdrop';
+        highlight.setAttribute('aria-hidden', 'true');
+        parent.insertBefore(highlight, this.textarea);
+
+        // Make textarea transparent background so backdrop shows through
+        this.textarea.classList.add('editor-textarea-transparent');
+
+        this.highlightEl = highlight;
+        this._syncHighlight();
+    }
+
+    /** Sync the highlight overlay with textarea content */
+    _syncHighlight() {
+        if (!this.highlightEl || !this.textarea) return;
+        const text = this.textarea.value;
+        this.highlightEl.innerHTML = this._highlightSyntax(text) + '\n';
+        this.highlightEl.scrollTop = this.textarea.scrollTop;
+        this.highlightEl.scrollLeft = this.textarea.scrollLeft;
+    }
+
+    /** Apply syntax highlighting to markdown text */
+    _highlightSyntax(text) {
+        // Escape HTML first
+        const esc = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+        // Highlight fenced code blocks
+        let result = esc.replace(/(^```(\w*)\n)([\s\S]*?)(^```$)/gm, (match, open, lang, code, close) => {
+            const langLabel = lang ? `<span class="hl-code-lang">${lang}</span>` : '';
+            return `<span class="hl-code-fence">${open.replace(lang, langLabel)}${this._highlightCode(code)}${close}</span>`;
+        });
+
+        // Highlight inline code (but not inside fenced blocks — simplified)
+        result = result.replace(/(?<!`)`([^`\n]+)`(?!`)/g, '<span class="hl-inline-code">`$1`</span>');
+
+        // Highlight headings
+        result = result.replace(/^(#{1,6}\s.*)$/gm, '<span class="hl-heading">$1</span>');
+
+        // Highlight bold
+        result = result.replace(/(\*\*[^*]+\*\*)/g, '<span class="hl-bold">$1</span>');
+
+        // Highlight italic (single *)
+        result = result.replace(/(?<!\*)(\*[^*\n]+\*)(?!\*)/g, '<span class="hl-italic">$1</span>');
+
+        // Highlight wiki-links
+        result = result.replace(/(\[\[[^\]]+\]\])/g, '<span class="hl-wikilink">$1</span>');
+
+        // Highlight tags
+        result = result.replace(/((?:^|\s)#[a-zA-Z][\w/-]*)/g, '<span class="hl-tag">$1</span>');
+
+        // Highlight blockquotes
+        result = result.replace(/^(&gt;\s?.*)$/gm, '<span class="hl-blockquote">$1</span>');
+
+        // Highlight horizontal rules
+        result = result.replace(/^([-*_]{3,})$/gm, '<span class="hl-hr">$1</span>');
+
+        // Highlight list markers
+        result = result.replace(/^(\s*)([-*+]|\d+\.)\s/gm, '$1<span class="hl-list-marker">$2</span> ');
+
+        return result;
+    }
+
+    /** Basic syntax highlighting within code blocks */
+    _highlightCode(code) {
+        // Keywords
+        let result = code.replace(/\b(const|let|var|function|return|if|else|for|while|class|import|export|from|async|await|try|catch|throw|new|this|true|false|null|undefined|fn|pub|use|mod|struct|impl|enum|match|self|mut|loop|break|continue|type|interface|extends|def|print|lambda|yield|with|as|in|not|and|or|is)\b/g,
+            '<span class="hl-keyword">$1</span>');
+
+        // Strings
+        result = result.replace(/(&quot;[^&]*?&quot;|'[^']*?'|`[^`]*?`)/g, '<span class="hl-string">$1</span>');
+
+        // Comments (// and #)
+        result = result.replace(/(\/\/.*$)/gm, '<span class="hl-comment">$1</span>');
+        result = result.replace(/(#.*$)/gm, '<span class="hl-comment">$1</span>');
+
+        // Numbers
+        result = result.replace(/\b(\d+\.?\d*)\b/g, '<span class="hl-number">$1</span>');
+
+        return result;
     }
 
     bindEvents() {
@@ -24,6 +119,7 @@ export class Editor {
             this.app.markDirty();
             this.scheduleRender();
             this.updateStats();
+            this._syncHighlight();
             // Notify slash menu
             this.app.slashMenu?.onInput(this.textarea);
         });
@@ -39,7 +135,13 @@ export class Editor {
             }
         });
 
-        this.textarea.addEventListener('scroll', () => this.syncScroll());
+        this.textarea.addEventListener('scroll', () => {
+            this.syncScroll();
+            if (this.highlightEl) {
+                this.highlightEl.scrollTop = this.textarea.scrollTop;
+                this.highlightEl.scrollLeft = this.textarea.scrollLeft;
+            }
+        });
 
         this.textarea.addEventListener('contextmenu', (e) => {
             this.app.contextMenu.showEditorMenu(e, this.textarea);
@@ -52,6 +154,7 @@ export class Editor {
         this.renderPreview();
         this.updateStats();
         this.updateCursor();
+        this._syncHighlight();
         this.textarea.focus();
         this.textarea.scrollTop = 0;
     }
@@ -94,11 +197,17 @@ export class Editor {
         const content = this.textarea.value;
         const words = content.trim() ? content.trim().split(/\s+/).length : 0;
         const chars = content.length;
+        const readingTime = Math.max(1, Math.ceil(words / 238));
 
         const wc = document.getElementById('status-word-count');
         const cc = document.getElementById('status-char-count');
+        const rt = document.getElementById('status-reading-time');
         if (wc) wc.textContent = `${words} words`;
         if (cc) cc.textContent = `${chars} characters`;
+        if (rt) rt.textContent = `${readingTime} min read`;
+
+        // Update outline panel if visible
+        this.app.updateOutline?.(content);
     }
 
     updateCursor() {

@@ -182,22 +182,79 @@ export class TabManager {
                 if (e.button === 1) { e.preventDefault(); this.closeTab(tab.id); }
             });
 
-            // Drag events
+            // Drag events — tab reorder within same pane + split pane support
             el.addEventListener('dragstart', (e) => {
                 this.dragState = { tabId: tab.id, fromPane: tab.pane };
                 e.dataTransfer.setData('text/plain', tab.id.toString());
                 e.dataTransfer.effectAllowed = 'move';
                 el.classList.add('dragging');
+                // Brief delay so the browser captures the ghost first
+                requestAnimationFrame(() => el.classList.add('drag-ghost'));
             });
 
             el.addEventListener('dragend', () => {
-                el.classList.remove('dragging');
+                el.classList.remove('dragging', 'drag-ghost');
                 this.dragState = null;
                 this._hideDropOverlay();
+                this._clearDropIndicators(container);
+            });
+
+            el.addEventListener('dragover', (e) => {
+                if (!this.dragState) return;
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                // Show insertion indicator
+                const rect = el.getBoundingClientRect();
+                const midX = rect.left + rect.width / 2;
+                this._clearDropIndicators(container);
+                if (e.clientX < midX) {
+                    el.classList.add('drop-before');
+                } else {
+                    el.classList.add('drop-after');
+                }
+            });
+
+            el.addEventListener('dragleave', () => {
+                el.classList.remove('drop-before', 'drop-after');
+            });
+
+            el.addEventListener('drop', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (!this.dragState) return;
+                const draggedId = this.dragState.tabId;
+                const targetId = tab.id;
+                if (draggedId === targetId) return;
+
+                // Determine position
+                const rect = el.getBoundingClientRect();
+                const insertBefore = e.clientX < rect.left + rect.width / 2;
+
+                // Reorder within the tabs array
+                const dragIdx = this.tabs.findIndex(t => t.id === draggedId);
+                const targetIdx = this.tabs.findIndex(t => t.id === targetId);
+                if (dragIdx === -1 || targetIdx === -1) return;
+
+                const [draggedTab] = this.tabs.splice(dragIdx, 1);
+                // If dragging to a different pane, move it
+                draggedTab.pane = tab.pane;
+                let insertIdx = this.tabs.findIndex(t => t.id === targetId);
+                if (!insertBefore) insertIdx++;
+                this.tabs.splice(insertIdx, 0, draggedTab);
+
+                this._clearDropIndicators(container);
+                this.dragState = null;
+                this._hideDropOverlay();
+                this.renderTabs();
             });
 
             container.appendChild(el);
         }
+    }
+
+    _clearDropIndicators(container) {
+        if (!container) return;
+        container.querySelectorAll('.tab').forEach(t => t.classList.remove('drop-before', 'drop-after'));
     }
 
     _createDropOverlay() {

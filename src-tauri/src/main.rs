@@ -76,6 +76,7 @@ fn main() {
             commands::is_vault_locked,
             commands::setup_encryption,
             commands::change_password,
+            commands::disable_encryption,
             commands::list_plugins,
             commands::list_obsidian_plugins,
             commands::read_plugin_main,

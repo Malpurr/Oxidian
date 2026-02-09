@@ -615,11 +615,55 @@ class Editor {
     }
 
     replaceSelection(replacement) {
-        _stubWarn('Editor', 'replaceSelection');
+        if (this._selections.length === 0) return;
+        const sel = this._selections[0];
+        const anchor = sel.anchor;
+        const head = sel.head;
+        // Normalize from/to
+        let from, to;
+        if (anchor.line < head.line || (anchor.line === head.line && anchor.ch <= head.ch)) {
+            from = anchor; to = head;
+        } else {
+            from = head; to = anchor;
+        }
+        this.replaceRange(replacement, from, to);
+        // Move cursor to end of replacement
+        const newLines = replacement.split('\n');
+        let endLine, endCh;
+        if (newLines.length === 1) {
+            endLine = from.line;
+            endCh = from.ch + newLines[0].length;
+        } else {
+            endLine = from.line + newLines.length - 1;
+            endCh = newLines[newLines.length - 1].length;
+        }
+        const endPos = { line: endLine, ch: endCh };
+        this._cursor = endPos;
+        this._selections = [];
     }
 
     replaceRange(replacement, from, to) {
-        _stubWarn('Editor', 'replaceRange');
+        if (!from) return;
+        if (!to) to = from;
+        const repLines = (replacement || '').split('\n');
+        const before = (this._lines[from.line] || '').substring(0, from.ch);
+        const after = (this._lines[to.line] || '').substring(to.ch);
+
+        if (repLines.length === 1) {
+            this._lines[from.line] = before + repLines[0] + after;
+            // Remove lines between from and to
+            if (to.line > from.line) {
+                this._lines.splice(from.line + 1, to.line - from.line);
+            }
+        } else {
+            const newLines = [];
+            newLines.push(before + repLines[0]);
+            for (let i = 1; i < repLines.length - 1; i++) {
+                newLines.push(repLines[i]);
+            }
+            newLines.push(repLines[repLines.length - 1] + after);
+            this._lines.splice(from.line, to.line - from.line + 1, ...newLines);
+        }
     }
 
     getCursor(string) {
@@ -1053,10 +1097,9 @@ class MarkdownPreviewView {
 }
 
 // ===== MarkdownView =====
-class MarkdownView extends ItemView {
+class MarkdownView extends TextFileView {
     constructor(leaf) {
         super(leaf);
-        this.file = null;
         this.editor = new Editor();
         this.currentMode = new MarkdownEditView();
         this.previewMode = new MarkdownPreviewView();
@@ -1066,6 +1109,20 @@ class MarkdownView extends ItemView {
 
     getDisplayText() {
         return this.file?.basename || '';
+    }
+
+    getViewData() {
+        return this.editor.getValue();
+    }
+
+    setViewData(data, clear) {
+        this.data = data;
+        this.editor.setValue(data);
+    }
+
+    clear() {
+        this.data = '';
+        this.editor.setValue('');
     }
 
     getMode() {
@@ -2145,6 +2202,32 @@ class Plugin extends Component {
     addCommand(command) {
         const fullId = `${this.manifest.id}:${command.id}`;
         const cmd = { ...command, id: fullId, _pluginId: this.manifest.id };
+
+        // Wrap editorCallback / editorCheckCallback into callback / checkCallback
+        // so the command palette can execute them
+        if (cmd.editorCheckCallback && !cmd.callback && !cmd.checkCallback) {
+            const origECC = cmd.editorCheckCallback;
+            cmd.checkCallback = (checking) => {
+                const leaf = this.app?.workspace?.activeLeaf;
+                const view = leaf?.view;
+                if (view instanceof MarkdownView) {
+                    return origECC(checking, view.editor, view);
+                }
+                return false;
+            };
+        } else if (cmd.editorCallback && !cmd.callback && !cmd.checkCallback) {
+            const origEC = cmd.editorCallback;
+            cmd.checkCallback = (checking) => {
+                const leaf = this.app?.workspace?.activeLeaf;
+                const view = leaf?.view;
+                if (view instanceof MarkdownView) {
+                    if (!checking) origEC(view.editor, view);
+                    return true;
+                }
+                return false;
+            };
+        }
+
         this._commands.push(cmd);
         if (window._oxidianPluginRegistry) {
             window._oxidianPluginRegistry.registerCommand(cmd);
@@ -2400,10 +2483,7 @@ function normalizePath(path) {
 function debounce(func, wait, resetTimer) {
     let timeout;
     const debounced = function (...args) {
-        if (resetTimer || timeout === undefined) {
-            clearTimeout(timeout);
-        }
-        if (timeout !== undefined && !resetTimer) return;
+        clearTimeout(timeout);
         timeout = setTimeout(() => {
             timeout = undefined;
             func.apply(this, args);
@@ -3030,19 +3110,21 @@ function installDomExtensions() {
         };
     }
 
-    // Element.prototype
-    if (!Element.prototype.empty) {
-        Element.prototype.empty = function() {
-            while (this.firstChild) this.removeChild(this.firstChild);
-            return this;
-        };
-    }
-    if (!Element.prototype.detach) {
-        Element.prototype.detach = function() {
+    // Node.prototype.detach / .empty (official API puts these on Node)
+    if (!Node.prototype.detach) {
+        Node.prototype.detach = function() {
             if (this.parentNode) this.parentNode.removeChild(this);
             return this;
         };
     }
+    if (!Node.prototype.empty) {
+        Node.prototype.empty = function() {
+            while (this.firstChild) this.removeChild(this.firstChild);
+            return this;
+        };
+    }
+
+    // Element.prototype
     if (!Element.prototype.getText) {
         Element.prototype.getText = function() { return this.textContent || ''; };
     }
@@ -3194,6 +3276,137 @@ function installDomExtensions() {
     }
     if (!HTMLElement.prototype.onWindowMigrated) {
         HTMLElement.prototype.onWindowMigrated = function(listener) { return () => {}; };
+    }
+
+    // Node.prototype.doc / .win / .constructorWin
+    if (!('doc' in Node.prototype)) {
+        Object.defineProperty(Node.prototype, 'doc', {
+            get() { return this.ownerDocument || document; },
+            configurable: true,
+        });
+    }
+    if (!('win' in Node.prototype)) {
+        Object.defineProperty(Node.prototype, 'win', {
+            get() { return (this.ownerDocument || document).defaultView || window; },
+            configurable: true,
+        });
+    }
+    if (!('constructorWin' in Node.prototype)) {
+        Object.defineProperty(Node.prototype, 'constructorWin', {
+            get() { return (this.ownerDocument || document).defaultView || window; },
+            configurable: true,
+        });
+    }
+
+    // HTMLElement.prototype.on / .off (delegated event system)
+    if (!HTMLElement.prototype.on) {
+        HTMLElement.prototype.on = function(type, selector, listener, options) {
+            if (!this._EVENTS) this._EVENTS = {};
+            if (!this._EVENTS[type]) this._EVENTS[type] = [];
+            const callback = (evt) => {
+                const target = evt.target;
+                if (target && target.closest) {
+                    const delegateTarget = target.closest(selector);
+                    if (delegateTarget && this.contains(delegateTarget)) {
+                        listener.call(this, evt, delegateTarget);
+                    }
+                }
+            };
+            this._EVENTS[type].push({ selector, listener, options, callback });
+            this.addEventListener(type, callback, options);
+        };
+    }
+    if (!HTMLElement.prototype.off) {
+        HTMLElement.prototype.off = function(type, selector, listener, options) {
+            if (!this._EVENTS || !this._EVENTS[type]) return;
+            const idx = this._EVENTS[type].findIndex(e => e.selector === selector && e.listener === listener);
+            if (idx >= 0) {
+                const entry = this._EVENTS[type][idx];
+                this.removeEventListener(type, entry.callback, options);
+                this._EVENTS[type].splice(idx, 1);
+            }
+        };
+    }
+    if (!HTMLElement.prototype.trigger) {
+        HTMLElement.prototype.trigger = function(eventType) {
+            this.dispatchEvent(new Event(eventType, { bubbles: true }));
+        };
+    }
+
+    // Document.prototype.on / .off (delegated event system)
+    if (!Document.prototype.on) {
+        Document.prototype.on = function(type, selector, listener, options) {
+            if (!this._EVENTS) this._EVENTS = {};
+            if (!this._EVENTS[type]) this._EVENTS[type] = [];
+            const callback = (evt) => {
+                const target = evt.target;
+                if (target && target.closest) {
+                    const delegateTarget = target.closest(selector);
+                    if (delegateTarget) {
+                        listener.call(this, evt, delegateTarget);
+                    }
+                }
+            };
+            this._EVENTS[type].push({ selector, listener, options, callback });
+            this.addEventListener(type, callback, options);
+        };
+    }
+    if (!Document.prototype.off) {
+        Document.prototype.off = function(type, selector, listener, options) {
+            if (!this._EVENTS || !this._EVENTS[type]) return;
+            const idx = this._EVENTS[type].findIndex(e => e.selector === selector && e.listener === listener);
+            if (idx >= 0) {
+                const entry = this._EVENTS[type][idx];
+                this.removeEventListener(type, entry.callback, options);
+                this._EVENTS[type].splice(idx, 1);
+            }
+        };
+    }
+
+    // SVGElement extensions
+    if (!SVGElement.prototype.setCssStyles) {
+        SVGElement.prototype.setCssStyles = function(styles) {
+            if (styles) Object.assign(this.style, styles);
+            return this;
+        };
+    }
+    if (!SVGElement.prototype.setCssProps) {
+        SVGElement.prototype.setCssProps = function(props) {
+            if (props) {
+                for (const [k, v] of Object.entries(props)) this.style.setProperty(k, v);
+            }
+            return this;
+        };
+    }
+
+    // HTMLElement innerWidth / innerHeight (without padding)
+    if (!Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'innerWidth')?.get) {
+        Object.defineProperty(HTMLElement.prototype, 'innerWidth', {
+            get() {
+                const cs = getComputedStyle(this);
+                return this.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+            },
+            configurable: true,
+        });
+    }
+    if (!Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'innerHeight')?.get) {
+        Object.defineProperty(HTMLElement.prototype, 'innerHeight', {
+            get() {
+                const cs = getComputedStyle(this);
+                return this.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+            },
+            configurable: true,
+        });
+    }
+
+    // Array.prototype.findLastIndex polyfill
+    if (!Array.prototype.findLastIndex) {
+        Array.prototype.findLastIndex = function(predicate) {
+            for (let i = this.length - 1; i >= 0; i--) {
+                if (predicate(this[i], i, this)) return i;
+            }
+            return -1;
+        };
     }
 
     // Node.prototype extras

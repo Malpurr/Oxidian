@@ -30,6 +30,11 @@ class OxidianApp {
         this.pluginLoader = null;
         this.splitPanes = [];
 
+        // Feature state
+        this.focusMode = false;
+        this.bookmarks = JSON.parse(localStorage.getItem('oxidian-bookmarks') || '[]');
+        this.recentFiles = JSON.parse(localStorage.getItem('oxidian-recent') || '[]');
+
         // Split pane state
         this.rightEditor = null;
         this.rightFile = null;
@@ -74,6 +79,15 @@ class OxidianApp {
         document.querySelector('.ribbon-btn[data-action="graph"]')?.addEventListener('click', () => this.openGraphView());
         document.querySelector('.ribbon-btn[data-action="daily"]')?.addEventListener('click', () => this.openDailyNote());
         document.querySelector('.ribbon-btn[data-action="settings"]')?.addEventListener('click', () => this.openSettingsTab());
+        document.querySelector('.ribbon-btn[data-action="focus"]')?.addEventListener('click', () => this.toggleFocusMode());
+
+        // Bookmarks
+        document.getElementById('btn-bookmark-current')?.addEventListener('click', () => this.toggleBookmark());
+        this.renderBookmarks();
+
+        // Recent files
+        document.getElementById('btn-clear-recent')?.addEventListener('click', () => { this.recentFiles = []; localStorage.setItem('oxidian-recent', '[]'); this.renderRecentFiles(); });
+        this.renderRecentFiles();
 
         // Sidebar buttons
         document.getElementById('btn-new-note').addEventListener('click', () => this.showNewNoteDialog());
@@ -108,11 +122,14 @@ class OxidianApp {
 
         // Window close handler — save dirty files before exit
         window.addEventListener('beforeunload', (e) => {
-            if (this.isDirty && this.currentFile) {
-                this.saveCurrentFile();
-            }
-            if (this.rightDirty && this.rightFile) {
-                this.saveRightPaneFile();
+            if ((this.isDirty && this.currentFile) || (this.rightDirty && this.rightFile)) {
+                // saveCurrentFile() is async and won't complete before the page unloads.
+                // Fire it anyway (best-effort) and trigger the browser's confirmation dialog
+                // to give the save a chance to complete.
+                if (this.isDirty && this.currentFile) this.saveCurrentFile();
+                if (this.rightDirty && this.rightFile) this.saveRightPaneFile();
+                e.preventDefault();
+                e.returnValue = '';
             }
         });
 
@@ -211,6 +228,7 @@ class OxidianApp {
             this.tabManager.openTab(path, title, 'note');
             this.currentFile = path;
             this.isDirty = false;
+            this.addRecentFile(path);
 
             this.ensureEditorPane();
             this.editor.setContent(content);
@@ -794,6 +812,11 @@ class OxidianApp {
         document.querySelectorAll('.ribbon-btn[data-panel]').forEach(b => {
             b.classList.toggle('active', b.dataset.panel === name);
         });
+
+        // Refresh outline when switching to it
+        if (name === 'outline' && this.editor?.textarea) {
+            this.updateOutline(this.editor.textarea.value);
+        }
     }
 
     // ===== Sidebar Resize =====
@@ -888,6 +911,9 @@ class OxidianApp {
         } else if (ctrl && e.key === ',') {
             e.preventDefault();
             this.openSettingsTab();
+        } else if (ctrl && e.shiftKey && e.key === 'D') {
+            e.preventDefault();
+            this.toggleFocusMode();
         } else if (e.key === 'Escape') {
             this.hideNewNoteDialog();
             this.hideNewFolderDialog();
@@ -898,6 +924,166 @@ class OxidianApp {
             const palette = document.getElementById('command-palette-overlay');
             if (palette) palette.remove();
         }
+    }
+
+    // ===== Focus Mode =====
+
+    toggleFocusMode() {
+        this.focusMode = !this.focusMode;
+        const ribbon = document.getElementById('ribbon');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarResize = document.getElementById('sidebar-resize');
+        const tabBar = document.getElementById('tab-bar');
+        const breadcrumb = document.getElementById('breadcrumb-bar');
+        const statusbar = document.getElementById('statusbar');
+        const focusBtn = document.querySelector('.ribbon-btn[data-action="focus"]');
+
+        if (this.focusMode) {
+            ribbon?.classList.add('hidden');
+            sidebar?.classList.add('hidden');
+            sidebarResize?.classList.add('hidden');
+            tabBar?.classList.add('hidden');
+            breadcrumb?.classList.add('hidden');
+            statusbar?.classList.add('hidden');
+            focusBtn?.classList.add('active');
+        } else {
+            ribbon?.classList.remove('hidden');
+            sidebar?.classList.remove('hidden');
+            sidebarResize?.classList.remove('hidden');
+            tabBar?.classList.remove('hidden');
+            breadcrumb?.classList.remove('hidden');
+            statusbar?.classList.remove('hidden');
+            focusBtn?.classList.remove('active');
+        }
+    }
+
+    // ===== Bookmarks =====
+
+    toggleBookmark(path) {
+        const file = path || this.currentFile;
+        if (!file) return;
+        const idx = this.bookmarks.indexOf(file);
+        if (idx >= 0) {
+            this.bookmarks.splice(idx, 1);
+        } else {
+            this.bookmarks.unshift(file);
+        }
+        localStorage.setItem('oxidian-bookmarks', JSON.stringify(this.bookmarks));
+        this.renderBookmarks();
+    }
+
+    renderBookmarks() {
+        const list = document.getElementById('bookmarks-list');
+        if (!list) return;
+        if (this.bookmarks.length === 0) {
+            list.innerHTML = '';
+            list.className = 'empty-panel-message';
+            list.textContent = 'No bookmarks yet. Click + to bookmark current note.';
+            return;
+        }
+        list.className = 'bookmarks-items';
+        list.innerHTML = '';
+        this.bookmarks.forEach(path => {
+            const item = document.createElement('div');
+            item.className = 'tree-item bookmark-item';
+            const name = path.replace('.md', '').split('/').pop();
+            item.innerHTML = `
+                <span class="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg></span>
+                <span class="name">${this.escapeHtml(name)}</span>
+                <span class="bookmark-remove" title="Remove bookmark">×</span>
+            `;
+            item.querySelector('.name').addEventListener('click', () => this.openFile(path));
+            item.querySelector('.bookmark-remove').addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.toggleBookmark(path);
+            });
+            list.appendChild(item);
+        });
+    }
+
+    // ===== Recent Files =====
+
+    addRecentFile(path) {
+        if (!path || path.startsWith('__')) return;
+        this.recentFiles = this.recentFiles.filter(p => p !== path);
+        this.recentFiles.unshift(path);
+        if (this.recentFiles.length > 20) this.recentFiles.length = 20;
+        localStorage.setItem('oxidian-recent', JSON.stringify(this.recentFiles));
+        this.renderRecentFiles();
+    }
+
+    renderRecentFiles() {
+        const list = document.getElementById('recent-list');
+        if (!list) return;
+        if (this.recentFiles.length === 0) {
+            list.innerHTML = '';
+            list.className = 'empty-panel-message';
+            list.textContent = 'No recent files';
+            return;
+        }
+        list.className = 'recent-items';
+        list.innerHTML = '';
+        this.recentFiles.forEach(path => {
+            const item = document.createElement('div');
+            item.className = 'tree-item recent-item';
+            const name = path.replace('.md', '').split('/').pop();
+            const folder = path.includes('/') ? path.substring(0, path.lastIndexOf('/')) : '';
+            item.innerHTML = `
+                <span class="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>
+                <span class="name">${this.escapeHtml(name)}</span>
+                ${folder ? `<span class="recent-folder">${this.escapeHtml(folder)}</span>` : ''}
+            `;
+            item.addEventListener('click', () => this.openFile(path));
+            list.appendChild(item);
+        });
+    }
+
+    // ===== Outline / Table of Contents =====
+
+    updateOutline(content) {
+        const list = document.getElementById('outline-list');
+        if (!list) return;
+        const panel = document.getElementById('panel-outline');
+        if (!panel || !panel.classList.contains('active')) return;
+
+        const headings = [];
+        const lines = (content || '').split('\n');
+        for (let i = 0; i < lines.length; i++) {
+            const match = lines[i].match(/^(#{1,6})\s+(.+)/);
+            if (match) {
+                headings.push({ level: match[1].length, text: match[2].replace(/[#*`\[\]]/g, ''), line: i });
+            }
+        }
+
+        if (headings.length === 0) {
+            list.className = 'empty-panel-message';
+            list.textContent = 'No headings found';
+            return;
+        }
+
+        list.className = 'outline-items';
+        list.innerHTML = '';
+        headings.forEach(h => {
+            const item = document.createElement('div');
+            item.className = 'outline-item';
+            item.style.paddingLeft = `${(h.level - 1) * 16 + 12}px`;
+            item.innerHTML = `<span class="outline-h-level">H${h.level}</span> ${this.escapeHtml(h.text)}`;
+            item.addEventListener('click', () => {
+                if (!this.editor?.textarea) return;
+                const ta = this.editor.textarea;
+                const lines = ta.value.split('\n');
+                let pos = 0;
+                for (let i = 0; i < h.line && i < lines.length; i++) {
+                    pos += lines[i].length + 1;
+                }
+                ta.selectionStart = ta.selectionEnd = pos;
+                ta.focus();
+                // Scroll textarea to the heading
+                const lineHeight = parseFloat(getComputedStyle(ta).lineHeight) || 24;
+                ta.scrollTop = h.line * lineHeight - ta.clientHeight / 3;
+            });
+            list.appendChild(item);
+        });
     }
 
     escapeHtml(text) {
