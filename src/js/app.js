@@ -92,6 +92,14 @@ class OxidianApp {
             if (e.key === 'Escape') this.hideNewNoteDialog();
         });
 
+        // New folder dialog
+        document.getElementById('btn-folder-cancel')?.addEventListener('click', () => this.hideNewFolderDialog());
+        document.getElementById('btn-folder-create')?.addEventListener('click', () => this.createNewFolderFromDialog());
+        document.getElementById('new-folder-name')?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') this.createNewFolderFromDialog();
+            if (e.key === 'Escape') this.hideNewFolderDialog();
+        });
+
         // Global keyboard shortcuts
         document.addEventListener('keydown', (e) => this.handleKeyboard(e));
 
@@ -620,10 +628,30 @@ class OxidianApp {
     }
 
     async createNewFolder() {
-        const name = prompt('Folder name:');
+        this.showNewFolderDialog();
+    }
+
+    showNewFolderDialog() {
+        const dialog = document.getElementById('new-folder-dialog');
+        const input = document.getElementById('new-folder-name');
+        if (!dialog || !input) return;
+        dialog.classList.remove('hidden');
+        input.value = '';
+        input.focus();
+    }
+
+    hideNewFolderDialog() {
+        const dialog = document.getElementById('new-folder-dialog');
+        if (dialog) dialog.classList.add('hidden');
+    }
+
+    async createNewFolderFromDialog() {
+        const input = document.getElementById('new-folder-name');
+        const name = input?.value.trim();
         if (!name) return;
         try {
             await invoke('create_folder', { path: name });
+            this.hideNewFolderDialog();
             await this.sidebar.refresh();
         } catch (err) {
             console.error('Failed to create folder:', err);
@@ -862,6 +890,7 @@ class OxidianApp {
             this.openSettingsTab();
         } else if (e.key === 'Escape') {
             this.hideNewNoteDialog();
+            this.hideNewFolderDialog();
             this.hideSettings();
             this.contextMenu.hide();
             this.slashMenu?.hide();

@@ -10,8 +10,8 @@ use tauri::State;
 
 #[tauri::command]
 pub fn read_note(state: State<AppState>, path: String) -> Result<String, String> {
-    let vault_path = state.vault_path.lock().unwrap();
-    let password = state.vault_password.lock().unwrap();
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+    let password = state.vault_password.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     let settings = settings::load_settings(&vault_path);
 
     let content = vault::read_note(&vault_path, &path)?;
@@ -29,8 +29,8 @@ pub fn read_note(state: State<AppState>, path: String) -> Result<String, String>
 
 #[tauri::command]
 pub fn save_note(state: State<AppState>, path: String, content: String) -> Result<(), String> {
-    let vault_path = state.vault_path.lock().unwrap();
-    let password = state.vault_password.lock().unwrap();
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+    let password = state.vault_password.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     let settings = settings::load_settings(&vault_path);
 
     let save_content = if settings.vault.encryption_enabled {
@@ -46,7 +46,7 @@ pub fn save_note(state: State<AppState>, path: String, content: String) -> Resul
     vault::save_note(&vault_path, &path, &save_content)?;
 
     // Update search index with plaintext
-    let search = state.search_index.lock().unwrap();
+    let mut search = state.search_index.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     search.index_note(&vault_path, &path, &content)?;
 
     Ok(())
@@ -54,19 +54,19 @@ pub fn save_note(state: State<AppState>, path: String, content: String) -> Resul
 
 #[tauri::command]
 pub fn delete_note(state: State<AppState>, path: String) -> Result<(), String> {
-    let vault_path = state.vault_path.lock().unwrap();
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     vault::delete_note(&vault_path, &path)
 }
 
 #[tauri::command]
 pub fn list_files(state: State<AppState>) -> Result<Vec<vault::FileNode>, String> {
-    let vault_path = state.vault_path.lock().unwrap();
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     Ok(vault::build_file_tree(&vault_path))
 }
 
 #[tauri::command]
 pub fn create_daily_note(state: State<AppState>) -> Result<String, String> {
-    let vault_path = state.vault_path.lock().unwrap();
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     let today = Local::now().format("%Y-%m-%d").to_string();
     let relative_path = format!("daily/{}.md", today);
     let full_path = std::path::Path::new(&*vault_path).join(&relative_path);
@@ -78,7 +78,7 @@ pub fn create_daily_note(state: State<AppState>) -> Result<String, String> {
         );
         vault::save_note(&vault_path, &relative_path, &content)?;
 
-        let search = state.search_index.lock().unwrap();
+        let mut search = state.search_index.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
         search.index_note(&vault_path, &relative_path, &content).ok();
     }
 
@@ -92,13 +92,13 @@ pub fn render_markdown(content: String) -> Result<String, String> {
 
 #[tauri::command]
 pub fn search_notes(state: State<AppState>, query: String) -> Result<Vec<SearchResult>, String> {
-    let search = state.search_index.lock().unwrap();
+    let search = state.search_index.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     search.search(&query, 20)
 }
 
 #[tauri::command]
 pub fn get_vault_path(state: State<AppState>) -> Result<String, String> {
-    let vault_path = state.vault_path.lock().unwrap();
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     Ok(vault_path.clone())
 }
 
@@ -106,10 +106,10 @@ pub fn get_vault_path(state: State<AppState>) -> Result<String, String> {
 pub fn set_vault_path(state: State<AppState>, path: String) -> Result<(), String> {
     std::fs::create_dir_all(&path).map_err(|e| format!("Failed to create directory: {}", e))?;
 
-    let mut vault_path = state.vault_path.lock().unwrap();
+    let mut vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     *vault_path = path.clone();
 
-    let mut search = state.search_index.lock().unwrap();
+    let mut search = state.search_index.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     search.reindex_vault(&path)?;
 
     Ok(())
@@ -117,25 +117,25 @@ pub fn set_vault_path(state: State<AppState>, path: String) -> Result<(), String
 
 #[tauri::command]
 pub fn create_folder(state: State<AppState>, path: String) -> Result<(), String> {
-    let vault_path = state.vault_path.lock().unwrap();
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     vault::create_folder(&vault_path, &path)
 }
 
 #[tauri::command]
 pub fn rename_file(state: State<AppState>, old_path: String, new_path: String) -> Result<(), String> {
-    let vault_path = state.vault_path.lock().unwrap();
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     vault::rename_file(&vault_path, &old_path, &new_path)
 }
 
 #[tauri::command]
 pub fn get_tags(state: State<AppState>) -> Result<Vec<String>, String> {
-    let vault_path = state.vault_path.lock().unwrap();
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     Ok(vault::collect_all_tags(&vault_path))
 }
 
 #[tauri::command]
 pub fn get_backlinks(state: State<AppState>, note_path: String) -> Result<Vec<String>, String> {
-    let vault_path = state.vault_path.lock().unwrap();
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     Ok(vault::find_backlinks(&vault_path, &note_path))
 }
 
@@ -159,7 +159,7 @@ pub struct GraphData {
 
 #[tauri::command]
 pub fn get_graph_data(state: State<AppState>) -> Result<GraphData, String> {
-    let vault_path = state.vault_path.lock().unwrap();
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     let files = vault::build_file_tree(&vault_path);
 
     let mut nodes = Vec::new();
@@ -207,7 +207,7 @@ pub fn get_graph_data(state: State<AppState>) -> Result<GraphData, String> {
 
 #[tauri::command]
 pub fn duplicate_note(state: State<AppState>, path: String) -> Result<String, String> {
-    let vault_path = state.vault_path.lock().unwrap();
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     let content = vault::read_note(&vault_path, &path)?;
     let new_path = if path.ends_with(".md") {
         format!("{} copy.md", path.trim_end_matches(".md"))
@@ -222,19 +222,19 @@ pub fn duplicate_note(state: State<AppState>, path: String) -> Result<String, St
 
 #[tauri::command]
 pub fn get_settings(state: State<AppState>) -> Result<Settings, String> {
-    let vault_path = state.vault_path.lock().unwrap();
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     Ok(settings::load_settings(&vault_path))
 }
 
 #[tauri::command]
 pub fn save_settings(state: State<AppState>, new_settings: Settings) -> Result<(), String> {
-    let vault_path = state.vault_path.lock().unwrap();
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     settings::save_settings(&vault_path, &new_settings)
 }
 
 #[tauri::command]
 pub fn is_first_launch(state: State<AppState>) -> Result<bool, String> {
-    let vault_path = state.vault_path.lock().unwrap();
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     Ok(settings::is_first_launch(&vault_path))
 }
 
@@ -242,7 +242,7 @@ pub fn is_first_launch(state: State<AppState>) -> Result<bool, String> {
 
 #[tauri::command]
 pub fn unlock_vault(state: State<AppState>, password: String) -> Result<bool, String> {
-    let vault_path = state.vault_path.lock().unwrap();
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     let verify_path = std::path::Path::new(&*vault_path)
         .join(".oxidian")
         .join("vault.key");
@@ -255,10 +255,10 @@ pub fn unlock_vault(state: State<AppState>, password: String) -> Result<bool, St
         }
     }
 
-    let mut pwd = state.vault_password.lock().unwrap();
+    let mut pwd = state.vault_password.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     *pwd = Some(password);
 
-    let mut locked = state.vault_locked.lock().unwrap();
+    let mut locked = state.vault_locked.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     *locked = false;
 
     Ok(true)
@@ -266,22 +266,22 @@ pub fn unlock_vault(state: State<AppState>, password: String) -> Result<bool, St
 
 #[tauri::command]
 pub fn lock_vault(state: State<AppState>) -> Result<(), String> {
-    let mut pwd = state.vault_password.lock().unwrap();
+    let mut pwd = state.vault_password.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     *pwd = None;
-    let mut locked = state.vault_locked.lock().unwrap();
+    let mut locked = state.vault_locked.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     *locked = true;
     Ok(())
 }
 
 #[tauri::command]
 pub fn is_vault_locked(state: State<AppState>) -> Result<bool, String> {
-    let locked = state.vault_locked.lock().unwrap();
+    let locked = state.vault_locked.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     Ok(*locked)
 }
 
 #[tauri::command]
 pub fn setup_encryption(state: State<AppState>, password: String) -> Result<(), String> {
-    let vault_path = state.vault_path.lock().unwrap();
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
 
     // Create a verification file: encrypt a known string with the password
     let verify_content = encryption::encrypt_file_content("OXIDIAN_VAULT_KEY", &password)?;
@@ -294,9 +294,9 @@ pub fn setup_encryption(state: State<AppState>, password: String) -> Result<(), 
         .map_err(|e| format!("Failed to write vault key: {}", e))?;
 
     // Store password in state
-    let mut pwd = state.vault_password.lock().unwrap();
+    let mut pwd = state.vault_password.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     *pwd = Some(password);
-    let mut locked = state.vault_locked.lock().unwrap();
+    let mut locked = state.vault_locked.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     *locked = false;
 
     // Update settings
@@ -309,7 +309,7 @@ pub fn setup_encryption(state: State<AppState>, password: String) -> Result<(), 
 
 #[tauri::command]
 pub fn change_password(state: State<AppState>, old_password: String, new_password: String) -> Result<(), String> {
-    let vault_path = state.vault_path.lock().unwrap();
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     let verify_path = std::path::Path::new(&*vault_path)
         .join(".oxidian")
         .join("vault.key");
@@ -357,7 +357,7 @@ pub fn change_password(state: State<AppState>, old_password: String, new_passwor
         .map_err(|e| format!("Failed to write vault key: {}", e))?;
 
     // Update stored password
-    let mut pwd = state.vault_password.lock().unwrap();
+    let mut pwd = state.vault_password.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     *pwd = Some(new_password);
 
     Ok(())
@@ -367,7 +367,7 @@ pub fn change_password(state: State<AppState>, old_password: String, new_passwor
 
 #[tauri::command]
 pub fn list_plugins(state: State<AppState>) -> Result<Vec<crate::plugin::PluginManifest>, String> {
-    let vault_path = state.vault_path.lock().unwrap();
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     let plugin_dir = std::path::Path::new(&*vault_path)
         .join(".oxidian")
         .join("plugins");
@@ -390,7 +390,7 @@ pub struct ObsidianPluginManifest {
 
 #[tauri::command]
 pub fn list_obsidian_plugins(state: State<AppState>) -> Result<Vec<ObsidianPluginManifest>, String> {
-    let vault_path = state.vault_path.lock().unwrap();
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     let plugins_dir = std::path::Path::new(&*vault_path)
         .join(".obsidian")
         .join("plugins");
@@ -426,7 +426,7 @@ pub fn list_obsidian_plugins(state: State<AppState>) -> Result<Vec<ObsidianPlugi
 
 #[tauri::command]
 pub fn read_plugin_main(state: State<AppState>, plugin_id: String) -> Result<String, String> {
-    let vault_path = state.vault_path.lock().unwrap();
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     let main_path = std::path::Path::new(&*vault_path)
         .join(".obsidian")
         .join("plugins")
@@ -439,7 +439,7 @@ pub fn read_plugin_main(state: State<AppState>, plugin_id: String) -> Result<Str
 
 #[tauri::command]
 pub fn read_plugin_styles(state: State<AppState>, plugin_id: String) -> Result<String, String> {
-    let vault_path = state.vault_path.lock().unwrap();
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     let styles_path = std::path::Path::new(&*vault_path)
         .join(".obsidian")
         .join("plugins")
@@ -456,7 +456,7 @@ pub fn read_plugin_styles(state: State<AppState>, plugin_id: String) -> Result<S
 
 #[tauri::command]
 pub fn toggle_plugin(state: State<AppState>, plugin_id: String, enabled: bool) -> Result<(), String> {
-    let vault_path = state.vault_path.lock().unwrap();
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     let community_plugins_path = std::path::Path::new(&*vault_path)
         .join(".obsidian")
         .join("community-plugins.json");
@@ -492,7 +492,7 @@ pub fn toggle_plugin(state: State<AppState>, plugin_id: String, enabled: bool) -
 
 #[tauri::command]
 pub fn get_enabled_plugins(state: State<AppState>) -> Result<Vec<String>, String> {
-    let vault_path = state.vault_path.lock().unwrap();
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     let community_plugins_path = std::path::Path::new(&*vault_path)
         .join(".obsidian")
         .join("community-plugins.json");
@@ -509,7 +509,7 @@ pub fn get_enabled_plugins(state: State<AppState>) -> Result<Vec<String>, String
 
 #[tauri::command]
 pub fn get_plugin_data(state: State<AppState>, plugin_id: String) -> Result<String, String> {
-    let vault_path = state.vault_path.lock().unwrap();
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     let data_path = std::path::Path::new(&*vault_path)
         .join(".obsidian")
         .join("plugins")
@@ -526,7 +526,7 @@ pub fn get_plugin_data(state: State<AppState>, plugin_id: String) -> Result<Stri
 
 #[tauri::command]
 pub fn save_plugin_data(state: State<AppState>, plugin_id: String, data: String) -> Result<(), String> {
-    let vault_path = state.vault_path.lock().unwrap();
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     let plugin_dir = std::path::Path::new(&*vault_path)
         .join(".obsidian")
         .join("plugins")
@@ -546,7 +546,7 @@ pub fn save_plugin_data(state: State<AppState>, plugin_id: String, data: String)
 
 #[tauri::command]
 pub fn list_custom_themes(state: State<AppState>) -> Result<Vec<String>, String> {
-    let vault_path = state.vault_path.lock().unwrap();
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     let themes_dir = std::path::Path::new(&*vault_path)
         .join(".oxidian")
         .join("themes");
@@ -569,7 +569,7 @@ pub fn list_custom_themes(state: State<AppState>) -> Result<Vec<String>, String>
 
 #[tauri::command]
 pub fn load_custom_theme(state: State<AppState>, name: String) -> Result<String, String> {
-    let vault_path = state.vault_path.lock().unwrap();
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     let theme_path = std::path::Path::new(&*vault_path)
         .join(".oxidian")
         .join("themes")
@@ -583,7 +583,7 @@ pub fn load_custom_theme(state: State<AppState>, name: String) -> Result<String,
 
 #[tauri::command]
 pub fn install_plugin(state: State<AppState>, source_path: String, plugin_id: String) -> Result<(), String> {
-    let vault_path = state.vault_path.lock().unwrap();
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     let dest_dir = std::path::Path::new(&*vault_path)
         .join(".obsidian")
         .join("plugins")
@@ -613,8 +613,27 @@ pub fn install_plugin(state: State<AppState>, source_path: String, plugin_id: St
 }
 
 #[tauri::command]
-pub fn read_file_absolute(path: String) -> Result<String, String> {
-    std::fs::read_to_string(&path)
+pub fn read_file_absolute(state: State<AppState>, path: String) -> Result<String, String> {
+    // Security: restrict to vault subdirectories and only .json/.css files
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+    let canonical_vault = std::path::Path::new(&*vault_path)
+        .canonicalize()
+        .map_err(|e| format!("Invalid vault path: {}", e))?;
+    let requested = std::path::Path::new(&path)
+        .canonicalize()
+        .map_err(|e| format!("Invalid path: {}", e))?;
+
+    if !requested.starts_with(&canonical_vault) {
+        return Err("Access denied: path outside vault".to_string());
+    }
+
+    // Only allow safe file extensions
+    let ext = requested.extension().and_then(|e| e.to_str()).unwrap_or("");
+    if !matches!(ext, "json" | "css" | "js" | "md") {
+        return Err(format!("Access denied: .{} files not allowed", ext));
+    }
+
+    std::fs::read_to_string(&requested)
         .map_err(|e| format!("Failed to read file: {}", e))
 }
 
@@ -625,7 +644,7 @@ pub fn setup_vault(state: State<AppState>, path: String) -> Result<(), String> {
     std::fs::create_dir_all(&path).map_err(|e| format!("Failed to create vault: {}", e))?;
     std::fs::create_dir_all(format!("{}/daily", path)).ok();
 
-    let mut vault_path = state.vault_path.lock().unwrap();
+    let mut vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     *vault_path = path.clone();
 
     // Create default settings
@@ -634,7 +653,7 @@ pub fn setup_vault(state: State<AppState>, path: String) -> Result<(), String> {
     settings::save_settings(&path, &default_settings)?;
 
     // Reindex
-    let mut search = state.search_index.lock().unwrap();
+    let mut search = state.search_index.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     search.reindex_vault(&path)?;
 
     Ok(())

@@ -75,8 +75,12 @@ export class Onboarding {
             <div class="onboarding-actions">
                 <button class="btn-primary btn-lg" id="ob-next">Get Started</button>
             </div>
+            <div style="margin-top: 16px;">
+                <button class="btn-skip-link" id="ob-skip" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:12px;font-family:var(--font-sans);padding:6px 12px;transition:color 150ms ease;">Skip setup →</button>
+            </div>
         `;
         el.querySelector('#ob-next').addEventListener('click', () => { this.step++; this.render(); });
+        el.querySelector('#ob-skip').addEventListener('click', () => this.finish());
     }
 
     renderVaultSetup(el) {
@@ -226,32 +230,32 @@ export class Onboarding {
 
     renderTour(el) {
         el.innerHTML = `
-            <h2>You're All Set! 🎉</h2>
-            <p>Here's a quick overview of Oxidian:</p>
+            <h2>You're All Set! ✨</h2>
+            <p>Here's what you can do with Oxidian:</p>
             <div class="tour-features">
                 <div class="tour-feature">
                     <span class="tour-icon">📝</span>
-                    <div><strong>Markdown Editor</strong><br>Write notes with full markdown support, live preview, and wiki-links</div>
+                    <div><strong>Markdown Editor</strong><br><span style="color:var(--text-muted);font-size:12px">Full markdown, live preview, and [[wiki-links]]</span></div>
                 </div>
                 <div class="tour-feature">
                     <span class="tour-icon">🔗</span>
-                    <div><strong>Graph View</strong><br>Visualize connections between your notes in an interactive graph</div>
+                    <div><strong>Graph View</strong><br><span style="color:var(--text-muted);font-size:12px">Visualize connections between your notes</span></div>
                 </div>
                 <div class="tour-feature">
                     <span class="tour-icon">🔍</span>
-                    <div><strong>Full-Text Search</strong><br>Find any note instantly with powerful search</div>
+                    <div><strong>Full-Text Search</strong><br><span style="color:var(--text-muted);font-size:12px">Find anything instantly with Ctrl+Shift+F</span></div>
                 </div>
                 <div class="tour-feature">
                     <span class="tour-icon">📅</span>
-                    <div><strong>Daily Notes</strong><br>Journal with auto-created daily notes (Ctrl+D)</div>
+                    <div><strong>Daily Notes</strong><br><span style="color:var(--text-muted);font-size:12px">Journal with auto-created daily notes (Ctrl+D)</span></div>
                 </div>
                 <div class="tour-feature">
-                    <span class="tour-icon">/</span>
-                    <div><strong>Slash Commands</strong><br>Type / in the editor for quick formatting</div>
+                    <span class="tour-icon">⚡</span>
+                    <div><strong>Slash Commands</strong><br><span style="color:var(--text-muted);font-size:12px">Type / in the editor for quick formatting</span></div>
                 </div>
             </div>
-            <div class="onboarding-actions">
-                <button class="btn-primary btn-lg" id="ob-finish">Start Writing</button>
+            <div class="onboarding-actions" style="margin-top:32px">
+                <button class="btn-primary btn-lg" id="ob-finish">Start Writing ✦</button>
             </div>
         `;
 
@@ -259,7 +263,14 @@ export class Onboarding {
     }
 
     async finish() {
+        // Smooth fade-out
+        if (this.el) {
+            this.el.style.transition = 'opacity 300ms ease';
+            this.el.style.opacity = '0';
+            await new Promise(r => setTimeout(r, 300));
+        }
         this.hide();
+        if (this.el) this.el.style.opacity = '';
         await this.app.sidebar?.refresh();
         await this.app.loadTags();
     }

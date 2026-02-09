@@ -21,6 +21,8 @@ pub struct SearchIndex {
     path_field: Field,
     title_field: Field,
     body_field: Field,
+    /// Persistent writer for single-note updates (avoids alloc/dealloc per save)
+    writer: Option<IndexWriter>,
 }
 
 impl SearchIndex {
@@ -40,17 +42,24 @@ impl SearchIndex {
             .or_else(|_| Index::open_in_dir(&index_path))
             .map_err(|e| format!("Failed to create/open index: {}", e))?;
         
+        let writer = index.writer(3_000_000)
+            .map_err(|e| format!("Failed to create index writer: {}", e))?;
+
         Ok(SearchIndex {
             index,
             schema,
             path_field,
             title_field,
             body_field,
+            writer: Some(writer),
         })
     }
     
     /// Reindex the entire vault
     pub fn reindex_vault(&mut self, vault_path: &str) -> Result<(), String> {
+        // Drop persistent writer before creating a bulk writer
+        self.writer = None;
+
         let mut writer: IndexWriter = self.index
             .writer(50_000_000)
             .map_err(|e| format!("Failed to create index writer: {}", e))?;
@@ -83,15 +92,18 @@ impl SearchIndex {
         }
         
         writer.commit().map_err(|e| format!("Failed to commit index: {}", e))?;
+
+        // Re-create persistent writer for single-note updates
+        self.writer = Some(self.index.writer(3_000_000)
+            .map_err(|e| format!("Failed to re-create persistent writer: {}", e))?);
         
         Ok(())
     }
     
-    /// Index a single note
-    pub fn index_note(&self, _vault_path: &str, relative_path: &str, content: &str) -> Result<(), String> {
-        let mut writer: IndexWriter = self.index
-            .writer(50_000_000)
-            .map_err(|e| format!("Failed to create index writer: {}", e))?;
+    /// Index a single note — reuses persistent writer to avoid alloc overhead
+    pub fn index_note(&mut self, _vault_path: &str, relative_path: &str, content: &str) -> Result<(), String> {
+        let writer = self.writer.as_mut()
+            .ok_or_else(|| "Index writer not available".to_string())?;
         
         // Delete old version
         let path_term = tantivy::Term::from_field_text(self.path_field, relative_path);
@@ -116,9 +128,24 @@ impl SearchIndex {
     
     /// Search the index
     pub fn search(&self, query_str: &str, limit: usize) -> Result<Vec<SearchResult>, String> {
-        // Strip leading # from tag searches and other Tantivy-special characters
+        // Strip leading # from tag searches
         let query_str = query_str.trim_start_matches('#');
         let query_str = query_str.trim();
+        if query_str.is_empty() {
+            return Ok(vec![]);
+        }
+        // Escape Tantivy/Lucene special characters to prevent query parse errors
+        let query_str: String = query_str.chars().map(|c| {
+            if "[]{}()~^\":\\!+-".contains(c) {
+                ' '  // replace special chars with space (acts as OR between terms)
+            } else {
+                c
+            }
+        }).collect();
+        let query_str = query_str.trim();
+        if query_str.is_empty() {
+            return Ok(vec![]);
+        }
         let reader = self.index
             .reader_builder()
             .reload_policy(ReloadPolicy::OnCommitWithDelay)
@@ -178,7 +205,6 @@ impl SearchIndex {
 
 /// Create a text snippet around the query match
 fn create_snippet(body: &str, query: &str, max_len: usize) -> String {
-    let lower_body = body.to_lowercase();
     let lower_query = query.to_lowercase();
     
     // Find the first query term in the body (using char indices for safety)
