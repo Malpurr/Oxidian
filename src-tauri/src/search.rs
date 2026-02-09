@@ -122,6 +122,11 @@ impl SearchIndex {
     
     /// Index a single note — reuses persistent writer to avoid alloc overhead
     pub fn index_note(&mut self, _vault_path: &str, relative_path: &str, content: &str) -> Result<(), String> {
+        // Re-create writer if it was lost (e.g. after failed reindex)
+        if self.writer.is_none() {
+            self.writer = Some(self.index.writer(15_000_000)
+                .map_err(|e| format!("Failed to re-create writer: {}", e))?);
+        }
         let writer = self.writer.as_mut()
             .ok_or_else(|| "Index writer not available".to_string())?;
         

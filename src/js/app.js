@@ -691,8 +691,8 @@ class OxidianApp {
             this.viewMode = 'live-preview';
         }
 
-        // Force re-create editor pane with current content
-        const content = this.editor.getContent();
+        // SAVE content BEFORE destroying anything
+        const content = this.editor.getContent?.() || '';
         const leftPane = document.getElementById('left-pane');
         if (leftPane) leftPane.remove();
         if (this.hypermarkEditor) {
@@ -701,6 +701,7 @@ class OxidianApp {
         }
         await this.ensureEditorPane();
         if (content) {
+            await new Promise(r => setTimeout(r, 50));
             this.editor.setContent(content);
         }
         this.updateViewModeButton();
@@ -1643,14 +1644,18 @@ class OxidianApp {
     async cycleViewMode() {
         const modes = ['live-preview', 'source', 'reading'];
         const idx = modes.indexOf(this.viewMode);
-        this.viewMode = modes[(idx + 1) % modes.length];
+        const newMode = modes[(idx + 1) % modes.length];
+
+        // SAVE content BEFORE destroying anything
+        const content = this.editor.getContent?.() || '';
+
+        this.viewMode = newMode;
 
         // Store view mode on current tab
         const tab = this.tabManager.getActiveTab();
         if (tab) tab.viewMode = this.viewMode;
 
-        // Need to rebuild editor pane when switching between hypermark and source
-        const content = this.editor.getContent();
+        // Rebuild editor pane
         const leftPane = document.getElementById('left-pane');
         if (leftPane) leftPane.remove();
         if (this.hypermarkEditor) {
@@ -1658,7 +1663,11 @@ class OxidianApp {
             this.hypermarkEditor = null;
         }
         await this.ensureEditorPane();
-        if (content) this.editor.setContent(content);
+        if (content) {
+            // Small delay to ensure CodeMirror is fully mounted
+            await new Promise(r => setTimeout(r, 50));
+            this.editor.setContent(content);
+        }
 
         this.updateViewModeButton();
     }
