@@ -2317,26 +2317,38 @@ class HyperMarkEditor {
     this.container.appendChild(this._editorEl);
 
     // Click on empty space below blocks → focus last block or create new one
-    this._contentEl.addEventListener('click', (e) => {
-      if (e.target === this._contentEl) {
+    // Use mousedown instead of click because _blurBlock (triggered by _editorEl mousedown)
+    // rebuilds the DOM, which prevents the click event from firing.
+    this._onContentAreaMouseDown = (e) => {
+      if (e.target === this._contentEl || e.target === this._scrollEl) {
+        e.preventDefault();
         const blocks = this.splitter.blocks;
         if (blocks.length === 0) {
           // Empty doc — create first block
-          this.buffer = this.buffer.constructor ? new RopeBuffer('\n') : { toString: () => '\n' };
-          this.splitter.reparse(this.buffer);
+          this.buffer = new RopeBuffer('\n');
+          this.splitter.parse(this.buffer.toString());
           this._renderAllBlocks();
           if (this.splitter.blocks.length > 0) {
-            this._activateBlock(0);
+            this._focusBlock(this.splitter.blocks[0].id);
           }
         } else {
           // Focus last block, put cursor at end
-          const lastIdx = blocks.length - 1;
-          this._activateBlock(lastIdx);
-          const ta = this._contentEl.querySelector('.hm-block-wrapper.active textarea');
-          if (ta) {
-            ta.selectionStart = ta.selectionEnd = ta.value.length;
-          }
+          const lastBlock = blocks[blocks.length - 1];
+          this._focusBlock(lastBlock.id);
+          requestAnimationFrame(() => {
+            const ta = this._contentEl.querySelector('.hm-block-textarea');
+            if (ta) {
+              ta.selectionStart = ta.selectionEnd = ta.value.length;
+              ta.focus();
+            }
+          });
         }
+      }
+    };
+    this._contentEl.addEventListener('mousedown', this._onContentAreaMouseDown);
+    this._scrollEl.addEventListener('mousedown', (e) => {
+      if (e.target === this._scrollEl) {
+        this._onContentAreaMouseDown(e);
       }
     });
   }
@@ -2586,7 +2598,15 @@ class HyperMarkEditor {
     const textarea = this._contentEl.querySelector('.hm-block-textarea');
     if (!textarea) return;
 
-    const block = this.splitter.blocks.find(b => b.id === this.activeBlockId);
+    // Try to find block by activeBlockId; fall back to textarea's data-block-id
+    // (which may have been updated by _onBlockEdit after a re-parse)
+    let block = this.splitter.blocks.find(b => b.id === this.activeBlockId);
+    if (!block) {
+      const taBlockId = textarea.getAttribute('data-block-id');
+      if (taBlockId && taBlockId !== this.activeBlockId) {
+        block = this.splitter.blocks.find(b => b.id === taBlockId);
+      }
+    }
     if (!block) return;
 
     const newContent = textarea.value;
@@ -2625,24 +2645,45 @@ class HyperMarkEditor {
       deleted: oldContent,
     }));
 
+    const editFrom = block.from;
+    const editOldTo = block.to;
+
     // Update buffer
-    this.buffer.replace(block.from, block.to, newContent);
+    this.buffer.replace(editFrom, editOldTo, newContent);
 
     // Incremental re-parse
     const fullText = this.buffer.toString();
-    this.splitter.update(fullText, block.from, block.from + newContent.length, block.to - block.from);
+    this.splitter.update(fullText, editFrom, editFrom + newContent.length, editOldTo - editFrom);
 
-    // Update the block reference (it may have new offsets)
+    // After re-parse, block IDs have changed. Find the new block covering the
+    // edited region and update activeBlockId so subsequent edits use correct offsets.
+    let newBlockId = blockId;
     const updatedBlock = this.splitter.blocks.find(b => b.id === blockId);
     if (updatedBlock) {
       updatedBlock.content = newContent;
+    } else {
+      // Block ID changed after re-parse — find the block that covers editFrom
+      const replacement = this.splitter.blockAt(editFrom);
+      if (replacement) {
+        newBlockId = replacement.id;
+        // Update activeBlockId so future edits and commits find the right block
+        if (this.activeBlockId === blockId) {
+          this.activeBlockId = newBlockId;
+        }
+        // Update the textarea's data-block-id attribute so _checkSlashTrigger and
+        // _commitActiveBlock can find it
+        const textarea = this._contentEl.querySelector(`.hm-block-textarea[data-block-id="${blockId}"]`);
+        if (textarea) {
+          textarea.setAttribute('data-block-id', newBlockId);
+        }
+      }
     }
 
     this._dispatchChange();
     this._scheduleAutoSave();
 
     // Check for slash command trigger
-    this._checkSlashTrigger(blockId, newContent);
+    this._checkSlashTrigger(newBlockId, newContent);
   }
 
   /**
@@ -2866,16 +2907,17 @@ class HyperMarkEditor {
     const currentBlock = blocks[idx];
     const mergedContent = prevBlock.content + '\n' + currentBlock.content;
 
-    // Replace both blocks in buffer
-    this.buffer.replace(prevBlock.from, currentBlock.to, mergedContent);
-
-    // Record transaction
+    // Record transaction BEFORE modifying the buffer
+    const originalContent = this.buffer.slice(prevBlock.from, currentBlock.to);
     this.history.push(new Transaction({
       type: 'replace',
       offset: prevBlock.from,
       inserted: mergedContent,
-      deleted: this.buffer.slice(prevBlock.from, currentBlock.to),
+      deleted: originalContent,
     }));
+
+    // Replace both blocks in buffer
+    this.buffer.replace(prevBlock.from, currentBlock.to, mergedContent);
 
     // Re-parse and render
     const fullText = this.buffer.toString();
@@ -3008,8 +3050,10 @@ class HyperMarkEditor {
 
   /** @private */
   _bindEvents() {
-    // Click outside blocks → blur
+    // Click outside blocks → blur (but not when clicking on empty content area,
+    // which is handled by _onContentAreaMouseDown to focus/create blocks)
     this._editorEl.addEventListener('mousedown', (e) => {
+      if (e.target === this._contentEl || e.target === this._scrollEl) return;
       if (!e.target.closest('.hm-block-wrapper') && this.activeBlockId) {
         this._blurBlock();
       }

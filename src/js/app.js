@@ -482,7 +482,6 @@ class OxidianApp {
                         <textarea class="editor-textarea" placeholder="Start writing... (Markdown supported)" spellcheck="true"></textarea>
                     </div>
                 </div>
-                <div class="reading-view preview-content"></div>
             `;
             container.insertBefore(pane, container.firstChild);
 
@@ -496,7 +495,6 @@ class OxidianApp {
                         <div class="hypermark-editor" id="hypermark-root"></div>
                     </div>
                 </div>
-                <div class="reading-view preview-content"></div>
             `;
             container.insertBefore(pane, container.firstChild);
 
@@ -1320,17 +1318,25 @@ class OxidianApp {
 
         // For reading mode, render content into reading view
         if (this.viewMode === 'reading') {
-            const readingView = pane.querySelector('.reading-view');
-            if (readingView) {
-                const content = this.editor.getContent();
-                if (content && content.trim()) {
-                    invoke('render_markdown', { content }).then(html => {
-                        readingView.innerHTML = html;
-                    }).catch(() => {});
-                } else {
-                    readingView.innerHTML = '<p style="color: var(--text-faint)">Nothing to preview</p>';
-                }
+            // Create reading-view dynamically if it doesn't exist yet
+            let readingView = pane.querySelector('.reading-view');
+            if (!readingView) {
+                readingView = document.createElement('div');
+                readingView.className = 'reading-view preview-content';
+                pane.appendChild(readingView);
             }
+            const content = this.editor.getContent();
+            if (content && content.trim()) {
+                invoke('render_markdown', { content }).then(html => {
+                    readingView.innerHTML = html;
+                }).catch(() => {});
+            } else {
+                readingView.innerHTML = '<p style="color: var(--text-faint)">Start writing to see a preview</p>';
+            }
+        } else {
+            // Remove reading-view when not in reading mode
+            const readingView = pane.querySelector('.reading-view');
+            if (readingView) readingView.remove();
         }
 
         this.updateViewModeButton();
