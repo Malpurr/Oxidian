@@ -351,7 +351,7 @@ class OxidianApp {
         }
     }
 
-    showEditorPane(path, pane = 0) {
+    async showEditorPane(path, pane = 0) {
         if (pane === 0) {
             if (path === this.currentFile) {
                 await this.ensureEditorPane();
@@ -978,7 +978,7 @@ class OxidianApp {
         }
     }
 
-    startRename(path) {
+    async startRename(path) {
         const item = this.sidebar.container.querySelector(`[data-path="${path}"]`);
         if (!item) return;
 
