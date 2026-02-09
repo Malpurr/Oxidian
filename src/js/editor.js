@@ -36,6 +36,10 @@ export class Editor {
         this.cmEditor = null;
         this._cmReady = false;
         
+        // *** FIX: Content cache for robustness ***
+        this._lastKnownContent = '';
+        this._editorReady = false;
+        
         // HyperMark integration
         this._hypermark = null;
         // Auto-close pairs (for classic editor)
@@ -66,6 +70,7 @@ export class Editor {
         
         this._hypermark = null;
         this.previewEl = previewEl;
+        this._editorReady = false;
         
         // Lazy-load CodeMirror on first attach
         if (this.useCodeMirror && !this._cmReady) {
@@ -83,9 +88,15 @@ export class Editor {
         if (this.useCodeMirror && this.cmEditor) {
             // Use CodeMirror 6
             try {
-                this.cmEditor.attach(container, previewEl);
+                // *** FIX: Destroy previous instance before attach ***
+                this.cmEditor.destroy();
+                const view = this.cmEditor.attach(container, previewEl);
+                
+                // *** FIX: Wait for DOM readiness ***
+                await this._waitForCodeMirrorReady(view);
+                this._editorReady = true;
                 console.log('✅ CodeMirror editor attached successfully');
-                return;
+                return Promise.resolve();
             } catch (error) {
                 console.error('❌ CodeMirror attach failed, falling back to textarea:', error);
                 this.useCodeMirror = false;
@@ -94,7 +105,9 @@ export class Editor {
         }
         
         // Fallback to classic textarea
-        this.attachClassic(container, previewEl);
+        await this.attachClassic(container, previewEl);
+        this._editorReady = true;
+        return Promise.resolve();
     }
 
     // *** FIX: Cleanup method to prevent event listener leaks ***
@@ -118,9 +131,38 @@ export class Editor {
         this.highlightEl = null;
         this.lineNumberEl = null;
         this._hypermark = null;
+        this._editorReady = false;
     }
     
-    attachClassic(container, previewEl) {
+    // *** FIX: Wait for CodeMirror DOM readiness ***
+    async _waitForCodeMirrorReady(view) {
+        return new Promise((resolve) => {
+            if (view && view.dom && view.dom.parentNode) {
+                resolve();
+                return;
+            }
+            
+            // Poll for DOM readiness with timeout
+            let attempts = 0;
+            const maxAttempts = 50; // 5 seconds max
+            
+            const checkReady = () => {
+                attempts++;
+                if (view && view.dom && view.dom.parentNode) {
+                    resolve();
+                } else if (attempts < maxAttempts) {
+                    setTimeout(checkReady, 100);
+                } else {
+                    console.warn('CodeMirror DOM readiness timeout');
+                    resolve();
+                }
+            };
+            
+            setTimeout(checkReady, 100);
+        });
+    }
+    
+    async attachClassic(container, previewEl) {
         // Find or create textarea in container
         let textarea = container.querySelector('.editor-textarea');
         if (!textarea) {
@@ -136,6 +178,9 @@ export class Editor {
         this._setupHighlightOverlay();
         this._setupLineNumbers();
         this.bindEvents();
+        
+        // *** FIX: For textarea, ready immediately ***
+        return Promise.resolve();
     }
 
     /** Attach a HyperMarkEditor instance instead of a textarea */
@@ -343,36 +388,82 @@ export class Editor {
         }, { signal });
     }
 
-    setContent(content) {
-        if (this.useCodeMirror && this.cmEditor) {
-            this.cmEditor.setContent(content);
-            return;
-        }
+    async setContent(content, retryCount = 0) {
+        // *** FIX: Cache content immediately ***
+        this._lastKnownContent = content || '';
         
-        if (this._hypermark) {
-            this._hypermark.setContent(content);
+        try {
+            // *** FIX: Wait for editor readiness ***
+            if (!this._editorReady && retryCount < 3) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                return this.setContent(content, retryCount + 1);
+            }
+            
+            if (this.useCodeMirror && this.cmEditor) {
+                this.cmEditor.setContent(content);
+                return;
+            }
+            
+            if (this._hypermark) {
+                this._hypermark.setContent(content);
+                this.renderPreview();
+                this.updateStatsFromContent(content);
+                return;
+            }
+            
+            if (!this.textarea) {
+                if (retryCount < 3) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    return this.setContent(content, retryCount + 1);
+                }
+                console.warn('setContent failed: no textarea available');
+                return;
+            }
+            
+            this.textarea.value = content;
             this.renderPreview();
-            this.updateStatsFromContent(content);
-            return;
+            this.updateStats();
+            this.updateCursor();
+            this._syncHighlight();
+            this._syncLineNumbers();
+            this.textarea.focus();
+            this.textarea.scrollTop = 0;
+            
+        } catch (error) {
+            console.warn(`setContent attempt ${retryCount + 1} failed:`, error);
+            if (retryCount < 3) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                return this.setContent(content, retryCount + 1);
+            }
+            console.error('setContent failed after 3 retries:', error);
         }
-        if (!this.textarea) return;
-        this.textarea.value = content;
-        this.renderPreview();
-        this.updateStats();
-        this.updateCursor();
-        this._syncHighlight();
-        this._syncLineNumbers();
-        this.textarea.focus();
-        this.textarea.scrollTop = 0;
     }
 
     getContent() {
-        if (this.useCodeMirror && this.cmEditor) {
-            return this.cmEditor.getContent();
-        }
+        // *** FIX: Robust getContent with fallbacks ***
+        let content = '';
         
-        if (this._hypermark) return this._hypermark.getContent();
-        return this.textarea ? this.textarea.value : '';
+        try {
+            if (this.useCodeMirror && this.cmEditor) {
+                content = this.cmEditor.getContent() || '';
+            } else if (this._hypermark) {
+                content = this._hypermark.getContent() || '';
+            } else if (this.textarea) {
+                content = this.textarea.value || '';
+            }
+            
+            // *** FIX: Cache for fallback if DOM not ready ***
+            if (content) {
+                this._lastKnownContent = content;
+            }
+            
+            // *** FIX: Return cache if content is empty and we have cache ***
+            return content || this._lastKnownContent || '';
+            
+        } catch (error) {
+            console.warn('Error getting content, using cached fallback:', error);
+            return this._lastKnownContent || '';
+        }
     }
 
     /** Get current selection */

@@ -200,7 +200,12 @@ class FileSystemAdapter {
     getBasePath() { return this._basePath; }
 
     async read(normalizedPath) {
-        return invoke('read_note', { path: normalizedPath });
+        try {
+            return await invoke('read_note', { path: normalizedPath });
+        } catch (error) {
+            console.error('Failed to read file:', normalizedPath, error);
+            throw error;
+        }
     }
 
     async readBinary(normalizedPath) {
@@ -211,7 +216,12 @@ class FileSystemAdapter {
     }
 
     async write(normalizedPath, data, options) {
-        return invoke('save_note', { path: normalizedPath, content: data });
+        try {
+            return await invoke('save_note', { path: normalizedPath, content: data });
+        } catch (error) {
+            console.error('Failed to write file:', normalizedPath, error);
+            throw error;
+        }
     }
 
     async writeBinary(normalizedPath, data, options) {
@@ -290,11 +300,21 @@ class FileSystemAdapter {
     }
 
     async remove(normalizedPath) {
-        return invoke('delete_note', { path: normalizedPath });
+        try {
+            return await invoke('delete_note', { path: normalizedPath });
+        } catch (error) {
+            console.error('Failed to delete file:', normalizedPath, error);
+            throw error;
+        }
     }
 
     async rename(normalizedPath, normalizedNewPath) {
-        return invoke('rename_file', { oldPath: normalizedPath, newPath: normalizedNewPath });
+        try {
+            return await invoke('rename_file', { oldPath: normalizedPath, newPath: normalizedNewPath });
+        } catch (error) {
+            console.error('Failed to rename file:', normalizedPath, 'to', normalizedNewPath, error);
+            throw error;
+        }
     }
 
     async copy(normalizedPath, normalizedNewPath) {

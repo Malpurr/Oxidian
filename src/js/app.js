@@ -24,6 +24,23 @@ import { EmbedProcessor } from './embeds.js';
 import { FrontmatterProcessor } from './frontmatter.js';
 import { LinkHandler } from './link-handler.js';
 
+// DOM Safety Helpers
+function safeGetElement(id) {
+    const el = document.getElementById(id);
+    if (!el) console.warn(`Element not found: ${id}`);
+    return el;
+}
+
+function safeQuerySelector(selector) {
+    const el = document.querySelector(selector);
+    if (!el) console.warn(`Element not found: ${selector}`);
+    return el;
+}
+
+function safeQuerySelectorAll(selector) {
+    return document.querySelectorAll(selector) || [];
+}
+
 class OxidianApp {
     constructor() {
         this.currentFile = null;
@@ -113,10 +130,13 @@ class OxidianApp {
         window.searchByTag = (tag) => this.searchByTag(tag);
 
         // Ribbon buttons
-        document.querySelectorAll('.ribbon-btn[data-panel]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                this.switchSidebarPanel(btn.dataset.panel);
-                document.querySelectorAll('.ribbon-btn[data-panel]').forEach(b => b.classList.remove('active'));
+        const ribbonButtons = document.querySelectorAll('.ribbon-btn[data-panel]');
+        if (ribbonButtons) {
+            ribbonButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    this.switchSidebarPanel(btn.dataset.panel);
+                    const allRibbonBtns = document.querySelectorAll('.ribbon-btn[data-panel]');
+                    if (allRibbonBtns) allRibbonBtns.forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
             });
         });
@@ -137,7 +157,7 @@ class OxidianApp {
             const item = e.target.closest('.dropdown-item');
             if (!item || item.classList.contains('disabled')) return;
             this.handleMoreOption(item.dataset.action);
-            document.getElementById('more-options-menu').classList.add('hidden');
+            document.getElementById('more-options-menu')?.classList.add('hidden');
         });
 
         // Close dropdown on outside click
@@ -308,7 +328,13 @@ class OxidianApp {
             }
 
             // Read file content BEFORE setting currentFile (race condition fix)
-            const content = await invoke('read_note', { path });
+            let content;
+            try {
+                content = await invoke('read_note', { path });
+            } catch (error) {
+                console.error('Failed to read note:', path, error);
+                return;
+            }
             
             // *** FIX: Only set currentFile AFTER successful load ***
             const title = path.split('/').pop().replace('.md', '');
@@ -398,6 +424,9 @@ class OxidianApp {
             textarea.value = content;
             invoke('render_markdown', { content }).then(html => {
                 if (preview) preview.innerHTML = html;
+            }).catch(error => {
+                console.error('Failed to render markdown:', error);
+                if (preview) preview.innerHTML = '<p>Error rendering markdown</p>';
             });
         }
     }
@@ -439,10 +468,15 @@ class OxidianApp {
             this.tabManager.markClean(filePath);
             
             const content = this.editor.getContent();
-            await invoke('save_note', { path: filePath, content });
-            
-            // Invalidate backlinks after successful save
-            this.backlinksManager?.invalidate();
+            try {
+                await invoke('save_note', { path: filePath, content });
+                
+                // Invalidate backlinks after successful save
+                this.backlinksManager?.invalidate();
+            } catch (error) {
+                console.error('Failed to save note:', filePath, error);
+                throw error; // Re-throw so caller can handle
+            }
             
         } catch (err) {
             // *** FIX: Rollback optimistic UI on error ***
@@ -752,6 +786,9 @@ class OxidianApp {
             const content = rightTextarea.value;
             invoke('render_markdown', { content }).then(html => {
                 rightPreview.innerHTML = html;
+            }).catch(error => {
+                console.error('Failed to render markdown in right pane:', error);
+                rightPreview.innerHTML = '<p>Error rendering markdown</p>';
             });
             // Mark right pane dirty and auto-save
             this.rightDirty = true;
@@ -1646,29 +1683,14 @@ class OxidianApp {
         const idx = modes.indexOf(this.viewMode);
         const newMode = modes[(idx + 1) % modes.length];
 
-        // SAVE content BEFORE destroying anything
-        const content = this.editor.getContent?.() || '';
-
         this.viewMode = newMode;
 
         // Store view mode on current tab
         const tab = this.tabManager.getActiveTab();
         if (tab) tab.viewMode = this.viewMode;
 
-        // Rebuild editor pane
-        const leftPane = document.getElementById('left-pane');
-        if (leftPane) leftPane.remove();
-        if (this.hypermarkEditor) {
-            this.hypermarkEditor.destroy?.();
-            this.hypermarkEditor = null;
-        }
-        await this.ensureEditorPane();
-        if (content) {
-            // Small delay to ensure CodeMirror is fully mounted
-            await new Promise(r => setTimeout(r, 50));
-            this.editor.setContent(content);
-        }
-
+        // DO NOT rebuild editor pane — just toggle visibility + reading view
+        this.applyViewMode();
         this.updateViewModeButton();
     }
 
@@ -1679,28 +1701,40 @@ class OxidianApp {
         pane.classList.remove('live-preview-mode', 'source-mode', 'reading-mode');
         pane.classList.add(`${this.viewMode}-mode`);
 
-        // For reading mode, render content into reading view
+        // Show/hide editor vs reading view
+        const editorWrapper = pane.querySelector('.editor-wrapper');
+
         if (this.viewMode === 'reading') {
-            // Create reading-view dynamically if it doesn't exist yet
+            // Hide editor, show rendered reading view
+            if (editorWrapper) editorWrapper.style.display = 'none';
+            
             let readingView = pane.querySelector('.reading-view');
             if (!readingView) {
                 readingView = document.createElement('div');
                 readingView.className = 'reading-view preview-content';
+                readingView.style.cssText = 'flex:1;overflow:auto;padding:24px 32px;';
                 pane.appendChild(readingView);
             }
+            readingView.style.display = 'block';
+            
+            // Get content from editor (still in DOM, just hidden)
             const content = this.editor.getContent();
             if (content && content.trim()) {
                 this.renderMarkdown(content).then(html => {
                     readingView.innerHTML = html;
-                    this.mermaidRenderer.processElement(readingView);
+                    this.mermaidRenderer?.processElement?.(readingView);
                 }).catch(() => {});
             } else {
                 readingView.innerHTML = '<p style="color: var(--text-faint)">Start writing to see a preview</p>';
             }
         } else {
-            // Remove reading-view when not in reading mode
+            // Show editor, hide reading view
+            if (editorWrapper) editorWrapper.style.display = '';
             const readingView = pane.querySelector('.reading-view');
-            if (readingView) readingView.remove();
+            if (readingView) readingView.style.display = 'none';
+            
+            // Re-focus editor
+            this.editor.focus?.();
         }
 
         this.updateViewModeButton();

@@ -3,7 +3,8 @@ import {
   EditorState,
   StateField,
   StateEffect,
-  Transaction
+  Transaction,
+  Compartment
 } from './codemirror-bundle.js';
 
 import {
@@ -292,21 +293,31 @@ export class CodeMirrorEditor {
     this.previewVisible = true;
     this.showLineNumbers = localStorage.getItem('oxidian-line-numbers') === 'true';
     this.vimMode = false; // Could be enabled later
+    
+    // *** FIX: Compartments for dynamic updates ***
+    this.lineNumberCompartment = new Compartment();
+    this.themeCompartment = new Compartment();
+    this.readOnlyCompartment = new Compartment();
+    
+    // *** FIX: Cache content for robustness ***
+    this._cachedContent = '';
   }
 
   /**
    * Attach the editor to a container element
    */
   attach(container, previewEl) {
+    // *** FIX: Always destroy previous instance ***
+    this.destroy();
+    
     this.container = container;
     this.previewEl = previewEl;
     
-    // Create CodeMirror extensions
+    // Create CodeMirror extensions with compartments
     const extensions = [
       // Basic extensions
       markdown(),
       syntaxHighlighting(oxidianHighlight),
-      oxidianTheme,
       EditorView.lineWrapping,
       history(),
       indentOnInput(),
@@ -317,8 +328,16 @@ export class CodeMirrorEditor {
       highlightSelectionMatches(),
       search({ top: true }),
       
-      // Optional line numbers
-      ...(this.showLineNumbers ? [lineNumbers(), highlightActiveLineGutter()] : []),
+      // *** FIX: Compartmentalized extensions ***
+      this.lineNumberCompartment.of(
+        this.showLineNumbers 
+          ? [lineNumbers(), highlightActiveLineGutter()] 
+          : []
+      ),
+      
+      this.themeCompartment.of(oxidianTheme),
+      
+      this.readOnlyCompartment.of([]), // Empty by default, read-only when needed
       
       // Folding
       codeFolding(),
@@ -340,6 +359,9 @@ export class CodeMirrorEditor {
       // Update listener for content changes
       EditorView.updateListener.of((update) => {
         if (update.docChanged) {
+          // *** FIX: Cache content on change ***
+          this._cachedContent = this.view.state.doc.toString();
+          
           this.app.markDirty();
           this.scheduleRender();
           this.updateStats();
@@ -385,7 +407,7 @@ export class CodeMirrorEditor {
     
     // Handle context menu
     this.view.contentDOM.addEventListener('contextmenu', (e) => {
-      this.app.contextMenu.showEditorMenu(e, this.view);
+      this.app.contextMenu?.showEditorMenu(e, this.view);
     });
     
     return this.view;
@@ -403,33 +425,64 @@ export class CodeMirrorEditor {
    * Set editor content
    */
   setContent(content) {
-    if (!this.view) return;
+    if (!this.view) {
+      // *** FIX: Cache content if view not ready ***
+      this._cachedContent = content || '';
+      return;
+    }
     
-    const transaction = this.view.state.update({
-      changes: {
-        from: 0,
-        to: this.view.state.doc.length,
-        insert: content
-      }
-    });
-    
-    this.view.dispatch(transaction);
-    this.renderPreview();
-    this.updateStats();
-    this.updateCursor();
-    this.view.focus();
-    
-    // Scroll to top
-    this.view.dispatch({
-      effects: EditorView.scrollIntoView(0, { y: 'start' })
-    });
+    try {
+      const transaction = this.view.state.update({
+        changes: {
+          from: 0,
+          to: this.view.state.doc.length,
+          insert: content || ''
+        }
+      });
+      
+      this.view.dispatch(transaction);
+      
+      // *** FIX: Cache content ***
+      this._cachedContent = content || '';
+      
+      this.renderPreview();
+      this.updateStats();
+      this.updateCursor();
+      this.view.focus();
+      
+      // Scroll to top
+      this.view.dispatch({
+        effects: EditorView.scrollIntoView(0, { y: 'start' })
+      });
+      
+    } catch (error) {
+      console.warn('CodeMirror setContent failed:', error);
+      this._cachedContent = content || '';
+    }
   }
 
   /**
    * Get editor content
    */
   getContent() {
-    return this.view ? this.view.state.doc.toString() : '';
+    try {
+      if (!this.view) {
+        return this._cachedContent || '';
+      }
+      
+      const content = this.view.state.doc.toString();
+      
+      // *** FIX: Update cache ***
+      if (content) {
+        this._cachedContent = content;
+      }
+      
+      return content || this._cachedContent || '';
+      
+    } catch (error) {
+      console.warn('CodeMirror getContent failed, using cache:', error);
+      return this._cachedContent || '';
+    }
   }
 
   /**
@@ -522,9 +575,14 @@ export class CodeMirrorEditor {
     this.showLineNumbers = show;
     localStorage.setItem('oxidian-line-numbers', show.toString());
     
-    // For now, require a restart to apply line numbers
-    // TODO: Could be improved with compartments
-    console.log('Line numbers toggled. Restart required to apply changes.');
+    // *** FIX: Use compartments for instant toggle ***
+    if (this.view) {
+      this.view.dispatch({
+        effects: this.lineNumberCompartment.reconfigure(
+          show ? [lineNumbers(), highlightActiveLineGutter()] : []
+        )
+      });
+    }
   }
 
   /**
@@ -630,12 +688,52 @@ export class CodeMirrorEditor {
   }
 
   /**
+   * Set read-only mode (for Reading View)
+   */
+  setReadOnly(readOnly) {
+    if (!this.view) return;
+    
+    // *** FIX: Use EditorState.readOnly instead ***
+    this.view.dispatch({
+      effects: this.readOnlyCompartment.reconfigure(
+        readOnly ? [EditorView.theme({
+          '&.cm-editor.cm-focused': {
+            outline: 'none'
+          },
+          '.cm-content': {
+            caretColor: 'transparent'
+          }
+        }), EditorView.editable.of(false)] : []
+      )
+    });
+  }
+
+  /**
+   * Change theme dynamically
+   */
+  changeTheme(theme = oxidianTheme) {
+    if (!this.view) return;
+    
+    this.view.dispatch({
+      effects: this.themeCompartment.reconfigure(theme)
+    });
+  }
+
+  /**
    * Destroy the editor
    */
   destroy() {
+    // *** FIX: Robust cleanup ***
     if (this.view) {
-      this.view.destroy();
-      this.view = null;
+      try {
+        // Save content before destroying
+        this._cachedContent = this.view.state.doc.toString();
+        this.view.destroy();
+      } catch (error) {
+        console.warn('Error during CodeMirror destroy:', error);
+      } finally {
+        this.view = null;
+      }
     }
     
     clearTimeout(this.renderTimeout);

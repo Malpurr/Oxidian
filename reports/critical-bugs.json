@@ -1,0 +1,1211 @@
+{
+  "summary": {
+    "totalFiles": 31,
+    "totalBugs": 242,
+    "timestamp": "2026-02-09T15:06:02.197Z"
+  },
+  "bugs": {
+    "domNullChecks": [
+      {
+        "file": "app.js",
+        "line": 116,
+        "code": "document.querySelectorAll('.ribbon-btn[data-panel]').forEach(btn => {"
+      },
+      {
+        "file": "app.js",
+        "line": 119,
+        "code": "document.querySelectorAll('.ribbon-btn[data-panel]').forEach(b => b.classList.remove('active'));"
+      },
+      {
+        "file": "app.js",
+        "line": 140,
+        "code": "document.getElementById('more-options-menu').classList.add('hidden');"
+      },
+      {
+        "file": "app.js",
+        "line": 252,
+        "code": "const overlay = document.getElementById('password-dialog');"
+      },
+      {
+        "file": "app.js",
+        "line": 261,
+        "code": "const overlay = document.getElementById('password-dialog');"
+      },
+      {
+        "file": "app.js",
+        "line": 392,
+        "code": "const rightPane = document.getElementById('right-pane');"
+      },
+      {
+        "file": "app.js",
+        "line": 460,
+        "code": "const rightPane = document.getElementById('right-pane');"
+      },
+      {
+        "file": "app.js",
+        "line": 580,
+        "code": "document.getElementById('welcome-screen').classList.add('hidden');"
+      },
+      {
+        "file": "app.js",
+        "line": 584,
+        "code": "document.getElementById('welcome-screen').classList.remove('hidden');"
+      },
+      {
+        "file": "app.js",
+        "line": 588,
+        "code": "const bc = document.getElementById('breadcrumb-path');"
+      },
+      {
+        "file": "app.js",
+        "line": 607,
+        "code": "const container = document.getElementById('pane-container');"
+      },
+      {
+        "file": "app.js",
+        "line": 711,
+        "code": "const container = document.getElementById('pane-container');"
+      },
+      {
+        "file": "app.js",
+        "line": 714,
+        "code": "if (document.getElementById('split-handle')) return;"
+      },
+      {
+        "file": "app.js",
+        "line": 778,
+        "code": "const rightPane = document.getElementById('right-pane');"
+      },
+      {
+        "file": "app.js",
+        "line": 785,
+        "code": "const leftPane = document.getElementById('left-pane');"
+      },
+      {
+        "file": "app.js",
+        "line": 790,
+        "code": "const container = document.getElementById('pane-container');"
+      },
+      {
+        "file": "app.js",
+        "line": 826,
+        "code": "let paneEl = document.getElementById(paneId);"
+      },
+      {
+        "file": "app.js",
+        "line": 861,
+        "code": "let paneEl = document.getElementById(paneId);"
+      },
+      {
+        "file": "app.js",
+        "line": 876,
+        "code": "const settingsDialog = document.getElementById('settings-dialog');"
+      },
+      {
+        "file": "app.js",
+        "line": 883,
+        "code": "const dialog = document.getElementById('new-note-dialog');"
+      },
+      {
+        "file": "app.js",
+        "line": 884,
+        "code": "const input = document.getElementById('new-note-name');"
+      },
+      {
+        "file": "app.js",
+        "line": 891,
+        "code": "document.getElementById('new-note-dialog').classList.add('hidden');"
+      },
+      {
+        "file": "app.js",
+        "line": 895,
+        "code": "const input = document.getElementById('new-note-name');"
+      },
+      {
+        "file": "app.js",
+        "line": 923,
+        "code": "const dialog = document.getElementById('new-folder-dialog');"
+      },
+      {
+        "file": "app.js",
+        "line": 924,
+        "code": "const input = document.getElementById('new-folder-name');"
+      },
+      {
+        "file": "app.js",
+        "line": 932,
+        "code": "const dialog = document.getElementById('new-folder-dialog');"
+      },
+      {
+        "file": "app.js",
+        "line": 937,
+        "code": "const input = document.getElementById('new-folder-name');"
+      },
+      {
+        "file": "app.js",
+        "line": 1039,
+        "code": "const container = document.getElementById('tags-list');"
+      },
+      {
+        "file": "app.js",
+        "line": 1067,
+        "code": "document.querySelectorAll('.sidebar-panel').forEach(p => p.classList.remove('active'));"
+      },
+      {
+        "file": "app.js",
+        "line": 1068,
+        "code": "const panel = document.getElementById(`panel-${name}`);"
+      },
+      {
+        "file": "app.js",
+        "line": 1071,
+        "code": "document.querySelectorAll('.ribbon-btn[data-panel]').forEach(b => {"
+      },
+      {
+        "file": "app.js",
+        "line": 1084,
+        "code": "const handle = document.getElementById('sidebar-resize');"
+      },
+      {
+        "file": "app.js",
+        "line": 1085,
+        "code": "const sidebar = document.getElementById('sidebar');"
+      },
+      {
+        "file": "app.js",
+        "line": 1086,
+        "code": "const ribbon = document.getElementById('ribbon');"
+      },
+      {
+        "file": "app.js",
+        "line": 1125,
+        "code": "const container = document.getElementById('pane-container');"
+      },
+      {
+        "file": "app.js",
+        "line": 1231,
+        "code": "const qs = document.getElementById('quick-switcher-overlay');"
+      },
+      {
+        "file": "app.js",
+        "line": 1233,
+        "code": "const tp = document.getElementById('template-picker-overlay');"
+      },
+      {
+        "file": "app.js",
+        "line": 1242,
+        "code": "const ribbon = document.getElementById('ribbon');"
+      },
+      {
+        "file": "app.js",
+        "line": 1243,
+        "code": "const sidebar = document.getElementById('sidebar');"
+      },
+      {
+        "file": "app.js",
+        "line": 1244,
+        "code": "const sidebarResize = document.getElementById('sidebar-resize');"
+      },
+      {
+        "file": "app.js",
+        "line": 1245,
+        "code": "const tabBar = document.getElementById('tab-bar');"
+      },
+      {
+        "file": "app.js",
+        "line": 1246,
+        "code": "const breadcrumb = document.getElementById('breadcrumb-bar');"
+      },
+      {
+        "file": "app.js",
+        "line": 1247,
+        "code": "const statusbar = document.getElementById('statusbar');"
+      },
+      {
+        "file": "app.js",
+        "line": 1248,
+        "code": "const focusBtn = document.querySelector('.ribbon-btn[data-action=\"focus\"]');"
+      },
+      {
+        "file": "app.js",
+        "line": 1275,
+        "code": "const textarea = document.querySelector('.editor-textarea');"
+      },
+      {
+        "file": "app.js",
+        "line": 1321,
+        "code": "const textarea = document.querySelector('.editor-textarea');"
+      },
+      {
+        "file": "app.js",
+        "line": 1418,
+        "code": "const list = document.getElementById('bookmarks-list');"
+      },
+      {
+        "file": "app.js",
+        "line": 1458,
+        "code": "const list = document.getElementById('recent-list');"
+      },
+      {
+        "file": "app.js",
+        "line": 1486,
+        "code": "const list = document.getElementById('outline-list');"
+      },
+      {
+        "file": "app.js",
+        "line": 1488,
+        "code": "const panel = document.getElementById('panel-outline');"
+      },
+      {
+        "file": "app.js",
+        "line": 1550,
+        "code": "const existing = document.getElementById('command-palette-overlay');"
+      },
+      {
+        "file": "app.js",
+        "line": 1659,
+        "code": "const leftPane = document.getElementById('left-pane');"
+      },
+      {
+        "file": "app.js",
+        "line": 1676,
+        "code": "const pane = document.getElementById('left-pane');"
+      },
+      {
+        "file": "app.js",
+        "line": 1710,
+        "code": "const btn = document.getElementById('btn-view-mode');"
+      },
+      {
+        "file": "app.js",
+        "line": 1743,
+        "code": "const menu = document.getElementById('more-options-menu');"
+      },
+      {
+        "file": "backlinks.js",
+        "line": 87,
+        "code": "const countEl = document.getElementById('backlink-count');"
+      },
+      {
+        "file": "backlinks.js",
+        "line": 101,
+        "code": "const list = document.querySelector('#backlinks-panel .backlinks-panel-list');"
+      },
+      {
+        "file": "codemirror-editor.js",
+        "line": 611,
+        "code": "const wc = document.getElementById('status-word-count');"
+      },
+      {
+        "file": "codemirror-editor.js",
+        "line": 612,
+        "code": "const cc = document.getElementById('status-char-count');"
+      },
+      {
+        "file": "codemirror-editor.js",
+        "line": 613,
+        "code": "const rt = document.getElementById('status-reading-time');"
+      },
+      {
+        "file": "codemirror-editor.js",
+        "line": 633,
+        "code": "const el = document.getElementById('status-cursor');"
+      },
+      {
+        "file": "editor-classic-backup.js",
+        "line": 250,
+        "code": "const wc = document.getElementById('status-word-count');"
+      },
+      {
+        "file": "editor-classic-backup.js",
+        "line": 251,
+        "code": "const cc = document.getElementById('status-char-count');"
+      },
+      {
+        "file": "editor-classic-backup.js",
+        "line": 252,
+        "code": "const rt = document.getElementById('status-reading-time');"
+      },
+      {
+        "file": "editor-classic-backup.js",
+        "line": 296,
+        "code": "const wc = document.getElementById('status-word-count');"
+      },
+      {
+        "file": "editor-classic-backup.js",
+        "line": 297,
+        "code": "const cc = document.getElementById('status-char-count');"
+      },
+      {
+        "file": "editor-classic-backup.js",
+        "line": 298,
+        "code": "const rt = document.getElementById('status-reading-time');"
+      },
+      {
+        "file": "editor-classic-backup.js",
+        "line": 315,
+        "code": "const el = document.getElementById('status-cursor');"
+      },
+      {
+        "file": "editor-classic-backup.js",
+        "line": 333,
+        "code": "document.querySelectorAll('.bracket-highlight').forEach(el => el.remove());"
+      },
+      {
+        "file": "editor-classic-backup.js",
+        "line": 383,
+        "code": "const el = document.getElementById('status-cursor');"
+      },
+      {
+        "file": "editor.js",
+        "line": 522,
+        "code": "const wc = document.getElementById('status-word-count');"
+      },
+      {
+        "file": "editor.js",
+        "line": 523,
+        "code": "const cc = document.getElementById('status-char-count');"
+      },
+      {
+        "file": "editor.js",
+        "line": 524,
+        "code": "const rt = document.getElementById('status-reading-time');"
+      },
+      {
+        "file": "editor.js",
+        "line": 634,
+        "code": "const el = document.getElementById('status-cursor');"
+      },
+      {
+        "file": "editor.js",
+        "line": 657,
+        "code": "document.querySelectorAll('.bracket-highlight').forEach(el => el.remove());"
+      },
+      {
+        "file": "editor.js",
+        "line": 707,
+        "code": "const el = document.getElementById('status-cursor');"
+      },
+      {
+        "file": "find-replace.js",
+        "line": 193,
+        "code": "const editorWrapper = document.querySelector('.editor-wrapper');"
+      },
+      {
+        "file": "find-replace.js",
+        "line": 323,
+        "code": "const textarea = document.querySelector('.editor-textarea');"
+      },
+      {
+        "file": "find-replace.js",
+        "line": 338,
+        "code": "const textarea = document.querySelector('.editor-textarea');"
+      },
+      {
+        "file": "find-replace.js",
+        "line": 429,
+        "code": "const textarea = document.querySelector('.editor-textarea');"
+      },
+      {
+        "file": "find-replace.js",
+        "line": 535,
+        "code": "const textarea = document.querySelector('.editor-textarea');"
+      },
+      {
+        "file": "find-replace.js",
+        "line": 589,
+        "code": "const textarea = document.querySelector('.editor-textarea');"
+      },
+      {
+        "file": "link-handler.js",
+        "line": 55,
+        "code": "const textarea = document.querySelector('.editor-textarea');"
+      },
+      {
+        "file": "link-handler.js",
+        "line": 85,
+        "code": "const textarea = document.querySelector('.editor-textarea');"
+      },
+      {
+        "file": "link-handler.js",
+        "line": 354,
+        "code": "const tooltip = document.getElementById('link-tooltip');"
+      },
+      {
+        "file": "link-handler.js",
+        "line": 396,
+        "code": "const preview = document.querySelector('.preview-content');"
+      },
+      {
+        "file": "obsidian-api.js",
+        "line": 1624,
+        "code": "let container = document.getElementById('obsidian-notice-container');"
+      },
+      {
+        "file": "obsidian-api.js",
+        "line": 2247,
+        "code": "const ribbonTop = document.querySelector('#ribbon .ribbon-top');"
+      },
+      {
+        "file": "obsidian-api.js",
+        "line": 3654,
+        "code": "function fish(selector) { return document.querySelector(selector); }"
+      },
+      {
+        "file": "obsidian-api.js",
+        "line": 3655,
+        "code": "function fishAll(selector) { return Array.from(document.querySelectorAll(selector)); }"
+      },
+      {
+        "file": "onboarding.js",
+        "line": 7,
+        "code": "this.el = document.getElementById('onboarding-screen');"
+      },
+      {
+        "file": "plugin-loader.js",
+        "line": 134,
+        "code": "const existing = document.getElementById('command-palette-overlay');"
+      },
+      {
+        "file": "plugin-loader.js",
+        "line": 366,
+        "code": "document.querySelectorAll(`style[data-plugin=\"${pluginId}\"]`).forEach(el => el.remove());"
+      },
+      {
+        "file": "quickswitcher.js",
+        "line": 142,
+        "code": "const existing = document.getElementById('quick-switcher-overlay');"
+      },
+      {
+        "file": "tabs.js",
+        "line": 355,
+        "code": "const container = document.getElementById('pane-container');"
+      },
+      {
+        "file": "templates.js",
+        "line": 163,
+        "code": "const existing = document.getElementById('template-picker-overlay');"
+      },
+      {
+        "file": "update.js",
+        "line": 93,
+        "code": "const contentArea = document.getElementById('content-area') || document.getElementById('app') || document.body;"
+      }
+    ],
+    "invokeWithoutTryCatch": [
+      {
+        "file": "app.js",
+        "line": 311,
+        "code": "const content = await invoke('read_note', { path });"
+      },
+      {
+        "file": "app.js",
+        "line": 399,
+        "code": "invoke('render_markdown', { content }).then(html => {"
+      },
+      {
+        "file": "app.js",
+        "line": 442,
+        "code": "await invoke('save_note', { path: filePath, content });"
+      },
+      {
+        "file": "app.js",
+        "line": 753,
+        "code": "invoke('render_markdown', { content }).then(html => {"
+      },
+      {
+        "file": "obsidian-api.js",
+        "line": 203,
+        "code": "return invoke('read_note', { path: normalizedPath });"
+      },
+      {
+        "file": "obsidian-api.js",
+        "line": 214,
+        "code": "return invoke('save_note', { path: normalizedPath, content: data });"
+      },
+      {
+        "file": "obsidian-api.js",
+        "line": 293,
+        "code": "return invoke('delete_note', { path: normalizedPath });"
+      },
+      {
+        "file": "obsidian-api.js",
+        "line": 297,
+        "code": "return invoke('rename_file', { oldPath: normalizedPath, newPath: normalizedNewPath });"
+      },
+      {
+        "file": "obsidian-api.js",
+        "line": 327,
+        "code": "invoke('get_vault_path').then(path => {"
+      },
+      {
+        "file": "obsidian-api.js",
+        "line": 411,
+        "code": "await invoke('save_note', { path, content: data });"
+      },
+      {
+        "file": "obsidian-api.js",
+        "line": 431,
+        "code": "await invoke('save_note', { path, content: data });"
+      },
+      {
+        "file": "obsidian-api.js",
+        "line": 453,
+        "code": "await invoke('rename_file', { oldPath, newPath });"
+      },
+      {
+        "file": "obsidian-api.js",
+        "line": 472,
+        "code": "await invoke('delete_note', { path });"
+      }
+    ],
+    "realAsyncAwaitProblems": [],
+    "eventListenerLeaks": [
+      {
+        "file": "backlinks.js",
+        "line": 125,
+        "code": "header.addEventListener('click', () => this.app.openFile(source));"
+      },
+      {
+        "file": "backlinks.js",
+        "line": 137,
+        "code": "snippetEl.addEventListener('click', () => this.app.openFile(source));"
+      },
+      {
+        "file": "codemirror-editor.js",
+        "line": 402,
+        "code": "this.view.contentDOM.addEventListener('blur', () => {"
+      },
+      {
+        "file": "codemirror-editor.js",
+        "line": 409,
+        "code": "this.view.contentDOM.addEventListener('contextmenu', (e) => {"
+      },
+      {
+        "file": "contextmenu.js",
+        "line": 9,
+        "code": "document.addEventListener('click', () => this.hide());"
+      },
+      {
+        "file": "contextmenu.js",
+        "line": 10,
+        "code": "document.addEventListener('keydown', (e) => {"
+      },
+      {
+        "file": "contextmenu.js",
+        "line": 27,
+        "code": "row.addEventListener('click', (e) => {"
+      },
+      {
+        "file": "editor-classic-backup.js",
+        "line": 174,
+        "code": "this.textarea.addEventListener('input', () => {"
+      },
+      {
+        "file": "editor-classic-backup.js",
+        "line": 184,
+        "code": "this.textarea.addEventListener('click', () => {"
+      },
+      {
+        "file": "editor-classic-backup.js",
+        "line": 188,
+        "code": "this.textarea.addEventListener('keyup', (e) => {"
+      },
+      {
+        "file": "editor-classic-backup.js",
+        "line": 196,
+        "code": "this.textarea.addEventListener('keydown', (e) => this.handleEditorKeys(e));"
+      },
+      {
+        "file": "editor-classic-backup.js",
+        "line": 198,
+        "code": "this.textarea.addEventListener('blur', () => {"
+      },
+      {
+        "file": "editor-classic-backup.js",
+        "line": 204,
+        "code": "this.textarea.addEventListener('scroll', () => {"
+      },
+      {
+        "file": "editor-classic-backup.js",
+        "line": 215,
+        "code": "this.textarea.addEventListener('contextmenu', (e) => {"
+      },
+      {
+        "file": "editor.js",
+        "line": 342,
+        "code": "this.textarea.addEventListener('input', () => {"
+      },
+      {
+        "file": "editor.js",
+        "line": 352,
+        "code": "this.textarea.addEventListener('click', () => {"
+      },
+      {
+        "file": "editor.js",
+        "line": 357,
+        "code": "this.textarea.addEventListener('keyup', (e) => {"
+      },
+      {
+        "file": "editor.js",
+        "line": 365,
+        "code": "this.textarea.addEventListener('keydown', (e) => this.handleEditorKeys(e), { signal });"
+      },
+      {
+        "file": "editor.js",
+        "line": 367,
+        "code": "this.textarea.addEventListener('blur', () => {"
+      },
+      {
+        "file": "editor.js",
+        "line": 375,
+        "code": "this.textarea.addEventListener('scroll', () => {"
+      },
+      {
+        "file": "editor.js",
+        "line": 386,
+        "code": "this.textarea.addEventListener('contextmenu', (e) => {"
+      },
+      {
+        "file": "find-replace.js",
+        "line": 206,
+        "code": "this.findInput.addEventListener('input', () => this._onFindInput());"
+      },
+      {
+        "file": "find-replace.js",
+        "line": 207,
+        "code": "this.findInput.addEventListener('keydown', (e) => this._onKeyDown(e));"
+      },
+      {
+        "file": "find-replace.js",
+        "line": 210,
+        "code": "this.replaceInput.addEventListener('keydown', (e) => this._onKeyDown(e));"
+      },
+      {
+        "file": "graph.js",
+        "line": 45,
+        "code": "this.canvas.addEventListener('mousedown', (e) => this.onMouseDown(e));"
+      },
+      {
+        "file": "graph.js",
+        "line": 46,
+        "code": "this.canvas.addEventListener('mousemove', (e) => this.onMouseMove(e));"
+      },
+      {
+        "file": "graph.js",
+        "line": 47,
+        "code": "this.canvas.addEventListener('mouseup', () => this.onMouseUp());"
+      },
+      {
+        "file": "graph.js",
+        "line": 48,
+        "code": "this.canvas.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });"
+      },
+      {
+        "file": "graph.js",
+        "line": 49,
+        "code": "this.canvas.addEventListener('dblclick', (e) => this.onDblClick(e));"
+      },
+      {
+        "file": "link-handler.js",
+        "line": 20,
+        "code": "document.addEventListener('keydown', (e) => {"
+      },
+      {
+        "file": "link-handler.js",
+        "line": 27,
+        "code": "document.addEventListener('keyup', (e) => {"
+      },
+      {
+        "file": "link-handler.js",
+        "line": 35,
+        "code": "document.addEventListener('click', (e) => {"
+      },
+      {
+        "file": "link-handler.js",
+        "line": 42,
+        "code": "document.addEventListener('mousemove', (e) => {"
+      },
+      {
+        "file": "link-handler.js",
+        "line": 387,
+        "code": "document.addEventListener('DOMContentLoaded', () => {"
+      },
+      {
+        "file": "link-handler.js",
+        "line": 401,
+        "code": "link.addEventListener('click', (e) => {"
+      },
+      {
+        "file": "link-handler.js",
+        "line": 412,
+        "code": "link.addEventListener('click', (e) => {"
+      },
+      {
+        "file": "live-preview.js",
+        "line": 41,
+        "code": "textarea.addEventListener('input', () => this.onInput(textarea));"
+      },
+      {
+        "file": "live-preview.js",
+        "line": 42,
+        "code": "textarea.addEventListener('selectionchange', () => this.onCursorMove(textarea));"
+      },
+      {
+        "file": "live-preview.js",
+        "line": 43,
+        "code": "textarea.addEventListener('keyup', () => this.onCursorMove(textarea));"
+      },
+      {
+        "file": "live-preview.js",
+        "line": 44,
+        "code": "textarea.addEventListener('click', () => this.onCursorMove(textarea));"
+      },
+      {
+        "file": "onboarding.js",
+        "line": 82,
+        "code": "el.querySelector('#ob-next').addEventListener('click', () => { this.step++; this.render(); });"
+      },
+      {
+        "file": "onboarding.js",
+        "line": 83,
+        "code": "el.querySelector('#ob-skip').addEventListener('click', () => this.finish());"
+      },
+      {
+        "file": "onboarding.js",
+        "line": 133,
+        "code": "el.querySelector('#ob-new-vault').addEventListener('click', () => showPathInput(true));"
+      },
+      {
+        "file": "onboarding.js",
+        "line": 134,
+        "code": "el.querySelector('#ob-open-vault').addEventListener('click', () => showPathInput(false));"
+      },
+      {
+        "file": "onboarding.js",
+        "line": 137,
+        "code": "pathInput.addEventListener('input', () => {"
+      },
+      {
+        "file": "onboarding.js",
+        "line": 142,
+        "code": "el.querySelector('#ob-browse')?.addEventListener('click', async () => {"
+      },
+      {
+        "file": "onboarding.js",
+        "line": 156,
+        "code": "nextBtn.addEventListener('click', async () => {"
+      },
+      {
+        "file": "onboarding.js",
+        "line": 166,
+        "code": "el.querySelector('#ob-back')?.addEventListener('click', () => {"
+      },
+      {
+        "file": "onboarding.js",
+        "line": 201,
+        "code": "el.querySelector('#ob-encrypt-no').addEventListener('click', () => {"
+      },
+      {
+        "file": "onboarding.js",
+        "line": 207,
+        "code": "el.querySelector('#ob-encrypt-yes').addEventListener('click', () => {"
+      },
+      {
+        "file": "onboarding.js",
+        "line": 212,
+        "code": "el.querySelector('#ob-enc-back')?.addEventListener('click', () => {"
+      },
+      {
+        "file": "onboarding.js",
+        "line": 217,
+        "code": "el.querySelector('#ob-enc-next')?.addEventListener('click', async () => {"
+      },
+      {
+        "file": "onboarding.js",
+        "line": 262,
+        "code": "el.querySelector('#ob-finish').addEventListener('click', () => this.finish());"
+      },
+      {
+        "file": "plugin-loader.js",
+        "line": 173,
+        "code": "item.addEventListener('click', () => {"
+      },
+      {
+        "file": "plugin-loader.js",
+        "line": 188,
+        "code": "input.addEventListener('input', () => renderResults(input.value));"
+      },
+      {
+        "file": "plugin-loader.js",
+        "line": 192,
+        "code": "input.addEventListener('keydown', (e) => {"
+      },
+      {
+        "file": "plugin-loader.js",
+        "line": 214,
+        "code": "overlay.addEventListener('click', (e) => {"
+      },
+      {
+        "file": "quickswitcher.js",
+        "line": 195,
+        "code": "el.addEventListener('mousedown', (e) => {"
+      },
+      {
+        "file": "quickswitcher.js",
+        "line": 200,
+        "code": "el.addEventListener('mouseenter', () => {"
+      },
+      {
+        "file": "quickswitcher.js",
+        "line": 213,
+        "code": "input.addEventListener('input', () => {"
+      },
+      {
+        "file": "quickswitcher.js",
+        "line": 250,
+        "code": "input.addEventListener('keydown', (e) => {"
+      },
+      {
+        "file": "quickswitcher.js",
+        "line": 274,
+        "code": "overlay.addEventListener('mousedown', (e) => {"
+      },
+      {
+        "file": "search.js",
+        "line": 21,
+        "code": "this.input.addEventListener('input', () => {"
+      },
+      {
+        "file": "search.js",
+        "line": 36,
+        "code": "this.input.addEventListener('keydown', (e) => {"
+      },
+      {
+        "file": "search.js",
+        "line": 125,
+        "code": "item.addEventListener('click', () => {"
+      },
+      {
+        "file": "settings.js",
+        "line": 213,
+        "code": "btn.addEventListener('click', () => {"
+      },
+      {
+        "file": "settings.js",
+        "line": 227,
+        "code": "fontSizeRange?.addEventListener('input', (e) => {"
+      },
+      {
+        "file": "settings.js",
+        "line": 233,
+        "code": "lineHeightRange?.addEventListener('input', (e) => {"
+      },
+      {
+        "file": "settings.js",
+        "line": 238,
+        "code": "uiFontRange?.addEventListener('input', (e) => {"
+      },
+      {
+        "file": "settings.js",
+        "line": 244,
+        "code": "accentInput?.addEventListener('input', (e) => {"
+      },
+      {
+        "file": "settings.js",
+        "line": 249,
+        "code": "fontFamilyInput?.addEventListener('change', (e) => {"
+      },
+      {
+        "file": "settings.js",
+        "line": 254,
+        "code": "editorModeSelect?.addEventListener('change', (e) => {"
+      },
+      {
+        "file": "settings.js",
+        "line": 261,
+        "code": "lineNumToggle?.addEventListener('change', (e) => {"
+      },
+      {
+        "file": "settings.js",
+        "line": 268,
+        "code": "encToggle?.addEventListener('change', async (e) => {"
+      },
+      {
+        "file": "settings.js",
+        "line": 295,
+        "code": "wrapper.querySelector('#btn-change-password')?.addEventListener('click', async () => {"
+      },
+      {
+        "file": "settings.js",
+        "line": 312,
+        "code": "wrapper.querySelector('#btn-load-plugin')?.addEventListener('click', async () => {"
+      },
+      {
+        "file": "settings.js",
+        "line": 354,
+        "code": "wrapper.querySelector('#set-update-check')?.addEventListener('change', (e) => {"
+      },
+      {
+        "file": "settings.js",
+        "line": 357,
+        "code": "wrapper.querySelector('#set-auto-install')?.addEventListener('change', (e) => {"
+      },
+      {
+        "file": "settings.js",
+        "line": 360,
+        "code": "wrapper.querySelector('#btn-check-update')?.addEventListener('click', async () => {"
+      },
+      {
+        "file": "settings.js",
+        "line": 385,
+        "code": "el.addEventListener('change', saveDebounce);"
+      },
+      {
+        "file": "settings.js",
+        "line": 386,
+        "code": "el.addEventListener('input', saveDebounce);"
+      },
+      {
+        "file": "settings.js",
+        "line": 431,
+        "code": "card.addEventListener('click', () => {"
+      },
+      {
+        "file": "settings.js",
+        "line": 451,
+        "code": "card.addEventListener('click', () => {"
+      },
+      {
+        "file": "settings.js",
+        "line": 512,
+        "code": "toggle?.addEventListener('change', async (e) => {"
+      },
+      {
+        "file": "settings.js",
+        "line": 527,
+        "code": "settingsBtn.addEventListener('click', () => {"
+      },
+      {
+        "file": "settings.js",
+        "line": 584,
+        "code": "panel.querySelector('.plugin-settings-back')?.addEventListener('click', () => {"
+      },
+      {
+        "file": "sidebar.js",
+        "line": 101,
+        "code": "item.addEventListener('click', (e) => {"
+      },
+      {
+        "file": "sidebar.js",
+        "line": 122,
+        "code": "item.addEventListener('contextmenu', (e) => {"
+      },
+      {
+        "file": "sidebar.js",
+        "line": 147,
+        "code": "item.addEventListener('click', (e) => {"
+      },
+      {
+        "file": "sidebar.js",
+        "line": 152,
+        "code": "item.addEventListener('contextmenu', (e) => {"
+      },
+      {
+        "file": "slash.js",
+        "line": 127,
+        "code": "item.addEventListener('mousedown', (e) => {"
+      },
+      {
+        "file": "slash.js",
+        "line": 131,
+        "code": "item.addEventListener('mouseenter', () => {"
+      },
+      {
+        "file": "tabs.js",
+        "line": 223,
+        "code": "el.addEventListener('click', (e) => {"
+      },
+      {
+        "file": "tabs.js",
+        "line": 231,
+        "code": "el.addEventListener('mousedown', (e) => {"
+      },
+      {
+        "file": "tabs.js",
+        "line": 236,
+        "code": "el.addEventListener('dragstart', (e) => {"
+      },
+      {
+        "file": "tabs.js",
+        "line": 245,
+        "code": "el.addEventListener('dragend', () => {"
+      },
+      {
+        "file": "tabs.js",
+        "line": 252,
+        "code": "el.addEventListener('dragover', (e) => {"
+      },
+      {
+        "file": "tabs.js",
+        "line": 267,
+        "code": "el.addEventListener('dragleave', () => {"
+      },
+      {
+        "file": "tabs.js",
+        "line": 271,
+        "code": "el.addEventListener('drop', (e) => {"
+      },
+      {
+        "file": "tabs.js",
+        "line": 326,
+        "code": "zone.addEventListener('dragover', (e) => {"
+      },
+      {
+        "file": "tabs.js",
+        "line": 330,
+        "code": "zone.addEventListener('dragenter', (e) => {"
+      },
+      {
+        "file": "tabs.js",
+        "line": 334,
+        "code": "zone.addEventListener('dragleave', (e) => {"
+      },
+      {
+        "file": "tabs.js",
+        "line": 340,
+        "code": "zone.addEventListener('drop', (e) => {"
+      },
+      {
+        "file": "tabs.js",
+        "line": 402,
+        "code": "document.addEventListener('dragover', handleDragOver);"
+      },
+      {
+        "file": "tabs.js",
+        "line": 403,
+        "code": "document.addEventListener('dragleave', handleDragLeave);"
+      },
+      {
+        "file": "tabs.js",
+        "line": 404,
+        "code": "document.addEventListener('drop', handleDrop);"
+      },
+      {
+        "file": "tag-autocomplete.js",
+        "line": 26,
+        "code": "textarea.addEventListener('input', (e) => this.onInput(e));"
+      },
+      {
+        "file": "tag-autocomplete.js",
+        "line": 27,
+        "code": "textarea.addEventListener('keydown', (e) => this.onKeyDown(e));"
+      },
+      {
+        "file": "tag-autocomplete.js",
+        "line": 28,
+        "code": "textarea.addEventListener('blur', () => this.hidePopup());"
+      },
+      {
+        "file": "tag-autocomplete.js",
+        "line": 30,
+        "code": "textarea.addEventListener('click', () => {"
+      },
+      {
+        "file": "tag-autocomplete.js",
+        "line": 209,
+        "code": "this.popup.addEventListener('mousedown', (e) => {"
+      },
+      {
+        "file": "templates.js",
+        "line": 215,
+        "code": "item.addEventListener('mousedown', (e) => {"
+      },
+      {
+        "file": "templates.js",
+        "line": 220,
+        "code": "item.addEventListener('mouseenter', () => {"
+      },
+      {
+        "file": "templates.js",
+        "line": 236,
+        "code": "noteInput.addEventListener('keydown', async (e) => {"
+      },
+      {
+        "file": "templates.js",
+        "line": 247,
+        "code": "input.addEventListener('input', () => {"
+      },
+      {
+        "file": "templates.js",
+        "line": 254,
+        "code": "input.addEventListener('keydown', (e) => {"
+      },
+      {
+        "file": "templates.js",
+        "line": 261,
+        "code": "overlay.addEventListener('mousedown', (e) => {"
+      },
+      {
+        "file": "themes.js",
+        "line": 30,
+        "code": "this.mediaQuery.addEventListener('change', () => {"
+      },
+      {
+        "file": "update.js",
+        "line": 79,
+        "code": "banner.querySelector('.update-btn-changelog').addEventListener('click', () => {"
+      },
+      {
+        "file": "update.js",
+        "line": 84,
+        "code": "banner.querySelector('.update-btn-install').addEventListener('click', () => {"
+      },
+      {
+        "file": "update.js",
+        "line": 88,
+        "code": "banner.querySelector('.update-btn-later').addEventListener('click', () => {"
+      },
+      {
+        "file": "update.js",
+        "line": 156,
+        "code": "dialog.querySelector('.update-btn-restart').addEventListener('click', async () => {"
+      },
+      {
+        "file": "update.js",
+        "line": 166,
+        "code": "dialog.querySelector('.update-btn-dismiss').addEventListener('click', () => {"
+      },
+      {
+        "file": "update.js",
+        "line": 170,
+        "code": "dialog.querySelector('.update-restart-overlay').addEventListener('click', () => {"
+      },
+      {
+        "file": "wikilinks.js",
+        "line": 26,
+        "code": "textarea.addEventListener('input', (e) => this.onInput(e));"
+      },
+      {
+        "file": "wikilinks.js",
+        "line": 27,
+        "code": "textarea.addEventListener('keydown', (e) => this.onKeyDown(e));"
+      },
+      {
+        "file": "wikilinks.js",
+        "line": 28,
+        "code": "textarea.addEventListener('blur', () => this.hidePopup());"
+      },
+      {
+        "file": "wikilinks.js",
+        "line": 31,
+        "code": "textarea.addEventListener('click', () => {"
+      },
+      {
+        "file": "wikilinks.js",
+        "line": 200,
+        "code": "this.popup.addEventListener('mousedown', (e) => {"
+      }
+    ]
+  }
+}
