@@ -45,7 +45,7 @@ export class GraphView {
         this.canvas.addEventListener('mousedown', (e) => this.onMouseDown(e));
         this.canvas.addEventListener('mousemove', (e) => this.onMouseMove(e));
         this.canvas.addEventListener('mouseup', () => this.onMouseUp());
-        this.canvas.addEventListener('wheel', (e) => this.onWheel(e));
+        this.canvas.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });
         this.canvas.addEventListener('dblclick', (e) => this.onDblClick(e));
     }
 

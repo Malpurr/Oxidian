@@ -123,13 +123,22 @@ export class SettingsPage {
                             <div class="setting-control"><label class="toggle"><input type="checkbox" id="set-vim" ${s.editor.vim_mode ? 'checked' : ''}><span class="toggle-slider"></span></label></div>
                         </div>
                         <div class="setting-row">
-                            <div class="setting-info"><label>Editor Engine</label><p>Classic (textarea) or HyperMark (block-based WYSIWYG)</p></div>
+                            <div class="setting-info"><label>Editor Engine</label><p>Choose your editing experience</p></div>
                             <div class="setting-control">
                                 <select id="set-editor-mode">
                                     <option value="classic" ${(this.app.editorMode === 'classic') ? 'selected' : ''}>Classic</option>
-                                    <option value="hypermark" ${(this.app.editorMode === 'hypermark') ? 'selected' : ''}>HyperMark</option>
+                                    <option value="hypermark" ${(this.app.editorMode === 'hypermark') ? 'selected' : ''}>HyperMark (Experimental)</option>
                                 </select>
                             </div>
+                        </div>
+                        <div class="setting-row" id="row-hypermark-warning" style="display:${this.app.editorMode === 'hypermark' ? 'flex' : 'none'}">
+                            <div class="setting-info" style="flex:1">
+                                <p style="color: var(--text-yellow); font-size: 12px;">⚠️ HyperMark ist ein block-basierter Editor und kann instabil sein. Bei Problemen wechsle zurück zu Classic.</p>
+                            </div>
+                        </div>
+                        <div class="setting-row">
+                            <div class="setting-info"><label>Show Line Numbers</label><p>Display line numbers in the classic editor</p></div>
+                            <div class="setting-control"><label class="toggle"><input type="checkbox" id="set-line-numbers" ${localStorage.getItem('oxidian-line-numbers') === 'true' ? 'checked' : ''}><span class="toggle-slider"></span></label></div>
                         </div>
                     </div>
 
@@ -180,7 +189,7 @@ export class SettingsPage {
                     <div class="settings-section" id="section-updates">
                         <h2><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Updates</h2>
                         <div class="setting-row">
-                            <div class="setting-info"><label>Current Version</label><p id="current-version-display">v1.0.1</p></div>
+                            <div class="setting-info"><label>Current Version</label><p id="current-version-display">v1.1.2</p></div>
                             <div class="setting-control"><button class="btn-secondary btn-sm" id="btn-check-update">Check Now</button></div>
                         </div>
                         <div class="setting-row">
@@ -244,6 +253,14 @@ export class SettingsPage {
         const editorModeSelect = wrapper.querySelector('#set-editor-mode');
         editorModeSelect?.addEventListener('change', (e) => {
             this.app.setEditorMode(e.target.value);
+            const warning = wrapper.querySelector('#row-hypermark-warning');
+            if (warning) warning.style.display = e.target.value === 'hypermark' ? 'flex' : 'none';
+        });
+
+        const lineNumToggle = wrapper.querySelector('#set-line-numbers');
+        lineNumToggle?.addEventListener('change', (e) => {
+            localStorage.setItem('oxidian-line-numbers', e.target.checked ? 'true' : 'false');
+            this.app.editor?.toggleLineNumbers?.(e.target.checked);
         });
 
         // Encryption toggle
@@ -253,8 +270,8 @@ export class SettingsPage {
             if (e.target.checked) {
                 const pwd = prompt('Set vault encryption password:');
                 if (!pwd) { e.target.checked = false; return; }
-                const confirm = prompt('Confirm password:');
-                if (pwd !== confirm) { alert('Passwords do not match'); e.target.checked = false; return; }
+                const confirmPwd = prompt('Confirm password:');
+                if (pwd !== confirmPwd) { alert('Passwords do not match'); e.target.checked = false; return; }
                 try {
                     await invoke('setup_encryption', { password: pwd });
                     row.style.display = 'flex';

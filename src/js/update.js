@@ -101,6 +101,12 @@ export class UpdateManager {
     async downloadAndInstall(banner) {
         if (!this.updateInfo) return;
 
+        // Check if download URL is available
+        if (!this.updateInfo.download_url) {
+            this.showNotification('No download available for your platform. Please download manually from GitHub.', 'error');
+            return;
+        }
+
         // Show progress
         if (banner) {
             const content = banner.querySelector('.update-banner-content');

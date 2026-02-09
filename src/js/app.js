@@ -14,6 +14,11 @@ import { Onboarding } from './onboarding.js';
 import { PluginLoader } from './plugin-loader.js';
 import { HyperMarkEditor } from './hypermark.js';
 import { UpdateManager } from './update.js';
+import { BacklinksManager } from './backlinks.js';
+import { TemplateManager } from './templates.js';
+import { QuickSwitcher } from './quickswitcher.js';
+import { CalloutProcessor } from './callouts.js';
+import { MermaidRenderer } from './mermaid-renderer.js';
 
 class OxidianApp {
     constructor() {
@@ -31,9 +36,14 @@ class OxidianApp {
         this.onboarding = null;
         this.pluginLoader = null;
         this.updateManager = null;
+        this.backlinksManager = null;
+        this.templateManager = null;
+        this.quickSwitcher = null;
+        this.calloutProcessor = null;
+        this.mermaidRenderer = null;
         this.splitPanes = [];
         this.hypermarkEditor = null;
-        this.editorMode = localStorage.getItem('oxidian-editor-mode') || 'hypermark'; // 'classic' | 'hypermark'
+        this.editorMode = localStorage.getItem('oxidian-editor-mode') || 'classic'; // 'classic' | 'hypermark'
 
         // Feature state
         this.focusMode = false;
@@ -67,6 +77,11 @@ class OxidianApp {
         this.settingsPage = new SettingsPage(this);
         this.onboarding = new Onboarding(this);
         this.updateManager = new UpdateManager(this);
+        this.backlinksManager = new BacklinksManager(this);
+        this.templateManager = new TemplateManager(this);
+        this.quickSwitcher = new QuickSwitcher(this);
+        this.calloutProcessor = new CalloutProcessor();
+        this.mermaidRenderer = new MermaidRenderer();
 
         await this.themeManager.init();
 
@@ -356,6 +371,7 @@ class OxidianApp {
             await invoke('save_note', { path: this.currentFile, content });
             this.isDirty = false;
             this.tabManager.markClean(this.currentFile);
+            this.backlinksManager.invalidate();
         } catch (err) {
             console.error('Failed to save:', err);
         }
@@ -610,6 +626,11 @@ class OxidianApp {
     }
 
     removeSplitLayout() {
+        // Clean up split resize event listeners
+        if (this._splitResizeCleanup) {
+            this._splitResizeCleanup();
+            this._splitResizeCleanup = null;
+        }
         const handle = document.getElementById('split-handle');
         const rightPane = document.getElementById('right-pane');
         if (handle) handle.remove();
@@ -876,14 +897,7 @@ class OxidianApp {
 
     async loadBacklinks(path) {
         try {
-            const backlinks = await invoke('get_backlinks', { notePath: path });
-            const count = document.getElementById('backlink-count');
-            if (count) count.textContent = `${backlinks.length} backlinks`;
-
-            // Update backlinks panel if open
-            if (this.backlinksPanelOpen) {
-                this.loadBacklinksPanel(path);
-            }
+            await this.backlinksManager.updateForNote(path);
         } catch (err) {
             console.error('Failed to load backlinks:', err);
         }
@@ -969,6 +983,12 @@ class OxidianApp {
 
         document.addEventListener('mousemove', mousemove);
         document.addEventListener('mouseup', mouseup);
+
+        // Store references for cleanup when split is removed
+        this._splitResizeCleanup = () => {
+            document.removeEventListener('mousemove', mousemove);
+            document.removeEventListener('mouseup', mouseup);
+        };
     }
 
     // ===== Keyboard Shortcuts =====
@@ -984,10 +1004,19 @@ class OxidianApp {
             this.showNewNoteDialog();
         } else if (ctrl && e.key === 'p') {
             e.preventDefault();
-            this.openCommandPalette();
+            this.quickSwitcher.show();
+        } else if (ctrl && e.key === 't') {
+            e.preventDefault();
+            this.templateManager.showPicker();
+        } else if (ctrl && e.key === 'f' && !e.shiftKey) {
+            e.preventDefault();
+            this.search.show();
         } else if (ctrl && e.shiftKey && e.key === 'F') {
             e.preventDefault();
             this.search.show();
+        } else if (ctrl && e.key === 'd' && document.activeElement?.classList?.contains('editor-textarea')) {
+            // Let editor handle Ctrl+D (duplicate line) when textarea focused
+            return;
         } else if (ctrl && e.key === 'd') {
             e.preventDefault();
             this.openDailyNote();
@@ -1010,9 +1039,13 @@ class OxidianApp {
             this.hideSettings();
             this.contextMenu.hide();
             this.slashMenu?.hide();
-            // Close command palette if open
+            // Close command palette / quick switcher / template picker if open
             const palette = document.getElementById('command-palette-overlay');
             if (palette) palette.remove();
+            const qs = document.getElementById('quick-switcher-overlay');
+            if (qs) qs.remove();
+            const tp = document.getElementById('template-picker-overlay');
+            if (tp) tp.remove();
         }
     }
 
@@ -1231,6 +1264,9 @@ class OxidianApp {
             { name: 'Toggle Bookmark', action: () => this.toggleBookmark() },
             { name: 'Editor: Switch to Classic Mode', action: () => this.setEditorMode('classic') },
             { name: 'Editor: Switch to HyperMark Mode', action: () => this.setEditorMode('hypermark') },
+            { name: 'Quick Switcher', shortcut: 'Ctrl+P', action: () => this.quickSwitcher.show() },
+            { name: 'Insert Template', shortcut: 'Ctrl+T', action: () => this.templateManager.showPicker() },
+            { name: 'Toggle Backlinks Panel', action: () => this.toggleBacklinksPanel() },
         ];
 
         // Also include open files from sidebar
@@ -1327,8 +1363,9 @@ class OxidianApp {
             }
             const content = this.editor.getContent();
             if (content && content.trim()) {
-                invoke('render_markdown', { content }).then(html => {
+                this.renderMarkdown(content).then(html => {
                     readingView.innerHTML = html;
+                    this.mermaidRenderer.processElement(readingView);
                 }).catch(() => {});
             } else {
                 readingView.innerHTML = '<p style="color: var(--text-faint)">Start writing to see a preview</p>';
@@ -1366,23 +1403,8 @@ class OxidianApp {
 
     async loadBacklinksPanel(path) {
         try {
-            const backlinks = await invoke('get_backlinks', { notePath: path });
-            const list = document.querySelector('#backlinks-panel .backlinks-panel-list');
-            if (!list) return;
-
-            if (backlinks.length === 0) {
-                list.innerHTML = '<div class="backlink-panel-empty">No backlinks found</div>';
-                return;
-            }
-
-            list.innerHTML = '';
-            backlinks.forEach(link => {
-                const item = document.createElement('div');
-                item.className = 'backlink-panel-item';
-                item.textContent = link.replace('.md', '');
-                item.addEventListener('click', () => this.openFile(link));
-                list.appendChild(item);
-            });
+            const backlinks = await this.backlinksManager.getBacklinks(path);
+            this.backlinksManager.renderPanel(backlinks);
         } catch (err) {
             console.error('Failed to load backlinks panel:', err);
         }
@@ -1429,7 +1451,7 @@ class OxidianApp {
             case 'export-html': {
                 const content = this.editor.getContent();
                 try {
-                    const html = await invoke('render_markdown', { content });
+                    const html = await this.renderMarkdown(content);
                     const blob = new Blob([`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${this.currentFile}</title></head><body>${html}</body></html>`], { type: 'text/html' });
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement('a');
@@ -1444,6 +1466,26 @@ class OxidianApp {
                 // Placeholder
                 break;
         }
+    }
+
+    /**
+     * Render markdown to HTML with callout and mermaid post-processing.
+     */
+    async renderMarkdown(content) {
+        const html = await invoke('render_markdown', { content });
+        // Apply callout processing
+        const processed = this.calloutProcessor.process(html);
+        return processed;
+    }
+
+    /**
+     * Post-process a DOM element for mermaid diagrams (async, in-place).
+     */
+    async postProcessRendered(el) {
+        // Callouts on DOM
+        this.calloutProcessor.processElement(el);
+        // Mermaid diagrams
+        await this.mermaidRenderer.processElement(el);
     }
 
     escapeHtml(text) {

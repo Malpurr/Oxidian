@@ -119,8 +119,13 @@
             <div id="content-area">
                 <div id="tab-bar">
                     <div id="tab-list"></div>
+                    <button id="tab-new-btn" title="New Tab (Ctrl+N)">+</button>
                 </div>
                 <div id="breadcrumb-bar">
+                    <div class="breadcrumb-nav-buttons">
+                        <button class="breadcrumb-nav-btn" id="btn-nav-back" title="Back" disabled>←</button>
+                        <button class="breadcrumb-nav-btn" id="btn-nav-forward" title="Forward" disabled>→</button>
+                    </div>
                     <div id="breadcrumb-path"></div>
                     <div id="view-toolbar">
                         <button class="view-toolbar-btn" id="btn-view-mode" title="Toggle View Mode (Ctrl+E)">
@@ -187,6 +192,7 @@
                             <div class="shortcut"><kbd>Ctrl+P</kbd> Command Palette</div>
                             <div class="shortcut"><kbd>Ctrl+E</kbd> Toggle Preview</div>
                             <div class="shortcut"><kbd>Ctrl+,</kbd> Settings</div>
+                            <div class="shortcut"><kbd>Ctrl+T</kbd> Insert Template</div>
                             <div class="shortcut"><kbd>Ctrl+Shift+D</kbd> Focus Mode</div>
                             <div class="shortcut"><kbd>/</kbd> Slash Commands</div>
                         </div>

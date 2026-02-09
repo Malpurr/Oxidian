@@ -620,6 +620,17 @@ input[type="color"]::-webkit-color-swatch {
     flex: 1;
 }
 
+.tab .tab-dirty {
+    display: none;
+    width: 8px;
+    height: 8px;
+    flex-shrink: 0;
+}
+
+.tab.dirty .tab-dirty {
+    display: block;
+}
+
 .tab .tab-close {
     display: flex;
     align-items: center;
@@ -633,8 +644,22 @@ input[type="color"]::-webkit-color-swatch {
     flex-shrink: 0;
 }
 
-.tab:hover .tab-close,
-.tab.active .tab-close {
+/* Close button: hidden by default, shows on hover (replaces dirty dot) */
+.tab:hover .tab-close {
+    opacity: 1;
+}
+
+/* When not hovered, dirty tab shows the dot instead of close */
+.tab.dirty:not(:hover) .tab-dirty {
+    display: block;
+}
+.tab.dirty:not(:hover) .tab-close {
+    display: none;
+}
+.tab.dirty:hover .tab-dirty {
+    display: none;
+}
+.tab.dirty:hover .tab-close {
     opacity: 1;
 }
 
@@ -3189,7 +3214,14 @@ kbd:hover {
 }
 
 /* Syntax highlight token colors */
-.hl-heading { color: var(--text-accent); font-weight: 600; }
+/* Heading levels with distinct colors */
+.hl-heading { font-weight: 600; }
+.hl-heading-1 { color: var(--text-accent); font-size: 1.1em; }
+.hl-heading-2 { color: var(--text-blue); }
+.hl-heading-3 { color: var(--text-teal); }
+.hl-heading-4 { color: var(--text-purple); }
+.hl-heading-5 { color: var(--text-pink); }
+.hl-heading-6 { color: var(--text-muted); }
 .hl-bold { color: var(--text-orange); font-weight: 700; }
 .hl-italic { color: var(--text-pink); font-style: italic; }
 .hl-inline-code { color: var(--text-teal); background: rgba(148, 226, 213, 0.08); border-radius: 3px; padding: 0 2px; }
@@ -3206,6 +3238,39 @@ kbd:hover {
 .hl-string { color: var(--text-green); }
 .hl-comment { color: var(--text-faint); font-style: italic; }
 .hl-number { color: var(--text-orange); }
+
+/* ===== Line Numbers ===== */
+.editor-line-numbers {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 48px;
+    padding: 20px 8px 20px 0;
+    font-family: var(--font-editor);
+    font-size: var(--font-size-editor);
+    line-height: 1.7;
+    text-align: right;
+    color: var(--text-faint);
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border-color);
+    overflow: hidden;
+    user-select: none;
+    z-index: 2;
+}
+
+.editor-line-numbers .line-number {
+    height: calc(var(--font-size-editor) * 1.7);
+    line-height: calc(var(--font-size-editor) * 1.7);
+}
+
+.editor-with-line-numbers {
+    padding-left: 60px !important;
+}
+
+.editor-highlight-backdrop.editor-with-line-numbers {
+    padding-left: 60px !important;
+}
 
 /* ===== PIXEL Sprint #2: Sidebar Enhancements ===== */
 
@@ -4282,3 +4347,414 @@ body.focus-mode .hypermark-editor {
 .update-notification-error { background: #5a2d2d; color: #d9a3a3; }
 .update-notification-info { background: var(--bg-tertiary, #1a1a2e); color: var(--text-primary, #e0e0e0); border: 1px solid var(--border, #333); }
 .update-notification-hide { opacity: 0; }
+
+/* ===================================================================
+   PIXEL Sprint #3: Final UI Polish — Obsidian Parity
+   =================================================================== */
+
+/* ===== Tab Bar: New Tab Button ===== */
+#tab-new-btn {
+    -webkit-app-region: no-drag;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    margin: auto 4px auto 2px;
+    background: none;
+    border: none;
+    color: var(--text-faint);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    font-size: 16px;
+    transition: all var(--transition);
+    flex-shrink: 0;
+}
+
+#tab-new-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+#tab-new-btn:active {
+    transform: scale(0.9);
+}
+
+/* ===== Breadcrumb Bar: Nav Buttons + View Icons ===== */
+.breadcrumb-nav-buttons {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin-right: 8px;
+    flex-shrink: 0;
+}
+
+.breadcrumb-nav-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    background: none;
+    border: none;
+    color: var(--text-faint);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    transition: all var(--transition);
+}
+
+.breadcrumb-nav-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.breadcrumb-nav-btn:disabled {
+    opacity: 0.3;
+    cursor: default;
+}
+
+.breadcrumb-nav-btn:disabled:hover {
+    background: none;
+}
+
+/* ===== Editor Textarea: Full Polish ===== */
+.editor-textarea {
+    width: 100%;
+    height: 100%;
+    flex: 1;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    border: none;
+    outline: none;
+    resize: none;
+    padding: 24px 32px;
+    font-family: var(--font-editor);
+    font-size: var(--font-size-editor);
+    line-height: 1.75;
+    tab-size: 4;
+    overflow-y: auto;
+    caret-color: var(--text-accent);
+    letter-spacing: 0.01em;
+}
+
+.editor-textarea::placeholder {
+    color: var(--text-faint);
+    font-style: italic;
+}
+
+/* Subtle current-line highlight effect via focus background */
+.editor-textarea:focus {
+    background: var(--bg-primary);
+    box-shadow: inset 3px 0 0 rgba(127, 109, 242, 0.2);
+}
+
+/* ===== Scrollbar: Theme-Matched ===== */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(78, 78, 108, 0.4);
+    border-radius: 4px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(127, 109, 242, 0.5);
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+
+::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
+/* Thin scrollbar for sidebar */
+#file-tree::-webkit-scrollbar,
+#search-results::-webkit-scrollbar,
+.outline-items::-webkit-scrollbar,
+.bookmarks-items::-webkit-scrollbar,
+.recent-items::-webkit-scrollbar {
+    width: 5px;
+}
+
+/* ===== Sidebar: Tree Item File-Type Icons ===== */
+/* Markdown files */
+.tree-item[data-ext="md"] .icon { color: var(--text-blue); }
+/* Config files */
+.tree-item[data-ext="json"] .icon,
+.tree-item[data-ext="yaml"] .icon,
+.tree-item[data-ext="yml"] .icon,
+.tree-item[data-ext="toml"] .icon { color: var(--text-yellow); }
+/* Images */
+.tree-item[data-ext="png"] .icon,
+.tree-item[data-ext="jpg"] .icon,
+.tree-item[data-ext="jpeg"] .icon,
+.tree-item[data-ext="gif"] .icon,
+.tree-item[data-ext="svg"] .icon,
+.tree-item[data-ext="webp"] .icon { color: var(--text-green); }
+/* PDFs */
+.tree-item[data-ext="pdf"] .icon { color: var(--text-red); }
+/* Canvas files */
+.tree-item[data-ext="canvas"] .icon { color: var(--text-purple); }
+
+/* ===== Sidebar: Active File Accent Bar ===== */
+.tree-item.active {
+    background: rgba(127, 109, 242, 0.08);
+    color: var(--text-primary);
+}
+
+.tree-item.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 2px;
+    bottom: 2px;
+    width: 2.5px;
+    background: var(--text-accent);
+    border-radius: 0 2px 2px 0;
+}
+
+/* ===== Sidebar: Explorer Header ===== */
+.sidebar-panel-header .panel-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-muted);
+    user-select: none;
+}
+
+/* ===== Status Bar: Obsidian-like Layout ===== */
+#statusbar {
+    height: var(--statusbar-height);
+    background: var(--bg-tertiary);
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 12px;
+    font-size: 11px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+    gap: 8px;
+}
+
+/* ===== General: No White Artifacts ===== */
+body, html, #app, #main-layout, #content-area,
+#editor-area, #pane-container, .pane,
+.editor-wrapper, .editor-pane-half {
+    background: var(--bg-primary);
+}
+
+/* ===== General: Smooth Hover Transitions Everywhere ===== */
+a, button, .tree-item, .tab, .ribbon-btn, .icon-btn,
+.breadcrumb-item, .view-toolbar-btn, .ctx-item,
+.tag-pill, .search-result-item, .outline-item,
+.bookmark-item, .recent-item, .setting-row,
+.settings-nav-item, .plugin-item, .theme-card {
+    transition: all var(--transition);
+}
+
+/* ===== General: No Visual Breaks Between Regions ===== */
+#sidebar {
+    border-right: 1px solid var(--border-color);
+}
+
+#tab-bar {
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* Tab-to-editor seamless transition for active tab */
+.tab.active {
+    background: var(--bg-primary);
+    border-bottom-color: var(--bg-primary);
+}
+
+/* ===== Sidebar: Folder Chevron Icons ===== */
+.tree-item .chevron::before {
+    content: '▶';
+    font-size: 8px;
+    display: inline-block;
+    transition: transform var(--transition);
+}
+
+.tree-item .chevron.open::before {
+    content: '▼';
+    font-size: 8px;
+}
+
+/* Remove SVG chevron if present — pure CSS chevrons */
+.tree-item .chevron svg {
+    display: none;
+}
+
+/* ============================
+   Enhanced Backlinks Panel
+   ============================ */
+.backlink-item-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.backlink-item-header:hover {
+    background: var(--bg-hover, rgba(255,255,255,0.06));
+}
+.backlink-item-icon { font-size: 14px; }
+.backlink-item-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+.backlink-item-folder {
+    font-size: 11px;
+    color: var(--text-faint);
+    margin-left: auto;
+}
+.backlink-snippets {
+    padding: 0 8px 8px 28px;
+}
+.backlink-snippet {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    padding: 4px 8px;
+    border-left: 2px solid var(--border-color, #313244);
+    margin-bottom: 4px;
+    border-radius: 0 4px 4px 0;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.backlink-snippet:hover {
+    background: var(--bg-hover, rgba(255,255,255,0.04));
+}
+.backlink-snippet mark {
+    background: var(--accent-color, #cba6f7);
+    color: var(--bg-primary, #1e1e2e);
+    padding: 0 2px;
+    border-radius: 2px;
+}
+.backlink-panel-item {
+    margin-bottom: 4px;
+}
+
+/* ============================
+   Quick Switcher
+   ============================ */
+.quick-switcher {
+    max-width: 720px !important;
+    width: 90vw;
+}
+.quick-switcher-body {
+    display: flex;
+    max-height: 400px;
+    overflow: hidden;
+}
+.quick-switcher-results {
+    flex: 1;
+    min-width: 0;
+    overflow-y: auto;
+}
+.quick-switcher-preview {
+    width: 280px;
+    border-left: 1px solid var(--border-color, #313244);
+    overflow-y: auto;
+    padding: 12px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    display: none;
+}
+@media (min-width: 640px) {
+    .quick-switcher-preview {
+        display: block;
+    }
+}
+.quick-switcher-preview-empty {
+    color: var(--text-faint);
+    font-style: italic;
+    padding: 24px 0;
+    text-align: center;
+}
+.quick-switcher-preview-content {
+    font-size: 12px;
+    line-height: 1.6;
+}
+.quick-switcher-preview-content h1,
+.quick-switcher-preview-content h2,
+.quick-switcher-preview-content h3 {
+    font-size: 14px;
+    margin: 8px 0 4px;
+}
+.quick-switcher-preview-content p {
+    margin: 4px 0;
+}
+
+/* ============================
+   Template Picker
+   ============================ */
+.template-note-name-wrap {
+    border-top: 1px solid var(--border-color, #313244);
+}
+.template-note-name {
+    margin: 0 !important;
+    border-top: none !important;
+}
+
+/* ============================
+   Callout Blocks
+   ============================ */
+.callout {
+    border-radius: 6px;
+    margin: 12px 0;
+    overflow: hidden;
+}
+.callout-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    font-weight: 600;
+}
+.callout-icon { font-size: 16px; }
+.callout-title { font-size: 14px; }
+.callout-body {
+    padding: 8px 12px 12px;
+    font-size: 14px;
+    line-height: 1.6;
+}
+.callout-body p:first-child { margin-top: 0; }
+.callout-body p:last-child { margin-bottom: 0; }
+
+/* ============================
+   Mermaid Diagrams
+   ============================ */
+.mermaid-diagram {
+    display: flex;
+    justify-content: center;
+    padding: 16px;
+    margin: 12px 0;
+    background: var(--bg-secondary, #181825);
+    border-radius: 8px;
+    border: 1px solid var(--border-color, #313244);
+    overflow-x: auto;
+}
+.mermaid-diagram svg {
+    max-width: 100%;
+    height: auto;
+}
+.mermaid-error {
+    color: var(--text-red, #f38ba8);
+    padding: 12px;
+    font-size: 13px;
+}

@@ -123,12 +123,10 @@ export class PluginLoader {
     }
 
     _initCommandPalette() {
-        document.addEventListener('keydown', (e) => {
-            if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
-                e.preventDefault();
-                this.showCommandPalette();
-            }
-        });
+        // Ctrl+P is handled by OxidianApp.handleKeyboard() → openCommandPalette().
+        // We hook into that by replacing the app method to use our enhanced palette
+        // (which includes plugin commands) instead of registering a duplicate listener.
+        this.oxidianApp.openCommandPalette = () => this.showCommandPalette();
     }
 
     showCommandPalette() {
