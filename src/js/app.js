@@ -319,7 +319,7 @@ class OxidianApp {
             this.isDirty = false;
             this.addRecentFile(path);
 
-            this.ensureEditorPane();
+            await this.ensureEditorPane();
             this.editor.setContent(content);
             this.sidebar.setActive(path);
             this.hideWelcome();
@@ -354,7 +354,7 @@ class OxidianApp {
     showEditorPane(path, pane = 0) {
         if (pane === 0) {
             if (path === this.currentFile) {
-                this.ensureEditorPane();
+                await this.ensureEditorPane();
                 return;
             }
             this.loadFileIntoLeftPane(path);
@@ -376,7 +376,7 @@ class OxidianApp {
             const content = await invoke('read_note', { path });
             this.currentFile = path;
             this.isDirty = false;
-            this.ensureEditorPane();
+            await this.ensureEditorPane();
             this.editor.setContent(content);
             this.sidebar.setActive(path);
             this.hideWelcome();
@@ -603,7 +603,7 @@ class OxidianApp {
 
     // ===== Pane Management =====
 
-    ensureEditorPane() {
+    async ensureEditorPane() {
         const container = document.getElementById('pane-container');
 
         // Check if left pane already has an editor
@@ -644,7 +644,7 @@ class OxidianApp {
             container.insertBefore(pane, container.firstChild);
 
             const textarea = pane.querySelector('.editor-textarea');
-            this.editor.attach(textarea, null);
+            await this.editor.attach(textarea, null);
         } else {
             // HyperMark (live preview) — single pane, NO side preview
             pane.innerHTML = `
@@ -699,7 +699,7 @@ class OxidianApp {
             this.hypermarkEditor.destroy?.();
             this.hypermarkEditor = null;
         }
-        this.ensureEditorPane();
+        await this.ensureEditorPane();
         if (content) {
             this.editor.setContent(content);
         }
@@ -1640,7 +1640,7 @@ class OxidianApp {
 
     // ===== View Mode =====
 
-    cycleViewMode() {
+    async cycleViewMode() {
         const modes = ['live-preview', 'source', 'reading'];
         const idx = modes.indexOf(this.viewMode);
         this.viewMode = modes[(idx + 1) % modes.length];
@@ -1657,7 +1657,7 @@ class OxidianApp {
             this.hypermarkEditor.destroy?.();
             this.hypermarkEditor = null;
         }
-        this.ensureEditorPane();
+        await this.ensureEditorPane();
         if (content) this.editor.setContent(content);
 
         this.updateViewModeButton();

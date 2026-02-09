@@ -45,11 +45,21 @@ export class SlashMenu {
         document.body.appendChild(this.el);
     }
 
-    /** Called on every input event of the textarea */
-    onInput(textarea) {
-        this.textarea = textarea;
-        const pos = textarea.selectionStart;
-        const text = textarea.value;
+    /** Called on every input event of the textarea OR CodeMirror view */
+    onInput(editorOrTextarea) {
+        this._editor = editorOrTextarea;
+        // Detect CodeMirror view vs textarea
+        this._isCodeMirror = !!(editorOrTextarea && editorOrTextarea.state && editorOrTextarea.dispatch);
+        
+        let pos, text;
+        if (this._isCodeMirror) {
+            pos = editorOrTextarea.state.selection.main.head;
+            text = editorOrTextarea.state.doc.toString();
+        } else {
+            this.textarea = editorOrTextarea;
+            pos = editorOrTextarea.selectionStart;
+            text = editorOrTextarea.value;
+        }
 
         // Find if we're in a slash command context
         const beforeCursor = text.substring(0, pos);
@@ -70,7 +80,7 @@ export class SlashMenu {
                     );
                     if (this.filteredCommands.length > 0) {
                         this.selectedIndex = 0;
-                        this.show(textarea);
+                        this.show(editorOrTextarea);
                         return;
                     }
                 }
@@ -80,12 +90,12 @@ export class SlashMenu {
         this.hide();
     }
 
-    show(textarea) {
+    show(editorOrTextarea) {
         this.visible = true;
         this.render();
 
         // Position near cursor
-        const pos = this.getCursorPosition(textarea);
+        const pos = this._isCodeMirror ? this.getCMCursorPosition(editorOrTextarea) : this.getCursorPosition(editorOrTextarea);
         this.el.style.left = pos.x + 'px';
         this.el.style.top = pos.y + 'px';
         this.el.classList.remove('hidden');
@@ -158,33 +168,67 @@ export class SlashMenu {
     }
 
     execute(cmd) {
-        if (!this.textarea || this.slashStart < 0) return;
+        if (!this._editor || this.slashStart < 0) return;
 
-        const pos = this.textarea.selectionStart;
-        const value = this.textarea.value;
+        if (this._isCodeMirror) {
+            // CodeMirror 6 path
+            const view = this._editor;
+            const pos = view.state.selection.main.head;
+            
+            if (cmd.wrap) {
+                const [pre, post] = cmd.wrap;
+                const placeholder = 'text';
+                view.dispatch({
+                    changes: { from: this.slashStart, to: pos, insert: pre + placeholder + post },
+                    selection: { anchor: this.slashStart + pre.length, head: this.slashStart + pre.length + placeholder.length }
+                });
+            } else if (cmd.insert) {
+                let newPos = this.slashStart + cmd.insert.length;
+                if (cmd.cursorOffset) newPos += cmd.cursorOffset;
+                view.dispatch({
+                    changes: { from: this.slashStart, to: pos, insert: cmd.insert },
+                    selection: { anchor: newPos }
+                });
+            }
+            view.focus();
+        } else {
+            // Textarea path
+            const textarea = this._editor;
+            const pos = textarea.selectionStart;
+            const value = textarea.value;
+            const before = value.substring(0, this.slashStart);
+            const after = value.substring(pos);
 
-        // Remove the slash + filter text
-        const before = value.substring(0, this.slashStart);
-        const after = value.substring(pos);
-
-        if (cmd.wrap) {
-            const [pre, post] = cmd.wrap;
-            const text = 'text';
-            this.textarea.value = before + pre + text + post + after;
-            this.textarea.selectionStart = this.slashStart + pre.length;
-            this.textarea.selectionEnd = this.slashStart + pre.length + text.length;
-        } else if (cmd.insert) {
-            this.textarea.value = before + cmd.insert + after;
-            let newPos = this.slashStart + cmd.insert.length;
-            if (cmd.cursorOffset) newPos += cmd.cursorOffset;
-            this.textarea.selectionStart = this.textarea.selectionEnd = newPos;
+            if (cmd.wrap) {
+                const [pre, post] = cmd.wrap;
+                const text = 'text';
+                textarea.value = before + pre + text + post + after;
+                textarea.selectionStart = this.slashStart + pre.length;
+                textarea.selectionEnd = this.slashStart + pre.length + text.length;
+            } else if (cmd.insert) {
+                textarea.value = before + cmd.insert + after;
+                let newPos = this.slashStart + cmd.insert.length;
+                if (cmd.cursorOffset) newPos += cmd.cursorOffset;
+                textarea.selectionStart = textarea.selectionEnd = newPos;
+            }
+            textarea.focus();
+            textarea.dispatchEvent(new Event('input', { bubbles: true }));
         }
 
-        this.textarea.focus();
         this.hide();
+    }
 
-        // Trigger input event for dirty tracking and preview
-        this.textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    getCMCursorPosition(view) {
+        try {
+            const pos = view.state.selection.main.head;
+            const coords = view.coordsAtPos(pos);
+            if (coords) {
+                return { x: coords.left, y: coords.bottom + 4 };
+            }
+        } catch (e) {}
+        // Fallback
+        const rect = view.dom.getBoundingClientRect();
+        return { x: rect.left + 20, y: rect.top + 40 };
     }
 
     getCursorPosition(textarea) {
