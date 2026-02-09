@@ -32,6 +32,9 @@
 - ✂️ **Split Panes** — edit multiple notes side-by-side
 - ⌨️ **Command Palette** (Ctrl+P)
 - 🔒 **Encrypted Notes** (AES-256-GCM)
+- 🔄 **Auto-Updater** — checks GitHub Releases, download + auto-restart
+- 👁️ **View Modes** — Live Preview / Source / Reading (Ctrl+E)
+- 📊 **Status Bar** — Backlinks, words, characters, reading time, Ln/Col
 - 🚀 **~16MB binary** — no Electron, no bloat
 
 ## 🏗️ Tech Stack
