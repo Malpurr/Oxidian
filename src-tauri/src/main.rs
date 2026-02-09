@@ -8,6 +8,7 @@ mod markdown;
 mod plugin;
 mod search;
 mod settings;
+mod updater;
 mod vault;
 
 use search::SearchIndex;
@@ -90,6 +91,9 @@ fn main() {
             commands::setup_vault,
             commands::install_plugin,
             commands::read_file_absolute,
+            commands::check_update,
+            commands::download_and_install_update,
+            commands::get_current_version,
         ])
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();

@@ -706,3 +706,28 @@ pub fn setup_vault(state: State<AppState>, path: String) -> Result<(), String> {
 
     Ok(())
 }
+
+// ─── Auto-Update Commands ────────────────────────────────────────────
+
+#[tauri::command]
+pub async fn check_update() -> Result<Option<crate::updater::UpdateInfo>, String> {
+    let current = crate::updater::get_current_version();
+    crate::updater::check_for_updates(&current).await
+}
+
+#[tauri::command]
+pub async fn download_and_install_update(download_url: String) -> Result<(), String> {
+    let temp_dir = std::env::temp_dir();
+    let dest = temp_dir.join("oxidian-update-binary");
+    let dest_str = dest.to_string_lossy().to_string();
+
+    crate::updater::download_update(&download_url, &dest_str).await?;
+    crate::updater::apply_update(&dest_str)?;
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn get_current_version() -> String {
+    crate::updater::get_current_version()
+}

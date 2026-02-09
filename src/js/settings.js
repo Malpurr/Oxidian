@@ -68,6 +68,10 @@ export class SettingsPage {
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="8" height="8" rx="1"/><rect x="14" y="2" width="8" height="8" rx="1"/><rect x="2" y="14" width="8" height="8" rx="1"/><rect x="14" y="14" width="8" height="8" rx="1"/></svg>
                         Plugins
                     </button>
+                    <button class="settings-nav-item" data-section="updates">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                        Updates
+                    </button>
                 </nav>
                 <div class="settings-content">
                     <!-- General -->
@@ -170,6 +174,24 @@ export class SettingsPage {
                         <h2><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="8" height="8" rx="1"/><rect x="14" y="2" width="8" height="8" rx="1"/><rect x="2" y="14" width="8" height="8" rx="1"/><rect x="14" y="14" width="8" height="8" rx="1"/></svg> Plugins</h2>
                         <div id="plugins-list" class="plugins-list"><p class="text-muted">Loading plugins...</p></div>
                         <button class="btn-secondary" id="btn-load-plugin" style="margin-top:12px">Load Plugin</button>
+                    </div>
+
+                    <!-- Updates -->
+                    <div class="settings-section" id="section-updates">
+                        <h2><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Updates</h2>
+                        <div class="setting-row">
+                            <div class="setting-info"><label>Current Version</label><p id="current-version-display">v1.0.1</p></div>
+                            <div class="setting-control"><button class="btn-secondary btn-sm" id="btn-check-update">Check Now</button></div>
+                        </div>
+                        <div class="setting-row">
+                            <div class="setting-info"><label>Check for updates on startup</label><p>Automatically check for new versions when Oxidian starts</p></div>
+                            <div class="setting-control"><label class="toggle"><input type="checkbox" id="set-update-check" ${localStorage.getItem('oxidian-update-check') !== 'false' ? 'checked' : ''}><span class="toggle-slider"></span></label></div>
+                        </div>
+                        <div class="setting-row">
+                            <div class="setting-info"><label>Auto-install updates</label><p>Automatically download and install updates (requires restart)</p></div>
+                            <div class="setting-control"><label class="toggle"><input type="checkbox" id="set-auto-install" ${localStorage.getItem('oxidian-auto-install-updates') === 'true' ? 'checked' : ''}><span class="toggle-slider"></span></label></div>
+                        </div>
+                        <div id="update-status" class="text-muted" style="padding:8px 0;font-size:13px"></div>
                     </div>
                 </div>
             </div>
@@ -310,6 +332,35 @@ export class SettingsPage {
                 alert('To install a plugin:\n1. Download the plugin (manifest.json + main.js)\n2. Place it in your vault\'s .obsidian/plugins/<plugin-id>/ folder\n3. Restart Oxidian or refresh the plugin list');
             }
         });
+
+        // Update settings
+        wrapper.querySelector('#set-update-check')?.addEventListener('change', (e) => {
+            localStorage.setItem('oxidian-update-check', e.target.checked ? 'true' : 'false');
+        });
+        wrapper.querySelector('#set-auto-install')?.addEventListener('change', (e) => {
+            localStorage.setItem('oxidian-auto-install-updates', e.target.checked ? 'true' : 'false');
+        });
+        wrapper.querySelector('#btn-check-update')?.addEventListener('click', async () => {
+            const statusEl = wrapper.querySelector('#update-status');
+            if (statusEl) statusEl.textContent = 'Checking for updates...';
+            if (this.app.updateManager) {
+                await this.app.updateManager.checkForUpdate(true);
+                if (statusEl && !this.app.updateManager.updateInfo) {
+                    statusEl.textContent = 'You\'re on the latest version!';
+                } else if (statusEl && this.app.updateManager.updateInfo) {
+                    statusEl.textContent = `Update available: v${this.app.updateManager.updateInfo.version}`;
+                }
+            }
+        });
+
+        // Load current version
+        (async () => {
+            try {
+                const ver = await invoke('get_current_version');
+                const el = wrapper.querySelector('#current-version-display');
+                if (el) el.textContent = 'v' + ver;
+            } catch {}
+        })();
 
         // Auto-save on any change
         const saveDebounce = this.debounce(() => this.saveAll(wrapper), 500);

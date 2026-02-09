@@ -13,6 +13,7 @@ import { SettingsPage } from './settings.js';
 import { Onboarding } from './onboarding.js';
 import { PluginLoader } from './plugin-loader.js';
 import { HyperMarkEditor } from './hypermark.js';
+import { UpdateManager } from './update.js';
 
 class OxidianApp {
     constructor() {
@@ -29,6 +30,7 @@ class OxidianApp {
         this.settingsPage = null;
         this.onboarding = null;
         this.pluginLoader = null;
+        this.updateManager = null;
         this.splitPanes = [];
         this.hypermarkEditor = null;
         this.editorMode = localStorage.getItem('oxidian-editor-mode') || 'hypermark'; // 'classic' | 'hypermark'
@@ -37,6 +39,10 @@ class OxidianApp {
         this.focusMode = false;
         this.bookmarks = JSON.parse(localStorage.getItem('oxidian-bookmarks') || '[]');
         this.recentFiles = JSON.parse(localStorage.getItem('oxidian-recent') || '[]');
+
+        // View mode per tab: 'live-preview' | 'source' | 'reading'
+        this.viewMode = 'live-preview';
+        this.backlinksPanelOpen = false;
 
         // Split pane state
         this.rightEditor = null;
@@ -60,6 +66,7 @@ class OxidianApp {
         this.slashMenu = new SlashMenu(this);
         this.settingsPage = new SettingsPage(this);
         this.onboarding = new Onboarding(this);
+        this.updateManager = new UpdateManager(this);
 
         await this.themeManager.init();
 
@@ -83,6 +90,25 @@ class OxidianApp {
         document.querySelector('.ribbon-btn[data-action="daily"]')?.addEventListener('click', () => this.openDailyNote());
         document.querySelector('.ribbon-btn[data-action="settings"]')?.addEventListener('click', () => this.openSettingsTab());
         document.querySelector('.ribbon-btn[data-action="focus"]')?.addEventListener('click', () => this.toggleFocusMode());
+
+        // View toolbar buttons
+        document.getElementById('btn-view-mode')?.addEventListener('click', () => this.cycleViewMode());
+        document.getElementById('btn-backlinks')?.addEventListener('click', () => this.toggleBacklinksPanel());
+        document.getElementById('btn-more-options')?.addEventListener('click', (e) => { e.stopPropagation(); this.toggleMoreOptions(); });
+        document.getElementById('btn-close-backlinks')?.addEventListener('click', () => this.toggleBacklinksPanel(false));
+
+        // More options menu actions
+        document.getElementById('more-options-menu')?.addEventListener('click', (e) => {
+            const item = e.target.closest('.dropdown-item');
+            if (!item || item.classList.contains('disabled')) return;
+            this.handleMoreOption(item.dataset.action);
+            document.getElementById('more-options-menu').classList.add('hidden');
+        });
+
+        // Close dropdown on outside click
+        document.addEventListener('click', () => {
+            document.getElementById('more-options-menu')?.classList.add('hidden');
+        });
 
         // Bookmarks
         document.getElementById('btn-bookmark-current')?.addEventListener('click', () => this.toggleBookmark());
@@ -156,6 +182,9 @@ class OxidianApp {
         } catch (e) {
             console.error('Failed to initialize plugin loader:', e);
         }
+
+        // Check for updates (non-blocking)
+        this.updateManager.checkOnStartup();
     }
 
     async applySettings() {
@@ -203,6 +232,13 @@ class OxidianApp {
     onTabActivated(tab) {
         const pane = tab.pane || 0;
         if (tab.type === 'note') {
+            // Restore per-tab view mode
+            if (tab.viewMode) {
+                this.viewMode = tab.viewMode;
+            } else {
+                tab.viewMode = this.viewMode;
+            }
+            this.updateViewModeButton();
             this.showEditorPane(tab.path, pane);
         } else if (tab.type === 'graph') {
             this.showGraphPane(pane);
@@ -414,7 +450,10 @@ class OxidianApp {
 
         // Check if left pane already has an editor
         const leftPane = document.getElementById('left-pane');
-        if (leftPane && (leftPane.querySelector('.editor-wrapper') || leftPane.querySelector('.hypermark-editor'))) return;
+        if (leftPane && (leftPane.querySelector('.editor-wrapper') || leftPane.querySelector('.hypermark-editor'))) {
+            this.applyViewMode();
+            return;
+        }
 
         // Remove non-editor content from left pane (graph, settings) without touching right pane
         if (leftPane) {
@@ -435,26 +474,33 @@ class OxidianApp {
         pane.className = 'pane';
         pane.id = 'left-pane';
 
-        if (this.editorMode === 'hypermark') {
-            // HyperMark block editor
+        if (this.viewMode === 'source' || this.editorMode === 'classic') {
+            // Source mode: raw textarea only, no preview pane
+            pane.innerHTML = `
+                <div class="editor-wrapper">
+                    <div class="editor-pane-half">
+                        <textarea class="editor-textarea" placeholder="Start writing... (Markdown supported)" spellcheck="true"></textarea>
+                    </div>
+                </div>
+                <div class="reading-view preview-content"></div>
+            `;
+            container.insertBefore(pane, container.firstChild);
+
+            const textarea = pane.querySelector('.editor-textarea');
+            this.editor.attach(textarea, null);
+        } else {
+            // HyperMark (live preview) — single pane, NO side preview
             pane.innerHTML = `
                 <div class="editor-wrapper" style="display:flex;flex:1;overflow:hidden;">
                     <div class="editor-pane-half" style="flex:1;display:flex;overflow:hidden;">
                         <div class="hypermark-editor" id="hypermark-root"></div>
                     </div>
-                    <div class="preview-pane-half">
-                        <div class="preview-content"></div>
-                        <div class="backlinks-section hidden">
-                            <h3>Backlinks</h3>
-                            <div class="backlinks-list"></div>
-                        </div>
-                    </div>
                 </div>
+                <div class="reading-view preview-content"></div>
             `;
             container.insertBefore(pane, container.firstChild);
 
             const hmRoot = pane.querySelector('#hypermark-root');
-            const preview = pane.querySelector('.preview-content');
 
             // Destroy old hypermark instance if any
             if (this.hypermarkEditor) {
@@ -463,14 +509,6 @@ class OxidianApp {
             this.hypermarkEditor = new HyperMarkEditor(hmRoot, {
                 onChange: (content) => {
                     this.markDirty();
-                    // Update preview pane
-                    if (preview && content.trim()) {
-                        invoke('render_markdown', { content }).then(html => {
-                            preview.innerHTML = html;
-                        }).catch(() => {});
-                    } else if (preview) {
-                        preview.innerHTML = '<p style="color: var(--text-faint)">Preview will appear here...</p>';
-                    }
                     // Update outline & stats
                     this.editor.updateStatsFromContent?.(content);
                     this.updateOutline?.(content);
@@ -478,29 +516,10 @@ class OxidianApp {
             });
 
             // Also attach the classic editor adapter (for getContent/stats)
-            this.editor.attachHyperMark(this.hypermarkEditor, preview);
-        } else {
-            // Classic textarea editor
-            pane.innerHTML = `
-                <div class="editor-wrapper">
-                    <div class="editor-pane-half">
-                        <textarea class="editor-textarea" placeholder="Start writing... (Markdown supported)" spellcheck="true"></textarea>
-                    </div>
-                    <div class="preview-pane-half">
-                        <div class="preview-content"></div>
-                        <div class="backlinks-section hidden">
-                            <h3>Backlinks</h3>
-                            <div class="backlinks-list"></div>
-                        </div>
-                    </div>
-                </div>
-            `;
-            container.insertBefore(pane, container.firstChild);
-
-            const textarea = pane.querySelector('.editor-textarea');
-            const preview = pane.querySelector('.preview-content');
-            this.editor.attach(textarea, preview);
+            this.editor.attachHyperMark(this.hypermarkEditor, null);
         }
+
+        this.applyViewMode();
     }
 
     /** Switch editor mode between 'classic' and 'hypermark'. Reopens current file. */
@@ -508,6 +527,13 @@ class OxidianApp {
         if (mode === this.editorMode) return;
         this.editorMode = mode;
         localStorage.setItem('oxidian-editor-mode', mode);
+
+        // When switching to classic, force source mode; when switching to hypermark, force live-preview
+        if (mode === 'classic') {
+            this.viewMode = 'source';
+        } else {
+            this.viewMode = 'live-preview';
+        }
 
         // Force re-create editor pane with current content
         const content = this.editor.getContent();
@@ -521,6 +547,7 @@ class OxidianApp {
         if (content) {
             this.editor.setContent(content);
         }
+        this.updateViewModeButton();
     }
 
     createSplitLayout() {
@@ -855,23 +882,10 @@ class OxidianApp {
             const count = document.getElementById('backlink-count');
             if (count) count.textContent = `${backlinks.length} backlinks`;
 
-            const container = document.getElementById('pane-container');
-            const section = container.querySelector('.backlinks-section');
-            const list = container.querySelector('.backlinks-list');
-            if (!section || !list) return;
-
-            if (backlinks.length === 0) { section.classList.add('hidden'); return; }
-
-            section.classList.remove('hidden');
-            list.innerHTML = '';
-
-            backlinks.forEach(link => {
-                const item = document.createElement('div');
-                item.className = 'backlink-item';
-                item.textContent = link.replace('.md', '');
-                item.addEventListener('click', () => this.openFile(link));
-                list.appendChild(item);
-            });
+            // Update backlinks panel if open
+            if (this.backlinksPanelOpen) {
+                this.loadBacklinksPanel(path);
+            }
         } catch (err) {
             console.error('Failed to load backlinks:', err);
         }
@@ -981,7 +995,7 @@ class OxidianApp {
             this.openDailyNote();
         } else if (ctrl && e.key === 'e') {
             e.preventDefault();
-            this.editor.togglePreview();
+            this.cycleViewMode();
         } else if (ctrl && e.key === 'w') {
             e.preventDefault();
             const active = this.tabManager.getActiveTab();
@@ -1211,7 +1225,7 @@ class OxidianApp {
             { name: 'Open Daily Note', shortcut: 'Ctrl+D', action: () => this.openDailyNote() },
             { name: 'Save Current File', shortcut: 'Ctrl+S', action: () => this.saveCurrentFile() },
             { name: 'Search Notes', shortcut: 'Ctrl+Shift+F', action: () => this.search.show() },
-            { name: 'Toggle Preview', shortcut: 'Ctrl+E', action: () => this.editor.togglePreview() },
+            { name: 'Cycle View Mode', shortcut: 'Ctrl+E', action: () => this.cycleViewMode() },
             { name: 'Open Settings', shortcut: 'Ctrl+,', action: () => this.openSettingsTab() },
             { name: 'Open Graph View', action: () => this.openGraphView() },
             { name: 'Toggle Focus Mode', shortcut: 'Ctrl+Shift+D', action: () => this.toggleFocusMode() },
@@ -1270,6 +1284,160 @@ class OxidianApp {
 
         render();
         input.focus();
+    }
+
+    // ===== View Mode =====
+
+    cycleViewMode() {
+        const modes = ['live-preview', 'source', 'reading'];
+        const idx = modes.indexOf(this.viewMode);
+        this.viewMode = modes[(idx + 1) % modes.length];
+
+        // Store view mode on current tab
+        const tab = this.tabManager.getActiveTab();
+        if (tab) tab.viewMode = this.viewMode;
+
+        // Need to rebuild editor pane when switching between hypermark and source
+        const content = this.editor.getContent();
+        const leftPane = document.getElementById('left-pane');
+        if (leftPane) leftPane.remove();
+        if (this.hypermarkEditor) {
+            this.hypermarkEditor.destroy?.();
+            this.hypermarkEditor = null;
+        }
+        this.ensureEditorPane();
+        if (content) this.editor.setContent(content);
+
+        this.updateViewModeButton();
+    }
+
+    applyViewMode() {
+        const pane = document.getElementById('left-pane');
+        if (!pane) return;
+
+        pane.classList.remove('live-preview-mode', 'source-mode', 'reading-mode');
+        pane.classList.add(`${this.viewMode}-mode`);
+
+        // For reading mode, render content into reading view
+        if (this.viewMode === 'reading') {
+            const readingView = pane.querySelector('.reading-view');
+            if (readingView) {
+                const content = this.editor.getContent();
+                if (content && content.trim()) {
+                    invoke('render_markdown', { content }).then(html => {
+                        readingView.innerHTML = html;
+                    }).catch(() => {});
+                } else {
+                    readingView.innerHTML = '<p style="color: var(--text-faint)">Nothing to preview</p>';
+                }
+            }
+        }
+
+        this.updateViewModeButton();
+    }
+
+    updateViewModeButton() {
+        const btn = document.getElementById('btn-view-mode');
+        if (!btn) return;
+        const label = btn.querySelector('.view-mode-label');
+        const labels = { 'live-preview': 'Live Preview', 'source': 'Source', 'reading': 'Reading' };
+        if (label) label.textContent = labels[this.viewMode] || 'Live Preview';
+    }
+
+    // ===== Backlinks Panel =====
+
+    toggleBacklinksPanel(force) {
+        this.backlinksPanelOpen = force !== undefined ? force : !this.backlinksPanelOpen;
+        const panel = document.getElementById('backlinks-panel');
+        const btn = document.getElementById('btn-backlinks');
+        if (panel) panel.classList.toggle('hidden', !this.backlinksPanelOpen);
+        if (btn) btn.classList.toggle('active', this.backlinksPanelOpen);
+
+        if (this.backlinksPanelOpen && this.currentFile) {
+            this.loadBacklinksPanel(this.currentFile);
+        }
+    }
+
+    async loadBacklinksPanel(path) {
+        try {
+            const backlinks = await invoke('get_backlinks', { notePath: path });
+            const list = document.querySelector('#backlinks-panel .backlinks-panel-list');
+            if (!list) return;
+
+            if (backlinks.length === 0) {
+                list.innerHTML = '<div class="backlink-panel-empty">No backlinks found</div>';
+                return;
+            }
+
+            list.innerHTML = '';
+            backlinks.forEach(link => {
+                const item = document.createElement('div');
+                item.className = 'backlink-panel-item';
+                item.textContent = link.replace('.md', '');
+                item.addEventListener('click', () => this.openFile(link));
+                list.appendChild(item);
+            });
+        } catch (err) {
+            console.error('Failed to load backlinks panel:', err);
+        }
+    }
+
+    // ===== More Options Dropdown =====
+
+    toggleMoreOptions() {
+        const menu = document.getElementById('more-options-menu');
+        if (menu) menu.classList.toggle('hidden');
+    }
+
+    async handleMoreOption(action) {
+        if (!this.currentFile && action !== 'word-count') return;
+
+        switch (action) {
+            case 'open-in-new-pane':
+                if (this.currentFile) this.openFileInSplit(this.currentFile);
+                break;
+            case 'copy-path':
+                if (this.currentFile) {
+                    try { await navigator.clipboard.writeText(this.currentFile); } catch {}
+                }
+                break;
+            case 'rename-file':
+                if (this.currentFile) this.startRename(this.currentFile);
+                break;
+            case 'delete-file':
+                if (this.currentFile) this.deleteFile(this.currentFile);
+                break;
+            case 'pin-tab': {
+                const tab = this.tabManager.getActiveTab();
+                if (tab) tab.pinned = !tab.pinned;
+                break;
+            }
+            case 'word-count': {
+                const content = this.editor.getContent();
+                const words = content.trim() ? content.trim().split(/\s+/).length : 0;
+                const chars = content.length;
+                const lines = content.split('\n').length;
+                alert(`Words: ${words}\nCharacters: ${chars}\nLines: ${lines}`);
+                break;
+            }
+            case 'export-html': {
+                const content = this.editor.getContent();
+                try {
+                    const html = await invoke('render_markdown', { content });
+                    const blob = new Blob([`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${this.currentFile}</title></head><body>${html}</body></html>`], { type: 'text/html' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = (this.currentFile || 'note').replace('.md', '.html');
+                    a.click();
+                    URL.revokeObjectURL(url);
+                } catch {}
+                break;
+            }
+            case 'export-pdf':
+                // Placeholder
+                break;
+        }
     }
 
     escapeHtml(text) {

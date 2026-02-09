@@ -122,8 +122,46 @@
                 </div>
                 <div id="breadcrumb-bar">
                     <div id="breadcrumb-path"></div>
+                    <div id="view-toolbar">
+                        <button class="view-toolbar-btn" id="btn-view-mode" title="Toggle View Mode (Ctrl+E)">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            <span class="view-mode-label">Live Preview</span>
+                        </button>
+                        <button class="view-toolbar-btn" id="btn-backlinks" title="Toggle Backlinks">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+                        </button>
+                        <div class="view-toolbar-dropdown-wrap">
+                            <button class="view-toolbar-btn" id="btn-more-options" title="More Options">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+                            </button>
+                            <div id="more-options-menu" class="dropdown-menu hidden">
+                                <div class="dropdown-item" data-action="open-in-new-pane">Open in new pane</div>
+                                <div class="dropdown-item" data-action="copy-path">Copy file path</div>
+                                <div class="dropdown-separator"></div>
+                                <div class="dropdown-item" data-action="rename-file">Rename file</div>
+                                <div class="dropdown-item" data-action="delete-file">Delete file</div>
+                                <div class="dropdown-separator"></div>
+                                <div class="dropdown-item" data-action="pin-tab">Pin tab</div>
+                                <div class="dropdown-item" data-action="word-count">Word count info</div>
+                                <div class="dropdown-separator"></div>
+                                <div class="dropdown-item" data-action="export-html">Export as HTML</div>
+                                <div class="dropdown-item disabled" data-action="export-pdf">Export as PDF</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div id="pane-container"></div>
+                <div id="editor-area">
+                    <div id="pane-container"></div>
+                    <div id="backlinks-panel" class="hidden">
+                        <div class="panel-header">
+                            <span class="panel-title">BACKLINKS</span>
+                            <button class="icon-btn" id="btn-close-backlinks" title="Close">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                            </button>
+                        </div>
+                        <div class="backlinks-panel-list"></div>
+                    </div>
+                </div>
 
                 <!-- Welcome Screen -->
                 <div id="welcome-screen">
@@ -167,8 +205,11 @@
             </div>
             <div class="status-right">
                 <span id="status-reading-time">1 min read</span>
+                <span class="status-separator">·</span>
                 <span id="status-word-count">0 words</span>
+                <span class="status-separator">·</span>
                 <span id="status-char-count">0 characters</span>
+                <span class="status-separator">·</span>
                 <span id="status-cursor">Ln 1, Col 1</span>
             </div>
         </footer>
