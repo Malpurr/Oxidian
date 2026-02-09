@@ -679,7 +679,7 @@ class OxidianApp {
     }
 
     /** Switch editor mode between 'classic' and 'hypermark'. Reopens current file. */
-    setEditorMode(mode) {
+    async setEditorMode(mode) {
         if (mode === this.editorMode) return;
         this.editorMode = mode;
         localStorage.setItem('oxidian-editor-mode', mode);
