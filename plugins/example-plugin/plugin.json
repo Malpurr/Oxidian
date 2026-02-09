@@ -1,0 +1,9 @@
+{
+    "id": "example-word-count",
+    "name": "Word Count",
+    "version": "0.1.0",
+    "description": "Adds a word count footer to rendered notes",
+    "author": "Oxidian",
+    "wasm_file": "plugin.wasm",
+    "permissions": ["read_note"]
+}

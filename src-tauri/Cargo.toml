@@ -1,0 +1,36 @@
+[package]
+name = "oxidian"
+version = "0.2.0"
+edition = "2021"
+description = "An open-source Obsidian alternative for notes and daily journaling"
+license = "MIT"
+repository = "https://github.com/oxidian/oxidian"
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+tauri-plugin-shell = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+pulldown-cmark = "0.12"
+tantivy = "0.22"
+chrono = "0.4"
+walkdir = "2"
+notify = { version = "7", features = ["macos_fsevent"] }
+wasmtime = "27"
+regex = "1"
+dirs = "6"
+log = "0.4"
+env_logger = "0.11"
+aes-gcm = "0.10"
+argon2 = "0.5"
+rand = "0.8"
+base64 = "0.22"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
