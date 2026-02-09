@@ -38,6 +38,12 @@ impl SearchIndex {
         let index_path = Path::new(vault_path).join(".search_index");
         fs::create_dir_all(&index_path).map_err(|e| format!("Failed to create index dir: {}", e))?;
         
+        // Remove stale lock file from previous crash/unclean shutdown
+        let lock_file = index_path.join(".tantivy-writer.lock");
+        if lock_file.exists() {
+            let _ = fs::remove_file(&lock_file);
+        }
+        
         let index = Index::create_in_dir(&index_path, schema.clone())
             .or_else(|_| Index::open_in_dir(&index_path))
             .map_err(|e| format!("Failed to create/open index: {}", e))?;
@@ -59,6 +65,13 @@ impl SearchIndex {
     pub fn reindex_vault(&mut self, vault_path: &str) -> Result<(), String> {
         // Drop persistent writer before creating a bulk writer
         self.writer = None;
+        
+        // Clean stale lock file
+        let index_path = Path::new(vault_path).join(".search_index");
+        let lock_file = index_path.join(".tantivy-writer.lock");
+        if lock_file.exists() {
+            let _ = fs::remove_file(&lock_file);
+        }
 
         let mut writer: IndexWriter = self.index
             .writer(50_000_000)

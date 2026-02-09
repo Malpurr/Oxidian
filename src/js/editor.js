@@ -1,14 +1,22 @@
 // Oxidian — Editor Component (CodeMirror 6 + Classic Fallback)
 const { invoke } = window.__TAURI__.core;
 
-// Try to import CodeMirror, fall back to classic editor if it fails
+// CodeMirror is loaded lazily on first editor attach to avoid blocking app startup
 let CodeMirrorEditor = null;
-try {
-  const module = await import('./codemirror-editor.js');
-  CodeMirrorEditor = module.CodeMirrorEditor;
-  console.log('✅ CodeMirror 6 editor loaded successfully');
-} catch (error) {
-  console.warn('⚠️ CodeMirror 6 failed to load, using classic textarea fallback:', error);
+let cmLoadAttempted = false;
+
+async function loadCodeMirror() {
+  if (cmLoadAttempted) return CodeMirrorEditor;
+  cmLoadAttempted = true;
+  try {
+    const module = await import('./codemirror-editor.js');
+    CodeMirrorEditor = module.CodeMirrorEditor;
+    console.log('✅ CodeMirror 6 editor loaded successfully');
+  } catch (error) {
+    console.warn('⚠️ CodeMirror 6 failed to load, using classic textarea fallback:', error);
+    CodeMirrorEditor = null;
+  }
+  return CodeMirrorEditor;
 }
 
 export class Editor {
@@ -23,9 +31,10 @@ export class Editor {
         this.currentPath = null;
         this.showLineNumbers = localStorage.getItem('oxidian-line-numbers') === 'true';
         
-        // CodeMirror or fallback
-        this.useCodeMirror = CodeMirrorEditor !== null && localStorage.getItem('oxidian-disable-codemirror') !== 'true';
+        // CodeMirror loaded lazily on first attach
+        this.useCodeMirror = localStorage.getItem('oxidian-disable-codemirror') !== 'true';
         this.cmEditor = null;
+        this._cmReady = false;
         
         // HyperMark integration
         this._hypermark = null;
@@ -48,20 +57,28 @@ export class Editor {
         this._renderQueue = null; // For requestIdleCallback
         this._lastRenderContent = ''; // For diff-based rendering
         
-        if (this.useCodeMirror && CodeMirrorEditor) {
-            this.cmEditor = new CodeMirrorEditor(app);
-            console.log('🚀 Using CodeMirror 6 editor');
-        } else {
-            console.log('📝 Using classic textarea editor');
-        }
+        console.log('📝 Editor initialized (CodeMirror loads on first attach)');
     }
 
-    attach(container, previewEl) {
+    async attach(container, previewEl) {
         // *** FIX: Clean up previous event listeners to prevent leaks ***
         this.detach();
         
         this._hypermark = null;
         this.previewEl = previewEl;
+        
+        // Lazy-load CodeMirror on first attach
+        if (this.useCodeMirror && !this._cmReady) {
+            const CM = await loadCodeMirror();
+            if (CM) {
+                this.cmEditor = new CM(this.app);
+                this._cmReady = true;
+                console.log('🚀 Using CodeMirror 6 editor');
+            } else {
+                this.useCodeMirror = false;
+                console.log('📝 Falling back to classic textarea editor');
+            }
+        }
         
         if (this.useCodeMirror && this.cmEditor) {
             // Use CodeMirror 6
