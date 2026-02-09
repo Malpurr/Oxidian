@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Plugins — Oxidian Docs</title>
+  <meta name="description" content="How Oxidian's Obsidian plugin compatibility works. Install, configure, and use community plugins.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="docs.css">
+</head>
+<body>
+  <nav class="docs-topnav">
+    <div class="topnav-inner">
+      <div class="topnav-left">
+        <button class="mobile-menu-btn" aria-label="Toggle sidebar">☰</button>
+        <a href="../index.html" class="topnav-logo">
+          <span class="logo-icon">⬡</span>
+          <span>Oxidian</span>
+          <span class="logo-sep">/</span>
+          <span class="logo-docs">Docs</span>
+        </a>
+      </div>
+      <div class="topnav-right">
+        <div class="topnav-search">
+          <span class="search-icon">🔍</span>
+          <input type="text" placeholder="Search docs..." aria-label="Search documentation">
+          <div class="search-results-dropdown"></div>
+        </div>
+        <a href="../index.html" class="topnav-link">Home</a>
+        <a href="../releases.html" class="topnav-link">Releases</a>
+        <a href="https://github.com/nicokimmel/oxidian" class="topnav-github" target="_blank" rel="noopener">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="sidebar-backdrop"></div>
+
+  <div class="docs-layout">
+    <aside class="docs-sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-heading">Getting Started</div>
+        <a href="index.html" class="sidebar-link">Documentation Hub</a>
+        <a href="getting-started.html" class="sidebar-link">Getting Started</a>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-heading">Guides</div>
+        <a href="features.html" class="sidebar-link">Features</a>
+        <a href="plugins.html" class="sidebar-link active">Plugins</a>
+        <a href="#how-it-works" class="sidebar-sublink">How It Works</a>
+        <a href="#installing-plugins" class="sidebar-sublink">Installing Plugins</a>
+        <a href="#load-plugin-button" class="sidebar-sublink">Load Plugin Button</a>
+        <a href="#supported-apis" class="sidebar-sublink">Supported APIs</a>
+        <a href="#known-limitations" class="sidebar-sublink">Known Limitations</a>
+        <a href="#tested-plugins" class="sidebar-sublink">Tested Plugins</a>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-heading">Support</div>
+        <a href="troubleshooting.html" class="sidebar-link">Troubleshooting</a>
+        <a href="building.html" class="sidebar-link">Building from Source</a>
+      </div>
+    </aside>
+
+    <main class="docs-content">
+      <article class="docs-article">
+        <div class="breadcrumb">
+          <a href="../index.html">Oxidian</a>
+          <span class="sep">›</span>
+          <a href="index.html">Docs</a>
+          <span class="sep">›</span>
+          <span>Plugins</span>
+        </div>
+
+        <h1>Plugins</h1>
+        <p class="subtitle">Oxidian can run real Obsidian community plugins. This guide explains how the compatibility layer works, how to install plugins, and what to expect.</p>
+
+        <!-- How It Works -->
+        <h2 id="how-it-works">How Plugin Compatibility Works <a href="#how-it-works" class="anchor">#</a></h2>
+
+        <p>Oxidian includes a comprehensive <strong>Obsidian API compatibility shim</strong> — a JavaScript module that reimplements the <code>obsidian</code> module API that community plugins import from. When a plugin does <code>require('obsidian')</code>, it gets Oxidian's implementation instead.</p>
+
+        <h3>Architecture</h3>
+        <ul>
+          <li><strong>Plugin Loader</strong> — Discovers plugins in <code>.obsidian/plugins/</code>, reads their <code>manifest.json</code> and <code>main.js</code></li>
+          <li><strong>Sandboxed Execution</strong> — Each plugin's <code>main.js</code> is executed in a sandboxed context with a simulated CommonJS <code>module/exports/require</code> environment</li>
+          <li><strong>API Shim</strong> — Implements the core Obsidian API classes: <code>Plugin</code>, <code>App</code>, <code>Vault</code>, <code>Workspace</code>, <code>Notice</code>, <code>Modal</code>, <code>Setting</code>, <code>PluginSettingTab</code>, <code>Component</code>, <code>Events</code>, <code>TFile</code>, <code>TFolder</code>, and more</li>
+          <li><strong>Plugin Registry</strong> — Tracks all registered commands, setting tabs, ribbon icons, post-processors, and status bar items</li>
+          <li><strong>Command Palette Integration</strong> — Plugin commands appear alongside built-in commands in the <kbd>Ctrl</kbd>+<kbd>P</kbd> palette</li>
+        </ul>
+
+        <h3>API Version</h3>
+        <p>Oxidian's API shim targets <strong>Obsidian API version 1.7.2</strong>. Plugins targeting this version or earlier have the best compatibility.</p>
+
+        <!-- Installing Plugins -->
+        <h2 id="installing-plugins">Installing Plugins Manually <a href="#installing-plugins" class="anchor">#</a></h2>
+
+        <p>Obsidian community plugins follow a standard structure. To install one manually:</p>
+
+        <div class="steps">
+          <div class="step">
+            <h4>Download the Plugin</h4>
+            <p>Get the plugin files from the plugin's GitHub repository. You need at minimum: <code>manifest.json</code> and <code>main.js</code>. Many plugins also include <code>styles.css</code>.</p>
+          </div>
+          <div class="step">
+            <h4>Create the Plugin Folder</h4>
+            <p>Inside your vault, create the directory <code>.obsidian/plugins/&lt;plugin-id&gt;/</code>. The plugin ID comes from the <code>id</code> field in <code>manifest.json</code>.</p>
+          </div>
+          <div class="step">
+            <h4>Copy the Files</h4>
+            <p>Place <code>manifest.json</code>, <code>main.js</code>, and optionally <code>styles.css</code> into the plugin folder.</p>
+          </div>
+          <div class="step">
+            <h4>Enable the Plugin</h4>
+            <p>Go to <strong>Settings → Plugins</strong>. The plugin should appear in the list. Toggle it on to load it.</p>
+          </div>
+        </div>
+
+        <p>Your vault structure should look like:</p>
+
+        <div class="code-block-wrapper">
+          <span class="code-lang">text</span>
+          <button class="copy-btn">Copy</button>
+          <pre><code>My Vault/
+├── .obsidian/
+│   └── plugins/
+│       └── calendar/
+│           ├── manifest.json
+│           ├── main.js
+│           └── styles.css
+├── My Notes.md
+└── ...</code></pre>
+        </div>
+
+        <!-- Load Plugin Button -->
+        <h2 id="load-plugin-button">Using the Load Plugin Button <a href="#load-plugin-button" class="anchor">#</a></h2>
+
+        <p>Oxidian provides a convenient <strong>Load Plugin</strong> button in <strong>Settings → Plugins</strong>:</p>
+
+        <ol>
+          <li>Click <strong>"Load Plugin"</strong></li>
+          <li>A folder picker dialog opens — select the folder containing the plugin's <code>manifest.json</code> and <code>main.js</code></li>
+          <li>Oxidian reads the manifest, copies the plugin to your vault's <code>.obsidian/plugins/</code> directory, and makes it available</li>
+          <li>Enable the plugin in the list</li>
+        </ol>
+
+        <div class="callout callout-info">
+          <span class="callout-icon">ℹ️</span>
+          <div class="callout-content">
+            <p>If the file dialog is not available (e.g., on some minimal Linux setups), you can always install plugins manually as described above.</p>
+          </div>
+        </div>
+
+        <!-- Supported APIs -->
+        <h2 id="supported-apis">Supported APIs <a href="#supported-apis" class="anchor">#</a></h2>
+
+        <p>Oxidian's compatibility shim implements the following Obsidian API classes and interfaces:</p>
+
+        <h3>Core Classes</h3>
+        <table>
+          <thead><tr><th>Class / Module</th><th>Status</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td><code>Plugin</code></td><td>✅ Full</td><td>onload, onunload, addCommand, addSettingTab, addRibbonIcon, registerEvent, loadData, saveData</td></tr>
+            <tr><td><code>App</code></td><td>✅ Full</td><td>vault, workspace, metadataCache</td></tr>
+            <tr><td><code>Vault</code></td><td>✅ Core</td><td>read, create, modify, delete, rename, getFiles, getAbstractFileByPath</td></tr>
+            <tr><td><code>Workspace</code></td><td>⚠️ Partial</td><td>getActiveFile, on('file-open'), activeLeaf (stub)</td></tr>
+            <tr><td><code>Notice</code></td><td>✅ Full</td><td>Toast notifications with duration</td></tr>
+            <tr><td><code>Modal</code></td><td>✅ Full</td><td>open, close, contentEl, titleEl</td></tr>
+            <tr><td><code>Setting</code></td><td>✅ Full</td><td>setName, setDesc, addText, addToggle, addDropdown, addSlider, addButton, addTextArea</td></tr>
+            <tr><td><code>PluginSettingTab</code></td><td>✅ Full</td><td>display, hide, containerEl</td></tr>
+            <tr><td><code>Component</code></td><td>✅ Full</td><td>load, unload, addChild, register, registerEvent, registerDomEvent, registerInterval</td></tr>
+            <tr><td><code>Events</code></td><td>✅ Full</td><td>on, off, offref, trigger, tryTrigger</td></tr>
+            <tr><td><code>TFile</code> / <code>TFolder</code></td><td>✅ Full</td><td>path, name, basename, extension, parent, vault</td></tr>
+          </tbody>
+        </table>
+
+        <h3>UI Utilities</h3>
+        <table>
+          <thead><tr><th>Utility</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td><code>setIcon()</code></td><td>✅ Maps Lucide icon names to emoji fallbacks</td></tr>
+            <tr><td><code>getIconIds()</code></td><td>✅ Returns available icon names</td></tr>
+            <tr><td><code>addIcon()</code></td><td>✅ Register custom SVG icons</td></tr>
+            <tr><td><code>MarkdownRenderer</code></td><td>⚠️ Partial (renderMarkdown stub)</td></tr>
+            <tr><td>DOM extensions (<code>createEl</code>, <code>createDiv</code>)</td><td>✅ Full</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Editor API (v1.0+ / HyperMark)</h3>
+        <table>
+          <thead><tr><th>API</th><th>Status</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td><code>editorCallback</code></td><td>✅ Full</td><td>Receives the CM6 EditorView of the focused block</td></tr>
+            <tr><td><code>replaceSelection</code></td><td>✅ Full</td><td>Replace selected text in the active block</td></tr>
+            <tr><td><code>Editor.getValue/setValue</code></td><td>✅ Full</td><td>Get/set content of the focused block</td></tr>
+            <tr><td>CM6 ViewPlugin</td><td>⚠️ Partial</td><td>Only applies to the currently focused block</td></tr>
+            <tr><td>CM6 Decorations</td><td>⚠️ Partial</td><td>Decorations only in focused block; unfocused blocks render as HTML</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Stub Warnings</h3>
+        <p>When a plugin calls an API method that isn't fully implemented, Oxidian logs a <strong>one-time warning</strong> to the browser console:</p>
+
+        <div class="code-block-wrapper">
+          <span class="code-lang">text</span>
+          <button class="copy-btn">Copy</button>
+          <pre><code>[Oxidian] Stub: Workspace.getLeavesOfType not fully implemented</code></pre>
+        </div>
+
+        <p>This helps you identify which features a plugin expects but doesn't have. Most plugins work fine with partial implementations.</p>
+
+        <!-- Known Limitations -->
+        <h2 id="known-limitations">Known Limitations <a href="#known-limitations" class="anchor">#</a></h2>
+
+        <ul>
+          <li><strong>Workspace Leaf API</strong> — The full WorkspaceLeaf/WorkspaceSplit/WorkspaceTab model is not implemented. Plugins that manipulate pane layout directly may not work.</li>
+          <li><strong>Editor API (CodeMirror)</strong> — With HyperMark (v1.0+), Oxidian uses CodeMirror 6 for the focused block. Plugins using <code>editorCallback</code> and <code>replaceSelection</code> now work. However, plugins relying on CM6 decorations or view plugins across the entire document may have limited support since only the focused block uses CM6.</li>
+          <li><strong>File suggest / Suggest modal</strong> — Autocomplete modals are stubbed. Plugins relying on <code>SuggestModal</code> or <code>FuzzySuggestModal</code> have basic implementations.</li>
+          <li><strong>Canvas / Publish / Sync APIs</strong> — Not available (Oxidian doesn't have these features).</li>
+          <li><strong>Mobile API</strong> — No mobile-specific APIs.</li>
+          <li><strong>External module requires</strong> — Plugins that <code>require()</code> Node.js modules other than <code>'obsidian'</code> will see an empty object and a console warning.</li>
+          <li><strong>Styles</strong> — Plugin <code>styles.css</code> is loaded, but CSS targeting Obsidian's specific class names may not match Oxidian's DOM structure.</li>
+        </ul>
+
+        <div class="callout callout-warning">
+          <span class="callout-icon">⚠️</span>
+          <div class="callout-content">
+            <p><strong>Tip:</strong> If a plugin doesn't work, open the <strong>browser developer console</strong> (usually <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>I</kbd> → Console tab in Tauri) to check for API stub warnings and errors. This tells you exactly which APIs are missing.</p>
+          </div>
+        </div>
+
+        <!-- Tested Plugins -->
+        <h2 id="tested-plugins">Tested Plugins <a href="#tested-plugins" class="anchor">#</a></h2>
+
+        <p>The following community plugins have been tested with Oxidian. Compatibility varies by feature usage:</p>
+
+        <table>
+          <thead><tr><th>Plugin</th><th>Status</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Calendar</strong></td><td>⚠️ Partial</td><td>Core commands work, sidebar view may not render</td></tr>
+            <tr><td><strong>Templater</strong></td><td>⚠️ Partial</td><td>Basic template insertion works; advanced tp functions may fail</td></tr>
+            <tr><td><strong>Dataview</strong></td><td>❌ Limited</td><td>Requires CodeMirror post-processing; inline queries won't render</td></tr>
+            <tr><td><strong>Admonition / Callouts</strong></td><td>✅ Good</td><td>Works well — Oxidian natively supports callout syntax</td></tr>
+            <tr><td><strong>Emoji Shortcodes</strong></td><td>✅ Good</td><td>Simple command-based plugins work well</td></tr>
+            <tr><td><strong>Note Refactor</strong></td><td>⚠️ Partial</td><td>Vault file operations supported; editor selection may be limited</td></tr>
+            <tr><td><strong>Paste URL into Selection</strong></td><td>⚠️ Partial</td><td>Depends on editor API access</td></tr>
+          </tbody>
+        </table>
+
+        <p><strong>Best compatibility:</strong> Plugins that primarily use the Vault API (read/write files), register commands, and add settings tend to work best. Plugins that heavily modify the editor UI or depend on CodeMirror are least compatible.</p>
+
+        <div class="callout callout-tip">
+          <span class="callout-icon">💡</span>
+          <div class="callout-content">
+            <p><strong>Want to improve compatibility?</strong> The plugin system is open source. Check out <code>src/js/obsidian-api.js</code> and <code>src/js/plugin-loader.js</code> — contributions to expand API coverage are welcome!</p>
+          </div>
+        </div>
+
+        <!-- Page Navigation -->
+        <div class="page-nav">
+          <a href="features.html">
+            <div class="nav-label">← Previous</div>
+            <div class="nav-title">Features</div>
+          </a>
+          <a href="troubleshooting.html" class="next">
+            <div class="nav-label">Next →</div>
+            <div class="nav-title">Troubleshooting</div>
+          </a>
+        </div>
+
+      </article>
+    </main>
+  </div>
+
+  <footer class="docs-footer">
+    <p>© 2026 Oxidian. Open source under the MIT License.</p>
+  </footer>
+
+  <script src="docs.js"></script>
+</body>
+</html>

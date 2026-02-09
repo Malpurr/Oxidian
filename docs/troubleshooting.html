@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Troubleshooting — Oxidian Docs</title>
+  <meta name="description" content="Solutions for common Oxidian issues: startup problems, NixOS errors, plugin issues, encryption, and more.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="docs.css">
+</head>
+<body>
+  <nav class="docs-topnav">
+    <div class="topnav-inner">
+      <div class="topnav-left">
+        <button class="mobile-menu-btn" aria-label="Toggle sidebar">☰</button>
+        <a href="../index.html" class="topnav-logo">
+          <span class="logo-icon">⬡</span>
+          <span>Oxidian</span>
+          <span class="logo-sep">/</span>
+          <span class="logo-docs">Docs</span>
+        </a>
+      </div>
+      <div class="topnav-right">
+        <div class="topnav-search">
+          <span class="search-icon">🔍</span>
+          <input type="text" placeholder="Search docs..." aria-label="Search documentation">
+          <div class="search-results-dropdown"></div>
+        </div>
+        <a href="../index.html" class="topnav-link">Home</a>
+        <a href="../releases.html" class="topnav-link">Releases</a>
+        <a href="https://github.com/nicokimmel/oxidian" class="topnav-github" target="_blank" rel="noopener">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="sidebar-backdrop"></div>
+
+  <div class="docs-layout">
+    <aside class="docs-sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-heading">Getting Started</div>
+        <a href="index.html" class="sidebar-link">Documentation Hub</a>
+        <a href="getting-started.html" class="sidebar-link">Getting Started</a>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-heading">Guides</div>
+        <a href="features.html" class="sidebar-link">Features</a>
+        <a href="plugins.html" class="sidebar-link">Plugins</a>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-heading">Support</div>
+        <a href="troubleshooting.html" class="sidebar-link active">Troubleshooting</a>
+        <a href="#app-wont-start" class="sidebar-sublink">App Won't Start</a>
+        <a href="#nixos-issues" class="sidebar-sublink">NixOS Issues</a>
+        <a href="#blank-screen" class="sidebar-sublink">Blank Screen</a>
+        <a href="#plugin-not-working" class="sidebar-sublink">Plugin Problems</a>
+        <a href="#notes-not-saving" class="sidebar-sublink">Notes Not Saving</a>
+        <a href="#encryption-issues" class="sidebar-sublink">Encryption Issues</a>
+        <a href="#search-not-working" class="sidebar-sublink">Search Issues</a>
+        <a href="#graph-view-empty" class="sidebar-sublink">Graph View Empty</a>
+        <a href="#common-errors" class="sidebar-sublink">Common Errors</a>
+        <a href="#hypermark-issues" class="sidebar-sublink">HyperMark Issues</a>
+        <a href="building.html" class="sidebar-link">Building from Source</a>
+      </div>
+    </aside>
+
+    <main class="docs-content">
+      <article class="docs-article">
+        <div class="breadcrumb">
+          <a href="../index.html">Oxidian</a>
+          <span class="sep">›</span>
+          <a href="index.html">Docs</a>
+          <span class="sep">›</span>
+          <span>Troubleshooting</span>
+        </div>
+
+        <h1>Troubleshooting</h1>
+        <p class="subtitle">Solutions for common issues. If you don't find your problem here, <a href="https://github.com/nicokimmel/oxidian/issues" target="_blank" rel="noopener">open an issue on GitHub</a>.</p>
+
+        <!-- App Won't Start -->
+        <h2 id="app-wont-start">App Won't Start <a href="#app-wont-start" class="anchor">#</a></h2>
+
+        <h3>Missing shared libraries</h3>
+        <p>If you see errors about missing <code>.so</code> files, you're missing system dependencies. Oxidian (via Tauri) requires:</p>
+        <ul>
+          <li><strong>WebKitGTK 4.1</strong> — <code>libwebkit2gtk-4.1</code></li>
+          <li><strong>GTK 3</strong> — <code>libgtk-3</code></li>
+          <li><strong>GLib Networking</strong> — <code>glib-networking</code> (for TLS/SSL)</li>
+          <li><strong>libsoup 3</strong> — HTTP client library</li>
+        </ul>
+
+        <p><strong>Debian/Ubuntu:</strong></p>
+        <div class="code-block-wrapper">
+          <span class="code-lang">bash</span>
+          <button class="copy-btn">Copy</button>
+          <pre><code>sudo apt install libwebkit2gtk-4.1-dev libgtk-3-dev \
+  libayatana-appindicator3-dev librsvg2-dev \
+  glib-networking libsoup-3.0-dev</code></pre>
+        </div>
+
+        <p><strong>Fedora:</strong></p>
+        <div class="code-block-wrapper">
+          <span class="code-lang">bash</span>
+          <button class="copy-btn">Copy</button>
+          <pre><code>sudo dnf install webkit2gtk4.1-devel gtk3-devel \
+  libsoup3-devel glib-networking</code></pre>
+        </div>
+
+        <p><strong>Arch Linux:</strong></p>
+        <div class="code-block-wrapper">
+          <span class="code-lang">bash</span>
+          <button class="copy-btn">Copy</button>
+          <pre><code>sudo pacman -S webkit2gtk-4.1 gtk3 libsoup3 glib-networking</code></pre>
+        </div>
+
+        <h3>Permission denied</h3>
+        <p>If using the AppImage, make sure it's executable:</p>
+        <div class="code-block-wrapper">
+          <span class="code-lang">bash</span>
+          <button class="copy-btn">Copy</button>
+          <pre><code>chmod +x Oxidian-*.AppImage</code></pre>
+        </div>
+
+        <!-- NixOS Issues -->
+        <h2 id="nixos-issues">NixOS: Dynamically Linked Executable <a href="#nixos-issues" class="anchor">#</a></h2>
+
+        <p>On NixOS, you'll see this error when trying to run the AppImage or pre-built binary:</p>
+
+        <div class="code-block-wrapper">
+          <span class="code-lang">text</span>
+          <button class="copy-btn">Copy</button>
+          <pre><code>error: cannot execute: required file not found
+<span class="code-comment">or</span>
+error: a]'ELF' interpreter not found</code></pre>
+        </div>
+
+        <p>This happens because NixOS doesn't have a standard <code>/lib/ld-linux-x86-64.so.2</code> dynamic linker. There are several solutions:</p>
+
+        <h3>Solution 1: nix-shell (Quick)</h3>
+        <div class="code-block-wrapper">
+          <span class="code-lang">bash</span>
+          <button class="copy-btn">Copy</button>
+          <pre><code>nix-shell -p webkitgtk_4_1 gtk3 glib-networking \
+  openssl pkg-config libsoup_3 --run ./Oxidian-*.AppImage</code></pre>
+        </div>
+
+        <h3>Solution 2: buildFHSEnv (Permanent)</h3>
+        <p>Create a file <code>oxidian.nix</code> for a persistent FHS-compatible environment:</p>
+
+        <div class="code-block-wrapper">
+          <span class="code-lang">nix</span>
+          <button class="copy-btn">Copy</button>
+          <pre><code>{ pkgs ? import &lt;nixpkgs&gt; {} }:
+
+(pkgs.buildFHSEnv {
+  name = "oxidian";
+  targetPkgs = pkgs: with pkgs; [
+    webkitgtk_4_1
+    gtk3
+    glib-networking
+    openssl
+    libsoup_3
+  ];
+  runScript = "/path/to/Oxidian-x86_64.AppImage";
+}).env</code></pre>
+        </div>
+
+        <h3>Solution 3: Build from Source</h3>
+        <p>Build Oxidian directly with <code>cargo</code> on NixOS — this avoids all dynamic linking issues. See the <a href="building.html">Building from Source</a> guide.</p>
+
+        <!-- Blank Screen -->
+        <h2 id="blank-screen">Blank Screen on Launch <a href="#blank-screen" class="anchor">#</a></h2>
+
+        <p>If Oxidian opens but shows a white or blank screen:</p>
+
+        <ol>
+          <li><strong>Check WebKitGTK version</strong> — You need WebKitGTK <strong>4.1</strong> (not 4.0). Older versions may cause rendering issues.</li>
+          <li><strong>GPU driver issues</strong> — Try disabling hardware acceleration:
+            <div class="code-block-wrapper">
+              <button class="copy-btn">Copy</button>
+              <pre><code>WEBKIT_DISABLE_COMPOSITING_MODE=1 ./Oxidian-*.AppImage</code></pre>
+            </div>
+          </li>
+          <li><strong>Wayland issues</strong> — If on Wayland, try forcing X11:
+            <div class="code-block-wrapper">
+              <button class="copy-btn">Copy</button>
+              <pre><code>GDK_BACKEND=x11 ./Oxidian-*.AppImage</code></pre>
+            </div>
+          </li>
+          <li><strong>Check logs</strong> — Run from terminal to see error output:
+            <div class="code-block-wrapper">
+              <button class="copy-btn">Copy</button>
+              <pre><code>RUST_LOG=debug ./Oxidian-*.AppImage 2>&1 | tee oxidian.log</code></pre>
+            </div>
+          </li>
+        </ol>
+
+        <!-- Plugin Not Working -->
+        <h2 id="plugin-not-working">Plugin Not Working <a href="#plugin-not-working" class="anchor">#</a></h2>
+
+        <p>If a plugin doesn't load or behaves unexpectedly:</p>
+
+        <h3>Step 1: Check the Console</h3>
+        <p>Open the developer tools (usually <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>I</kbd> in the Tauri window, or check the terminal output) and look for:</p>
+        <ul>
+          <li><strong>Stub warnings</strong>: <code>[Oxidian] Stub: ClassName.method not fully implemented</code> — The plugin is calling an API that Oxidian doesn't fully support.</li>
+          <li><strong>Error messages</strong>: <code>[PluginLoader] Failed to load plugin xyz: ...</code> — The plugin threw an error during initialization.</li>
+          <li><strong>Unknown require</strong>: <code>[PluginLoader] Plugin xyz tried to require unknown module: ...</code> — The plugin needs a Node.js module that isn't available.</li>
+        </ul>
+
+        <h3>Step 2: Verify Plugin Files</h3>
+        <ul>
+          <li>Ensure <code>manifest.json</code> has a valid <code>id</code>, <code>name</code>, and <code>version</code></li>
+          <li>Ensure <code>main.js</code> exists and is the compiled JavaScript (not TypeScript source)</li>
+          <li>Check that the plugin folder name matches the <code>id</code> in <code>manifest.json</code></li>
+        </ul>
+
+        <h3>Step 3: Check Compatibility</h3>
+        <p>Plugins that heavily depend on CodeMirror 6 editor extensions, the Workspace Leaf API, or Canvas features are unlikely to work. See the <a href="plugins.html#known-limitations">Known Limitations</a> section.</p>
+
+        <!-- Notes Not Saving -->
+        <h2 id="notes-not-saving">Notes Not Saving <a href="#notes-not-saving" class="anchor">#</a></h2>
+
+        <ol>
+          <li><strong>Check vault path permissions</strong> — Ensure Oxidian has write access to your vault directory:
+            <div class="code-block-wrapper">
+              <button class="copy-btn">Copy</button>
+              <pre><code>ls -la /path/to/your/vault/</code></pre>
+            </div>
+          </li>
+          <li><strong>Disk space</strong> — Ensure you have free disk space</li>
+          <li><strong>File locked</strong> — Another program may have the file open. Close other editors.</li>
+          <li><strong>Check console for errors</strong> — Look for "Failed to save" messages in the terminal</li>
+        </ol>
+
+        <p>Oxidian auto-saves 2 seconds after your last edit. You can also force a save with <kbd>Ctrl</kbd>+<kbd>S</kbd>.</p>
+
+        <!-- Encryption Issues -->
+        <h2 id="encryption-issues">Encryption Issues <a href="#encryption-issues" class="anchor">#</a></h2>
+
+        <h3>Forgot password</h3>
+        <div class="callout callout-danger">
+          <span class="callout-icon">🔒</span>
+          <div class="callout-content">
+            <p><strong>There is no password recovery.</strong> Oxidian uses AES-256-GCM with Argon2id key derivation. The password is never stored — only used to derive the encryption key. If you forget your password, your encrypted notes cannot be recovered.</p>
+            <p><strong>Prevention:</strong> Store your vault password in a password manager (1Password, Bitwarden, KeePassXC, etc.). Consider keeping an unencrypted backup of critical notes.</p>
+          </div>
+        </div>
+
+        <h3>"Decryption failed: wrong password or corrupted data"</h3>
+        <ul>
+          <li>Double-check your password for typos</li>
+          <li>Check Caps Lock</li>
+          <li>If the file was edited outside Oxidian, the encrypted format may have been corrupted</li>
+        </ul>
+
+        <h3>Mixed encrypted/unencrypted notes</h3>
+        <p>When you enable encryption on an existing vault, only <strong>newly saved</strong> notes are encrypted. Previously saved notes remain as plain markdown until you open and re-save them. Oxidian detects the format automatically — encrypted notes start with <code>{"salt":"...</code>.</p>
+
+        <!-- Search Not Working -->
+        <h2 id="search-not-working">Search Not Working <a href="#search-not-working" class="anchor">#</a></h2>
+
+        <h3>Stale results or missing notes</h3>
+        <p>The search index may become out of sync if files were edited outside Oxidian. To rebuild:</p>
+        <ol>
+          <li>Close Oxidian</li>
+          <li>Delete the <code>.search_index/</code> folder inside your vault</li>
+          <li>Restart Oxidian — the index will be rebuilt automatically</li>
+        </ol>
+
+        <div class="code-block-wrapper">
+          <span class="code-lang">bash</span>
+          <button class="copy-btn">Copy</button>
+          <pre><code>rm -rf /path/to/vault/.search_index/</code></pre>
+        </div>
+
+        <h3>Search returns no results</h3>
+        <ul>
+          <li>Queries must be at least <strong>2 characters</strong></li>
+          <li>Tag searches (clicking a tag) automatically strip the <code>#</code> prefix</li>
+          <li>Try simpler search terms — Tantivy uses a query parser that may interpret special characters</li>
+        </ul>
+
+        <!-- Graph View Empty -->
+        <h2 id="graph-view-empty">Graph View Empty <a href="#graph-view-empty" class="anchor">#</a></h2>
+
+        <p>The graph shows <strong>connections created by wiki-links</strong>. If your graph is empty or shows only disconnected dots:</p>
+
+        <ul>
+          <li><strong>Add wiki-links:</strong> Use <code>[[Note Name]]</code> syntax in your notes to create connections</li>
+          <li><strong>Standard markdown links don't count:</strong> Only <code>[[wiki-links]]</code> create graph edges, not <code>[text](url)</code> links</li>
+          <li><strong>Refresh:</strong> The graph data is fetched from the backend. If you just added links, close and reopen the graph view</li>
+        </ul>
+
+        <!-- Common Error Messages -->
+        <h2 id="common-errors">Common Error Messages <a href="#common-errors" class="anchor">#</a></h2>
+
+        <table>
+          <thead><tr><th>Error</th><th>Cause</th><th>Solution</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><code>Failed to create/open index</code></td>
+              <td>Search index directory is corrupted or locked</td>
+              <td>Delete <code>.search_index/</code> and restart</td>
+            </tr>
+            <tr>
+              <td><code>Could not find home directory</code></td>
+              <td><code>$HOME</code> environment variable not set</td>
+              <td>Set <code>HOME</code> env var: <code>export HOME=/home/user</code></td>
+            </tr>
+            <tr>
+              <td><code>Key derivation failed</code></td>
+              <td>Argon2id error (rare, usually system memory issue)</td>
+              <td>Ensure sufficient RAM available; try restarting</td>
+            </tr>
+            <tr>
+              <td><code>Cipher init failed</code></td>
+              <td>Invalid key length for AES-256</td>
+              <td>Likely a bug — please <a href="https://github.com/nicokimmel/oxidian/issues">report it</a></td>
+            </tr>
+            <tr>
+              <td><code>Failed to create index writer</code></td>
+              <td>Tantivy can't allocate memory for indexing (50MB default)</td>
+              <td>Ensure sufficient free RAM; close memory-heavy applications</td>
+            </tr>
+            <tr>
+              <td><code>Plugin manifest error</code></td>
+              <td>Plugin folder is missing <code>manifest.json</code></td>
+              <td>Ensure the plugin has a valid <code>manifest.json</code></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- HyperMark Issues -->
+        <h2 id="hypermark-issues">HyperMark / Block Editor Issues <a href="#hypermark-issues" class="anchor">#</a></h2>
+
+        <h3>Block transitions feel laggy</h3>
+        <ul>
+          <li>Ensure hardware acceleration is enabled in your system</li>
+          <li>Very large blocks (1000+ lines in a single block) may cause slower transitions — consider splitting into smaller sections</li>
+          <li>Check if a plugin is injecting heavy DOM modifications</li>
+        </ul>
+
+        <h3>Focused block shows raw Markdown but doesn't switch to rich preview</h3>
+        <ul>
+          <li>Click outside the block or press <kbd>↓</kbd>/<kbd>↑</kbd> to move focus — the block should render as HTML</li>
+          <li>If blocks stay raw, try reloading the window (<kbd>Ctrl</kbd>+<kbd>R</kbd>)</li>
+        </ul>
+
+        <h3>Focus Mode won't activate</h3>
+        <ul>
+          <li>Ensure you're in the editor view (not graph view or settings)</li>
+          <li>Try the command palette: <kbd>Ctrl</kbd>+<kbd>P</kbd> → "Toggle Focus Mode"</li>
+          <li>Check if a plugin is intercepting <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd></li>
+        </ul>
+
+        <h3>Bookmarks not persisting</h3>
+        <ul>
+          <li>Bookmarks are stored in <code>.oxidian/bookmarks.json</code> inside your vault</li>
+          <li>Ensure the vault directory is writable</li>
+          <li>If the file is corrupted, delete it and restart — bookmarks will reset</li>
+        </ul>
+
+        <h3>Outline Panel not showing headings</h3>
+        <ul>
+          <li>The Outline Panel parses headings from the current note's Markdown. Ensure you're using standard <code># Heading</code> syntax</li>
+          <li>HTML headings (<code>&lt;h1&gt;</code>) inside Markdown are not detected</li>
+        </ul>
+
+        <h3>Clicking empty space below content doesn't focus the editor</h3>
+        <ul>
+          <li>Fixed in <strong>v1.1.0</strong>. Update to the latest version.</li>
+          <li>In older versions, you had to click directly on a text block. Now clicking anywhere in the editor area (including empty space below your content) activates the last block with the cursor at the end.</li>
+        </ul>
+
+        <h3>View mode not switching with Ctrl+E</h3>
+        <ul>
+          <li>Requires <strong>v1.1.0+</strong>. Older versions don't have view mode toggling.</li>
+          <li>Check if a plugin is intercepting <kbd>Ctrl</kbd>+<kbd>E</kbd></li>
+          <li>Use the view mode icons in the top-right toolbar as an alternative</li>
+        </ul>
+
+        <h3>Auto-updater not detecting new versions</h3>
+        <ul>
+          <li>Ensure "Auto-check for updates" is enabled in <strong>Settings → General</strong></li>
+          <li>Oxidian checks the GitHub Releases API — ensure you have internet access and GitHub isn't blocked</li>
+          <li>Manual check: visit the <a href="https://github.com/nicokimmel/oxidian/releases" target="_blank" rel="noopener">Releases page</a> to see if a newer version is available</li>
+        </ul>
+
+        <h2 id="getting-help">Getting Help <a href="#getting-help" class="anchor">#</a></h2>
+
+        <p>If your issue isn't covered here:</p>
+        <ul>
+          <li><strong>GitHub Issues:</strong> <a href="https://github.com/nicokimmel/oxidian/issues" target="_blank" rel="noopener">Open an issue</a> with as much detail as possible (OS, steps to reproduce, error messages)</li>
+          <li><strong>Logs:</strong> Run Oxidian from the terminal with <code>RUST_LOG=debug</code> and include the output in your report</li>
+          <li><strong>Console:</strong> Check the browser developer console for JavaScript errors</li>
+        </ul>
+
+        <!-- Page Navigation -->
+        <div class="page-nav">
+          <a href="plugins.html">
+            <div class="nav-label">← Previous</div>
+            <div class="nav-title">Plugins</div>
+          </a>
+          <a href="building.html" class="next">
+            <div class="nav-label">Next →</div>
+            <div class="nav-title">Building from Source</div>
+          </a>
+        </div>
+
+      </article>
+    </main>
+  </div>
+
+  <footer class="docs-footer">
+    <p>© 2026 Oxidian. Open source under the MIT License.</p>
+  </footer>
+
+  <script src="docs.js"></script>
+</body>
+</html>

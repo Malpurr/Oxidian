@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Getting Started — Oxidian Docs</title>
+  <meta name="description" content="Learn how to install Oxidian, set up your first vault, and start taking notes with markdown, wiki-links, and more.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="docs.css">
+</head>
+<body>
+  <nav class="docs-topnav">
+    <div class="topnav-inner">
+      <div class="topnav-left">
+        <button class="mobile-menu-btn" aria-label="Toggle sidebar">☰</button>
+        <a href="../index.html" class="topnav-logo">
+          <span class="logo-icon">⬡</span>
+          <span>Oxidian</span>
+          <span class="logo-sep">/</span>
+          <span class="logo-docs">Docs</span>
+        </a>
+      </div>
+      <div class="topnav-right">
+        <div class="topnav-search">
+          <span class="search-icon">🔍</span>
+          <input type="text" placeholder="Search docs..." aria-label="Search documentation">
+          <div class="search-results-dropdown"></div>
+        </div>
+        <a href="../index.html" class="topnav-link">Home</a>
+        <a href="../releases.html" class="topnav-link">Releases</a>
+        <a href="https://github.com/nicokimmel/oxidian" class="topnav-github" target="_blank" rel="noopener">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="sidebar-backdrop"></div>
+
+  <div class="docs-layout">
+    <aside class="docs-sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-heading">Getting Started</div>
+        <a href="index.html" class="sidebar-link">Documentation Hub</a>
+        <a href="getting-started.html" class="sidebar-link active">Getting Started</a>
+        <a href="#installation" class="sidebar-sublink">Installation</a>
+        <a href="#first-launch" class="sidebar-sublink">First Launch</a>
+        <a href="#creating-your-first-vault" class="sidebar-sublink">Creating a Vault</a>
+        <a href="#creating-and-editing-notes" class="sidebar-sublink">Creating Notes</a>
+        <a href="#markdown" class="sidebar-sublink">Markdown</a>
+        <a href="#wiki-links" class="sidebar-sublink">Wiki-Links</a>
+        <a href="#tags" class="sidebar-sublink">Tags</a>
+        <a href="#daily-notes" class="sidebar-sublink">Daily Notes</a>
+        <a href="#keyboard-shortcuts" class="sidebar-sublink">Keyboard Shortcuts</a>
+        <a href="#slash-commands" class="sidebar-sublink">Slash Commands</a>
+        <a href="#command-palette" class="sidebar-sublink">Command Palette</a>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-heading">Guides</div>
+        <a href="features.html" class="sidebar-link">Features</a>
+        <a href="plugins.html" class="sidebar-link">Plugins</a>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-heading">Support</div>
+        <a href="troubleshooting.html" class="sidebar-link">Troubleshooting</a>
+        <a href="building.html" class="sidebar-link">Building from Source</a>
+      </div>
+    </aside>
+
+    <main class="docs-content">
+      <article class="docs-article">
+        <div class="breadcrumb">
+          <a href="../index.html">Oxidian</a>
+          <span class="sep">›</span>
+          <a href="index.html">Docs</a>
+          <span class="sep">›</span>
+          <span>Getting Started</span>
+        </div>
+
+        <h1>Getting Started</h1>
+        <p class="subtitle">Welcome to Oxidian! This guide will walk you through installation, setup, and everything you need to start taking notes like a pro.</p>
+
+        <!-- Installation -->
+        <h2 id="installation">Installation <a href="#installation" class="anchor">#</a></h2>
+
+        <h3 id="linux-download">Linux (Pre-built Binary)</h3>
+        <p>Download the latest release from the <a href="https://github.com/nicokimmel/oxidian/releases" target="_blank" rel="noopener">GitHub Releases</a> page. Oxidian is available as an AppImage and a <code>.deb</code> package.</p>
+
+        <div class="code-block-wrapper">
+          <span class="code-lang">bash</span>
+          <button class="copy-btn">Copy</button>
+          <pre><code><span class="code-comment"># Make the AppImage executable and run</span>
+chmod +x Oxidian-*.AppImage
+./Oxidian-*.AppImage</code></pre>
+        </div>
+
+        <h3 id="nixos">NixOS / Nix</h3>
+        <p>On NixOS, dynamically linked binaries won't run directly. Use <code>nix-shell</code> with the required dependencies:</p>
+
+        <div class="code-block-wrapper">
+          <span class="code-lang">bash</span>
+          <button class="copy-btn">Copy</button>
+          <pre><code><span class="code-comment"># Enter a shell with required dependencies</span>
+nix-shell -p webkitgtk_4_1 gtk3 glib-networking \
+  openssl pkg-config libsoup_3 --run ./Oxidian-*.AppImage</code></pre>
+        </div>
+
+        <p>Alternatively, build from source (see <a href="building.html">Building from Source</a>) or use <code>buildFHSEnv</code> for a permanent solution.</p>
+
+        <h3 id="build-from-source">Build from Source</h3>
+        <p>If you prefer to compile Oxidian yourself, see the <a href="building.html">Building from Source</a> guide for full instructions.</p>
+
+        <div class="callout callout-info">
+          <span class="callout-icon">ℹ️</span>
+          <div class="callout-content">
+            <p><strong>System requirements:</strong> Oxidian uses Tauri (WebKit-based) on Linux. You'll need WebKitGTK 4.1, GTK 3, and related libraries. Most desktop Linux distributions have these pre-installed.</p>
+          </div>
+        </div>
+
+        <!-- First Launch -->
+        <h2 id="first-launch">First Launch & Onboarding <a href="#first-launch" class="anchor">#</a></h2>
+
+        <p>When you start Oxidian for the first time, a <strong>setup wizard</strong> guides you through the initial configuration:</p>
+
+        <div class="steps">
+          <div class="step">
+            <h4>Welcome Screen</h4>
+            <p>Click <strong>"Get Started"</strong> to begin the setup process.</p>
+          </div>
+          <div class="step">
+            <h4>Set Up Your Vault</h4>
+            <p>Choose between <strong>Create New Vault</strong> (starts with an empty folder) or <strong>Open Existing Vault</strong> (use a folder of existing markdown notes). Select a path or browse to a directory. The default location is <code>~/.oxidian/vault/</code>.</p>
+          </div>
+          <div class="step">
+            <h4>Vault Security</h4>
+            <p>Optionally enable <strong>AES-256-GCM encryption</strong> with Argon2id key derivation. Set a master password — <strong>this cannot be recovered if lost</strong>. You can skip this and enable encryption later from Settings.</p>
+          </div>
+          <div class="step">
+            <h4>Quick Tour</h4>
+            <p>A brief overview of Oxidian's key features: the markdown editor, graph view, full-text search, daily notes, and slash commands. Click <strong>"Start Writing"</strong> to enter the app.</p>
+          </div>
+        </div>
+
+        <!-- Creating Your First Vault -->
+        <h2 id="creating-your-first-vault">Creating Your First Vault <a href="#creating-your-first-vault" class="anchor">#</a></h2>
+
+        <p>A <strong>vault</strong> is simply a folder on your computer that contains your notes. Each note is a plain <code>.md</code> (Markdown) file. There's no database, no proprietary format — just files you can read and edit with any text editor.</p>
+
+        <p>Your vault directory looks like this:</p>
+
+        <div class="code-block-wrapper">
+          <span class="code-lang">text</span>
+          <button class="copy-btn">Copy</button>
+          <pre><code>My Vault/
+├── daily/
+│   ├── 2026-02-09.md
+│   └── 2026-02-10.md
+├── projects/
+│   ├── oxidian-notes.md
+│   └── ideas.md
+├── Getting Started.md
+├── .obsidian/           ← Plugin folder (Obsidian-compatible)
+│   └── plugins/
+└── .search_index/       ← Auto-generated search index</code></pre>
+        </div>
+
+        <p>To change your vault location later, go to <strong>Settings → General → Vault Path</strong>.</p>
+
+        <!-- Creating and Editing Notes -->
+        <h2 id="creating-and-editing-notes">Creating and Editing Notes <a href="#creating-and-editing-notes" class="anchor">#</a></h2>
+
+        <p>There are several ways to create a new note:</p>
+        <ul>
+          <li>Press <kbd>Ctrl</kbd>+<kbd>N</kbd> to open the new note dialog</li>
+          <li>Click the <strong>📄 New Note</strong> button in the sidebar toolbar</li>
+          <li>Click a <code>[[wiki-link]]</code> to a note that doesn't exist yet — Oxidian will create it for you</li>
+          <li>Use the slash command <code>/</code> menu for quick formatting</li>
+        </ul>
+
+        <p>With the <strong>HyperMark editor</strong> (v1.0+), unfocused blocks render as rich HTML while the focused block shows raw Markdown with full CodeMirror 6 editing. You can also toggle a traditional split-view preview with <kbd>Ctrl</kbd>+<kbd>E</kbd>.</p>
+
+        <div class="callout callout-tip">
+          <span class="callout-icon">✨</span>
+          <div class="callout-content">
+            <p><strong>New in v0.9:</strong> The sidebar now includes <strong>Bookmarks</strong> (⭐ pin your favorite notes), <strong>Recent Files</strong> (🕐 recently opened notes), and an <strong>Outline Panel</strong> (📑 heading navigation). You'll also see <strong>Reading Time</strong> and word count for each note.</p>
+          </div>
+        </div>
+
+        <p>Notes are <strong>auto-saved</strong> 2 seconds after your last edit. You can also save manually with <kbd>Ctrl</kbd>+<kbd>S</kbd>.</p>
+
+        <!-- Markdown -->
+        <h2 id="markdown">Using Markdown <a href="#markdown" class="anchor">#</a></h2>
+
+        <p>Oxidian uses standard <strong>CommonMark markdown</strong> (rendered by <a href="https://github.com/raphlinus/pulldown-cmark" target="_blank" rel="noopener">pulldown-cmark</a>) with extensions for wiki-links, tags, and callouts.</p>
+
+        <h3>Headings</h3>
+        <div class="code-block-wrapper">
+          <span class="code-lang">markdown</span>
+          <button class="copy-btn">Copy</button>
+          <pre><code># Heading 1
+## Heading 2
+### Heading 3
+#### Heading 4
+##### Heading 5
+###### Heading 6</code></pre>
+        </div>
+
+        <p>Cycle through heading levels with <kbd>Ctrl</kbd>+<kbd>H</kbd>.</p>
+
+        <h3>Text Formatting</h3>
+        <div class="code-block-wrapper">
+          <span class="code-lang">markdown</span>
+          <button class="copy-btn">Copy</button>
+          <pre><code>**Bold text**           → Ctrl+B
+*Italic text*           → Ctrl+I
+~~Strikethrough~~       → Ctrl+Shift+X
+`Inline code`           → Ctrl+`
+[Link text](url)        → Ctrl+K
+![Image alt](image.png)</code></pre>
+        </div>
+
+        <h3>Lists</h3>
+        <div class="code-block-wrapper">
+          <span class="code-lang">markdown</span>
+          <button class="copy-btn">Copy</button>
+          <pre><code><span class="code-comment">Bullet lists:</span>
+- Item one
+- Item two
+  - Nested item
+
+<span class="code-comment">Numbered lists:</span>
+1. First
+2. Second
+3. Third
+
+<span class="code-comment">Checkboxes:</span>
+- [ ] Unchecked task
+- [x] Completed task</code></pre>
+        </div>
+
+        <p>Lists auto-continue when you press <kbd>Enter</kbd>. Press <kbd>Enter</kbd> on an empty list item to break out of the list.</p>
+
+        <h3>Code Blocks</h3>
+        <div class="code-block-wrapper">
+          <span class="code-lang">markdown</span>
+          <button class="copy-btn">Copy</button>
+          <pre><code>```rust
+fn main() {
+    println!("Hello, Oxidian!");
+}
+```</code></pre>
+        </div>
+
+        <p>Insert a code block quickly with <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd> or the slash command <code>/codeblock</code>.</p>
+
+        <h3>Tables</h3>
+        <div class="code-block-wrapper">
+          <span class="code-lang">markdown</span>
+          <button class="copy-btn">Copy</button>
+          <pre><code>| Feature      | Oxidian | Obsidian |
+| ------------ | ------- | -------- |
+| Open Source   | ✅      | ❌       |
+| Rust Backend  | ✅      | ❌       |
+| Encrypted     | ✅      | ❌       |</code></pre>
+        </div>
+
+        <p>Use the slash command <code>/table</code> to insert a table template.</p>
+
+        <h3>Blockquotes &amp; Callouts</h3>
+        <div class="code-block-wrapper">
+          <span class="code-lang">markdown</span>
+          <button class="copy-btn">Copy</button>
+          <pre><code>> Standard blockquote
+
+> [!note]
+> This is a callout — highlighted info box.
+
+> [!warning]
+> This is a warning callout.</code></pre>
+        </div>
+
+        <h3>Horizontal Rule</h3>
+        <div class="code-block-wrapper">
+          <span class="code-lang">markdown</span>
+          <button class="copy-btn">Copy</button>
+          <pre><code>---</code></pre>
+        </div>
+
+        <!-- Wiki-Links -->
+        <h2 id="wiki-links">Wiki-Links <a href="#wiki-links" class="anchor">#</a></h2>
+
+        <p>Wiki-links are the heart of connected note-taking. Link to other notes using double brackets:</p>
+
+        <div class="code-block-wrapper">
+          <span class="code-lang">markdown</span>
+          <button class="copy-btn">Copy</button>
+          <pre><code>Check out [[My Other Note]] for more details.
+Also see [[projects/oxidian-notes]].</code></pre>
+        </div>
+
+        <p>When you click a wiki-link:</p>
+        <ul>
+          <li>If the linked note <strong>exists</strong>, it opens in the editor</li>
+          <li>If it <strong>doesn't exist</strong>, Oxidian creates a new note with that name and opens it</li>
+        </ul>
+
+        <p>Wiki-links also power the <strong>Graph View</strong> and <strong>Backlinks</strong> — they form the connections between your notes. Insert one quickly with the slash command <code>/wikilink</code> or just type <code>[[</code>.</p>
+
+        <div class="callout callout-tip">
+          <span class="callout-icon">💡</span>
+          <div class="callout-content">
+            <p><strong>Tip:</strong> Use descriptive note names. Wiki-links use the filename (without <code>.md</code>), so <code>[[Rust Error Handling]]</code> is more useful than <code>[[note17]]</code>.</p>
+          </div>
+        </div>
+
+        <!-- Tags -->
+        <h2 id="tags">Tags <a href="#tags" class="anchor">#</a></h2>
+
+        <p>Organize your notes with hashtag-style tags:</p>
+
+        <div class="code-block-wrapper">
+          <span class="code-lang">markdown</span>
+          <button class="copy-btn">Copy</button>
+          <pre><code># Meeting Notes
+
+Discussed the #project-roadmap with the team.
+
+#meeting #2026 #important</code></pre>
+        </div>
+
+        <p>Tags appear in the <strong>Tags panel</strong> in the sidebar (click the tag icon in the ribbon). Clicking a tag performs a search for all notes containing that tag.</p>
+
+        <!-- Daily Notes -->
+        <h2 id="daily-notes">Daily Notes / Journaling <a href="#daily-notes" class="anchor">#</a></h2>
+
+        <p>Oxidian has built-in support for daily journaling. Press <kbd>Ctrl</kbd>+<kbd>D</kbd> or click the 📅 icon in the ribbon to create (or open) today's daily note.</p>
+
+        <p>Daily notes are stored in the <code>daily/</code> folder with the format <code>YYYY-MM-DD.md</code>. Each note is created with a template:</p>
+
+        <div class="code-block-wrapper">
+          <span class="code-lang">markdown</span>
+          <button class="copy-btn">Copy</button>
+          <pre><code># Monday, February 09, 2026
+
+## Journal
+
+
+
+## Tasks
+
+- [ ] 
+
+## Notes
+
+</code></pre>
+        </div>
+
+        <!-- Keyboard Shortcuts -->
+        <h2 id="keyboard-shortcuts">Keyboard Shortcuts <a href="#keyboard-shortcuts" class="anchor">#</a></h2>
+
+        <p>Oxidian is built for keyboard-first workflows. Here's the complete list of shortcuts:</p>
+
+        <h3>File Operations</h3>
+        <table>
+          <thead><tr><th>Shortcut</th><th>Action</th></tr></thead>
+          <tbody>
+            <tr><td><kbd>Ctrl</kbd>+<kbd>N</kbd></td><td>Create new note</td></tr>
+            <tr><td><kbd>Ctrl</kbd>+<kbd>S</kbd></td><td>Save current note</td></tr>
+            <tr><td><kbd>Ctrl</kbd>+<kbd>W</kbd></td><td>Close current tab</td></tr>
+            <tr><td><kbd>Ctrl</kbd>+<kbd>D</kbd></td><td>Open/create daily note</td></tr>
+            <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd></td><td>Open full-text search</td></tr>
+            <tr><td><kbd>Ctrl</kbd>+<kbd>P</kbd></td><td>Open command palette</td></tr>
+            <tr><td><kbd>Ctrl</kbd>+<kbd>,</kbd></td><td>Open settings</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Editor Formatting</h3>
+        <table>
+          <thead><tr><th>Shortcut</th><th>Action</th></tr></thead>
+          <tbody>
+            <tr><td><kbd>Ctrl</kbd>+<kbd>B</kbd></td><td>Bold</td></tr>
+            <tr><td><kbd>Ctrl</kbd>+<kbd>I</kbd></td><td>Italic</td></tr>
+            <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>X</kbd></td><td>Strikethrough</td></tr>
+            <tr><td><kbd>Ctrl</kbd>+<kbd>`</kbd></td><td>Inline code</td></tr>
+            <tr><td><kbd>Ctrl</kbd>+<kbd>K</kbd></td><td>Insert link</td></tr>
+            <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd></td><td>Insert code block</td></tr>
+            <tr><td><kbd>Ctrl</kbd>+<kbd>H</kbd></td><td>Cycle heading level (H1→H2→...→H6→plain)</td></tr>
+            <tr><td><kbd>Ctrl</kbd>+<kbd>E</kbd></td><td>Toggle preview pane</td></tr>
+            <tr><td><kbd>Tab</kbd></td><td>Indent</td></tr>
+            <tr><td><kbd>Shift</kbd>+<kbd>Tab</kbd></td><td>Outdent</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Navigation</h3>
+        <table>
+          <thead><tr><th>Shortcut</th><th>Action</th></tr></thead>
+          <tbody>
+            <tr><td><kbd>Escape</kbd></td><td>Close dialog / command palette / slash menu</td></tr>
+            <tr><td><kbd>Enter</kbd></td><td>Auto-continue lists (bullets, numbers, checkboxes)</td></tr>
+          </tbody>
+        </table>
+
+        <!-- Slash Commands -->
+        <h2 id="slash-commands">Slash Commands <a href="#slash-commands" class="anchor">#</a></h2>
+
+        <p>Type <code>/</code> at the start of a line (or after a space) to open the slash command menu. It provides quick access to formatting without memorizing shortcuts:</p>
+
+        <table>
+          <thead><tr><th>Command</th><th>Result</th></tr></thead>
+          <tbody>
+            <tr><td><code>/h1</code> – <code>/h6</code></td><td>Insert heading level 1–6</td></tr>
+            <tr><td><code>/bold</code></td><td>Wrap selection in <code>**bold**</code></td></tr>
+            <tr><td><code>/italic</code></td><td>Wrap selection in <code>*italic*</code></td></tr>
+            <tr><td><code>/strikethrough</code></td><td>Wrap selection in <code>~~strikethrough~~</code></td></tr>
+            <tr><td><code>/code</code></td><td>Wrap selection in <code>`inline code`</code></td></tr>
+            <tr><td><code>/codeblock</code></td><td>Insert a fenced code block</td></tr>
+            <tr><td><code>/quote</code></td><td>Insert blockquote</td></tr>
+            <tr><td><code>/bullet</code></td><td>Insert bullet list item</td></tr>
+            <tr><td><code>/numbered</code></td><td>Insert numbered list item</td></tr>
+            <tr><td><code>/checkbox</code></td><td>Insert checkbox <code>- [ ]</code></td></tr>
+            <tr><td><code>/table</code></td><td>Insert a 3-column table template</td></tr>
+            <tr><td><code>/hr</code></td><td>Insert horizontal rule</td></tr>
+            <tr><td><code>/image</code></td><td>Insert image embed syntax</td></tr>
+            <tr><td><code>/link</code></td><td>Insert markdown link</td></tr>
+            <tr><td><code>/wikilink</code></td><td>Insert <code>[[wiki link]]</code></td></tr>
+            <tr><td><code>/callout</code></td><td>Insert callout block</td></tr>
+          </tbody>
+        </table>
+
+        <p>Use <kbd>↑</kbd>/<kbd>↓</kbd> to navigate the menu, <kbd>Enter</kbd> or <kbd>Tab</kbd> to select, and <kbd>Esc</kbd> to dismiss. You can type to filter — e.g., <code>/tab</code> will show the table command.</p>
+
+        <!-- Command Palette -->
+        <h2 id="command-palette">Command Palette <a href="#command-palette" class="anchor">#</a></h2>
+
+        <p>Press <kbd>Ctrl</kbd>+<kbd>P</kbd> to open the command palette — a quick-access launcher for all available commands:</p>
+
+        <ul>
+          <li><strong>Built-in commands</strong>: Create new note, open daily note, save, search, graph view, settings, toggle preview, close tab</li>
+          <li><strong>Plugin commands</strong>: Any commands registered by loaded plugins appear here too</li>
+        </ul>
+
+        <p>Type to fuzzy-filter commands, use <kbd>↑</kbd>/<kbd>↓</kbd> to navigate, and <kbd>Enter</kbd> to execute. Press <kbd>Esc</kbd> to close.</p>
+
+        <div class="callout callout-tip">
+          <span class="callout-icon">⚡</span>
+          <div class="callout-content">
+            <p><strong>Power tip:</strong> The command palette is the fastest way to access any feature. If you forget a keyboard shortcut, just press <kbd>Ctrl</kbd>+<kbd>P</kbd> and type what you want to do.</p>
+          </div>
+        </div>
+
+        <!-- Page Navigation -->
+        <div class="page-nav">
+          <a href="index.html">
+            <div class="nav-label">← Previous</div>
+            <div class="nav-title">Documentation Hub</div>
+          </a>
+          <a href="features.html" class="next">
+            <div class="nav-label">Next →</div>
+            <div class="nav-title">Features</div>
+          </a>
+        </div>
+
+      </article>
+    </main>
+  </div>
+
+  <footer class="docs-footer">
+    <p>© 2026 Oxidian. Open source under the MIT License.</p>
+  </footer>
+
+  <script src="docs.js"></script>
+</body>
+</html>

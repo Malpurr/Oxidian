@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Oxidian Documentation</title>
+  <meta name="description" content="Official documentation for Oxidian — the open-source Obsidian alternative built in Rust.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="docs.css">
+</head>
+<body>
+  <!-- Top Navigation -->
+  <nav class="docs-topnav">
+    <div class="topnav-inner">
+      <div class="topnav-left">
+        <button class="mobile-menu-btn" aria-label="Toggle sidebar">☰</button>
+        <a href="../index.html" class="topnav-logo">
+          <span class="logo-icon">⬡</span>
+          <span>Oxidian</span>
+          <span class="logo-sep">/</span>
+          <span class="logo-docs">Docs</span>
+        </a>
+      </div>
+      <div class="topnav-right">
+        <div class="topnav-search">
+          <span class="search-icon">🔍</span>
+          <input type="text" placeholder="Search docs..." aria-label="Search documentation">
+          <div class="search-results-dropdown"></div>
+        </div>
+        <a href="../index.html" class="topnav-link">Home</a>
+        <a href="../releases.html" class="topnav-link">Releases</a>
+        <a href="https://github.com/nicokimmel/oxidian" class="topnav-github" target="_blank" rel="noopener" aria-label="GitHub">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="sidebar-backdrop"></div>
+
+  <div class="docs-layout">
+    <!-- Sidebar -->
+    <aside class="docs-sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-heading">Getting Started</div>
+        <a href="index.html" class="sidebar-link active">Documentation Hub</a>
+        <a href="getting-started.html" class="sidebar-link">Getting Started</a>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-heading">Guides</div>
+        <a href="features.html" class="sidebar-link">Features</a>
+        <a href="plugins.html" class="sidebar-link">Plugins</a>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-heading">Support</div>
+        <a href="troubleshooting.html" class="sidebar-link">Troubleshooting</a>
+        <a href="building.html" class="sidebar-link">Building from Source</a>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="docs-content">
+      <article class="docs-article">
+        <div class="breadcrumb">
+          <a href="../index.html">Oxidian</a>
+          <span class="sep">›</span>
+          <span>Documentation</span>
+        </div>
+
+        <h1>Oxidian Documentation</h1>
+        <p class="subtitle">Everything you need to know about Oxidian — the blazing-fast, open-source, Rust-powered note-taking app. Whether you're getting started or diving deep into advanced features, you'll find it here.</p>
+
+        <div class="doc-cards">
+          <a href="getting-started.html" class="doc-card">
+            <div class="card-icon">🚀</div>
+            <h3>Getting Started</h3>
+            <p>Install Oxidian, set up your vault, learn the basics of note-taking, keyboard shortcuts, and slash commands.</p>
+          </a>
+
+          <a href="features.html" class="doc-card">
+            <div class="card-icon">✨</div>
+            <h3>Features</h3>
+            <p>Explore split panes, graph view, full-text search, encrypted vaults, themes, and the settings page.</p>
+          </a>
+
+          <a href="plugins.html" class="doc-card">
+            <div class="card-icon">🔌</div>
+            <h3>Plugins</h3>
+            <p>Learn how Oxidian runs real Obsidian community plugins, which APIs are supported, and how to install them.</p>
+          </a>
+
+          <a href="troubleshooting.html" class="doc-card">
+            <div class="card-icon">🔧</div>
+            <h3>Troubleshooting</h3>
+            <p>Solutions for common issues — startup problems, NixOS quirks, plugin errors, encryption, and more.</p>
+          </a>
+
+          <a href="building.html" class="doc-card">
+            <div class="card-icon">🛠️</div>
+            <h3>Building from Source</h3>
+            <p>Clone the repo, install dependencies, build Oxidian, and contribute to the project.</p>
+          </a>
+
+          <a href="https://github.com/nicokimmel/oxidian" class="doc-card" target="_blank" rel="noopener">
+            <div class="card-icon">📦</div>
+            <h3>GitHub Repository</h3>
+            <p>Browse the source code, open issues, submit pull requests, and star the project.</p>
+          </a>
+        </div>
+
+        <h2 id="quick-links">Quick Links <a href="#quick-links" class="anchor">#</a></h2>
+
+        <div class="feature-grid">
+          <div class="feature-card">
+            <div class="card-icon">⌨️</div>
+            <h4>Keyboard Shortcuts</h4>
+            <p>Full list of shortcuts for power users.</p>
+          </div>
+          <div class="feature-card">
+            <div class="card-icon">📝</div>
+            <h4>Markdown Guide</h4>
+            <p>All supported markdown syntax.</p>
+          </div>
+          <div class="feature-card">
+            <div class="card-icon">🔐</div>
+            <h4>Encryption Setup</h4>
+            <p>Protect your vault with AES-256.</p>
+          </div>
+          <div class="feature-card">
+            <div class="card-icon">🗺️</div>
+            <h4>Graph View</h4>
+            <p>Visualize your note connections.</p>
+          </div>
+        </div>
+
+        <h2 id="about-oxidian">About Oxidian <a href="#about-oxidian" class="anchor">#</a></h2>
+
+        <p>Oxidian is a <strong>free, open-source</strong> note-taking application built with <strong>Rust</strong> and <strong>Tauri</strong>. It's designed as an alternative to Obsidian with a focus on performance, privacy, and extensibility.</p>
+
+        <p>Key highlights:</p>
+
+        <ul>
+          <li><strong>Rust-powered backend</strong> — Blazing fast file operations, search (Tantivy), and encryption (AES-256-GCM)</li>
+          <li><strong>Obsidian plugin compatibility</strong> — Run real Obsidian community plugins without modification</li>
+          <li><strong>Encrypted vaults</strong> — AES-256-GCM encryption with Argon2id key derivation</li>
+          <li><strong>Local-first</strong> — Your notes are plain markdown files stored on your machine</li>
+          <li><strong>MIT licensed</strong> — Fully open source, forever free</li>
+        </ul>
+
+        <div class="callout callout-info">
+          <span class="callout-icon">💡</span>
+          <div class="callout-content">
+            <p><strong>New to Oxidian?</strong> Start with the <a href="getting-started.html">Getting Started</a> guide. You'll be taking notes in under 5 minutes.</p>
+          </div>
+        </div>
+
+      </article>
+    </main>
+  </div>
+
+  <footer class="docs-footer">
+    <p>© 2026 Oxidian. Open source under the MIT License. Built with 🦀 and Rust.</p>
+  </footer>
+
+  <script src="docs.js"></script>
+</body>
+</html>

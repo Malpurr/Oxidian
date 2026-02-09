@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Plugin Explorer — Oxidian</title>
+  <meta name="description" content="Browse, discover, and install Oxidian plugins. Build your own with the Plugin API.">
+  <meta name="theme-color" content="#0d0d14">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .plugins-page { padding: calc(var(--nav-height) + 60px) 0 120px; }
+
+    /* Search & Filters */
+    .plugins-header { max-width: 700px; margin: 0 auto 48px; text-align: center; }
+    .plugin-search-bar {
+      display: flex;
+      align-items: center;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 20px;
+      margin-bottom: 20px;
+      backdrop-filter: blur(10px);
+      transition: border-color 0.2s;
+    }
+    .plugin-search-bar:focus-within { border-color: var(--accent); }
+    .plugin-search-bar svg { color: var(--text-muted); margin-right: 12px; flex-shrink: 0; }
+    .plugin-search-bar input {
+      background: none; border: none; outline: none;
+      color: var(--text-primary); font-size: 1rem; font-family: var(--font-ui);
+      width: 100%;
+    }
+    .plugin-search-bar input::placeholder { color: var(--text-muted); }
+
+    .filter-tabs {
+      display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
+    }
+    .filter-tab {
+      background: var(--bg-card); border: 1px solid var(--border);
+      color: var(--text-secondary); padding: 6px 16px; border-radius: 999px;
+      font-size: 0.85rem; font-weight: 500; cursor: pointer;
+      transition: all 0.2s; font-family: var(--font-ui);
+    }
+    .filter-tab:hover { border-color: var(--accent); color: var(--text-primary); }
+    .filter-tab.active {
+      background: rgba(127,109,242,0.15); border-color: var(--accent);
+      color: var(--accent-light); font-weight: 600;
+    }
+
+    /* Plugin Grid */
+    .plugin-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 20px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .plugin-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      backdrop-filter: blur(10px);
+      cursor: pointer;
+      transition: all 0.25s;
+      position: relative;
+    }
+    .plugin-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(127,109,242,0.1);
+    }
+    .plugin-card-header { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 12px; }
+    .plugin-icon {
+      width: 44px; height: 44px; border-radius: 12px;
+      background: rgba(127,109,242,0.1); display: flex; align-items: center;
+      justify-content: center; font-size: 1.4rem; flex-shrink: 0;
+    }
+    .plugin-meta { flex: 1; min-width: 0; }
+    .plugin-name { font-size: 1.05rem; font-weight: 700; color: var(--text-primary); margin-bottom: 2px; }
+    .plugin-author { font-size: 0.8rem; color: var(--text-muted); }
+    .plugin-desc { font-size: 0.88rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 14px; }
+    .plugin-footer { display: flex; align-items: center; justify-content: space-between; }
+    .plugin-stats { display: flex; gap: 14px; font-size: 0.78rem; color: var(--text-muted); }
+    .plugin-stats span { display: flex; align-items: center; gap: 4px; }
+    .plugin-install-btn {
+      background: var(--accent); color: white; border: none;
+      padding: 6px 16px; border-radius: 999px; font-size: 0.8rem;
+      font-weight: 600; cursor: pointer; transition: all 0.2s;
+      font-family: var(--font-ui);
+    }
+    .plugin-install-btn:hover { background: var(--accent-light); transform: scale(1.05); }
+    .plugin-category-badge {
+      position: absolute; top: 12px; right: 12px;
+      font-size: 0.65rem; font-weight: 600; padding: 2px 8px;
+      border-radius: 999px; text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .cat-editor { background: rgba(137,180,250,0.15); color: #89b4fa; }
+    .cat-sidebar { background: rgba(166,227,161,0.15); color: #a6e3a1; }
+    .cat-theme { background: rgba(203,166,247,0.15); color: #cba6f7; }
+    .cat-utility { background: rgba(249,226,175,0.15); color: #f9e2af; }
+    .cat-integration { background: rgba(243,139,168,0.15); color: #f38ba8; }
+
+    /* Plugin Detail Modal */
+    .plugin-modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(4px); z-index: 1000;
+      display: none; align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    .plugin-modal-overlay.active { display: flex; }
+    .plugin-modal {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      max-width: 700px; width: 100%; max-height: 85vh;
+      overflow-y: auto; padding: 36px;
+      position: relative;
+    }
+    .plugin-modal-close {
+      position: absolute; top: 16px; right: 16px;
+      background: none; border: none; color: var(--text-muted);
+      font-size: 1.5rem; cursor: pointer; line-height: 1;
+    }
+    .plugin-modal-close:hover { color: var(--text-primary); }
+    .modal-plugin-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
+    .modal-plugin-icon {
+      width: 56px; height: 56px; border-radius: 14px;
+      background: rgba(127,109,242,0.1); display: flex; align-items: center;
+      justify-content: center; font-size: 1.8rem;
+    }
+    .modal-plugin-title { font-size: 1.5rem; font-weight: 800; color: var(--text-primary); }
+    .modal-plugin-author { font-size: 0.9rem; color: var(--text-muted); }
+    .modal-section { margin-bottom: 24px; }
+    .modal-section h3 {
+      font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--text-muted); margin-bottom: 10px;
+    }
+    .modal-section p, .modal-section li {
+      font-size: 0.92rem; color: var(--text-secondary); line-height: 1.7;
+    }
+    .modal-section ul { list-style: none; padding: 0; }
+    .modal-section li::before { content: '•'; color: var(--accent); font-weight: 700; margin-right: 8px; }
+    .modal-screenshots {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    }
+    .modal-screenshot {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); height: 120px;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-muted); font-size: 0.8rem;
+    }
+    .modal-install-code {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 16px 20px;
+      font-family: var(--font-mono); font-size: 0.85rem;
+      color: var(--green); overflow-x: auto;
+    }
+
+    /* API Docs Section */
+    .api-section {
+      max-width: 900px; margin: 100px auto 0;
+      border-top: 1px solid var(--border); padding-top: 80px;
+    }
+    .api-code-block {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 20px 24px;
+      font-family: var(--font-mono); font-size: 0.82rem;
+      color: var(--text-secondary); overflow-x: auto;
+      line-height: 1.7; margin: 16px 0;
+      backdrop-filter: blur(10px);
+    }
+    .api-code-block .kw { color: var(--mauve); }
+    .api-code-block .str { color: var(--green); }
+    .api-code-block .fn { color: #89b4fa; }
+    .api-code-block .cm { color: var(--text-muted); }
+    .api-code-block .num { color: var(--peach); }
+
+    .api-ref-table {
+      width: 100%; border-collapse: collapse; margin: 16px 0;
+    }
+    .api-ref-table th, .api-ref-table td {
+      text-align: left; padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.88rem;
+    }
+    .api-ref-table th {
+      color: var(--text-muted); text-transform: uppercase;
+      font-size: 0.75rem; letter-spacing: 0.06em;
+    }
+    .api-ref-table td { color: var(--text-secondary); }
+    .api-ref-table td:first-child {
+      font-family: var(--font-mono); color: var(--accent-light); font-weight: 500;
+    }
+
+    .submit-steps {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px; margin-top: 20px;
+    }
+    .submit-step {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 20px; text-align: center;
+    }
+    .submit-step-num {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: rgba(127,109,242,0.15); color: var(--accent-light);
+      font-weight: 800; display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 10px; font-size: 0.9rem;
+    }
+    .submit-step h4 { color: var(--text-primary); font-size: 0.9rem; margin-bottom: 6px; }
+    .submit-step p { color: var(--text-muted); font-size: 0.8rem; line-height: 1.4; }
+  </style>
+</head>
+<body>
+  <!-- Navigation -->
+  <nav class="navbar" id="navbar">
+    <div class="nav-container">
+      <a href="index.html" class="nav-logo">
+        <span class="logo-icon">⬡</span>
+        <span class="logo-text">Oxidian</span>
+      </a>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="index.html#features">Features</a></li>
+        <li><a href="plugins.html" class="active">Plugins</a></li>
+        <li><a href="docs/index.html">Docs</a></li>
+        <li><a href="releases.html">Releases</a></li>
+        <li><a href="https://github.com/nicokimmel/oxidian" class="nav-github" target="_blank" rel="noopener">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        </a></li>
+      </ul>
+      <button class="hamburger" id="hamburger" aria-label="Toggle menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <section class="plugins-page">
+    <div class="container">
+      <!-- Header -->
+      <div class="section-header fade-in" style="margin-bottom: 48px;">
+        <span class="section-label">Plugin Explorer</span>
+        <h2 class="section-title" style="font-size: clamp(2.5rem, 5vw, 3.5rem);">Extend Oxidian</h2>
+        <p class="section-desc">Browse community plugins, install with one click, or build your own.</p>
+      </div>
+
+      <!-- Search & Filters -->
+      <div class="plugins-header fade-in">
+        <div class="plugin-search-bar">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="pluginSearch" placeholder="Search plugins..." autocomplete="off">
+        </div>
+        <div class="filter-tabs" id="filterTabs">
+          <button class="filter-tab active" data-category="all">All</button>
+          <button class="filter-tab" data-category="editor">Editor</button>
+          <button class="filter-tab" data-category="sidebar">Sidebar</button>
+          <button class="filter-tab" data-category="utility">Utility</button>
+          <button class="filter-tab" data-category="integration">Integration</button>
+          <button class="filter-tab" data-category="theme">Theme</button>
+        </div>
+      </div>
+
+      <!-- Plugin Grid -->
+      <div class="plugin-grid" id="pluginGrid">
+        <!-- Word Count -->
+        <div class="plugin-card fade-in" data-category="editor" data-plugin="word-count">
+          <span class="plugin-category-badge cat-editor">Editor</span>
+          <div class="plugin-card-header">
+            <div class="plugin-icon">📊</div>
+            <div class="plugin-meta">
+              <div class="plugin-name">Word Count</div>
+              <div class="plugin-author">by OxidianTeam</div>
+            </div>
+          </div>
+          <div class="plugin-desc">Displays word count, character count, and reading time in the status bar.</div>
+          <div class="plugin-footer">
+            <div class="plugin-stats">
+              <span>⬇ 12,483</span>
+              <span>⭐ 4.8</span>
+            </div>
+            <button class="plugin-install-btn" onclick="event.stopPropagation()">Install</button>
+          </div>
+        </div>
+
+        <!-- Calendar -->
+        <div class="plugin-card fade-in" data-category="sidebar" data-plugin="calendar">
+          <span class="plugin-category-badge cat-sidebar">Sidebar</span>
+          <div class="plugin-card-header">
+            <div class="plugin-icon">📅</div>
+            <div class="plugin-meta">
+              <div class="plugin-name">Calendar</div>
+              <div class="plugin-author">by liamcain</div>
+            </div>
+          </div>
+          <div class="plugin-desc">Calendar widget in the sidebar. Click any date to open or create its daily note.</div>
+          <div class="plugin-footer">
+            <div class="plugin-stats">
+              <span>⬇ 28,391</span>
+              <span>⭐ 4.9</span>
+            </div>
+            <button class="plugin-install-btn" onclick="event.stopPropagation()">Install</button>
+          </div>
+        </div>
+
+        <!-- Kanban -->
+        <div class="plugin-card fade-in" data-category="editor" data-plugin="kanban">
+          <span class="plugin-category-badge cat-editor">Editor</span>
+          <div class="plugin-card-header">
+            <div class="plugin-icon">📋</div>
+            <div class="plugin-meta">
+              <div class="plugin-name">Kanban</div>
+              <div class="plugin-author">by mgmeyers</div>
+            </div>
+          </div>
+          <div class="plugin-desc">Create Kanban boards from Markdown lists. Drag cards between columns, all stored as plain Markdown.</div>
+          <div class="plugin-footer">
+            <div class="plugin-stats">
+              <span>⬇ 19,205</span>
+              <span>⭐ 4.7</span>
+            </div>
+            <button class="plugin-install-btn" onclick="event.stopPropagation()">Install</button>
+          </div>
+        </div>
+
+        <!-- Excalidraw -->
+        <div class="plugin-card fade-in" data-category="editor" data-plugin="excalidraw">
+          <span class="plugin-category-badge cat-editor">Editor</span>
+          <div class="plugin-card-header">
+            <div class="plugin-icon">🎨</div>
+            <div class="plugin-meta">
+              <div class="plugin-name">Excalidraw</div>
+              <div class="plugin-author">by zsviczian</div>
+            </div>
+          </div>
+          <div class="plugin-desc">Draw diagrams, sketches, and visual notes directly inside your Markdown files.</div>
+          <div class="plugin-footer">
+            <div class="plugin-stats">
+              <span>⬇ 31,772</span>
+              <span>⭐ 4.9</span>
+            </div>
+            <button class="plugin-install-btn" onclick="event.stopPropagation()">Install</button>
+          </div>
+        </div>
+
+        <!-- Dataview -->
+        <div class="plugin-card fade-in" data-category="utility" data-plugin="dataview">
+          <span class="plugin-category-badge cat-utility">Utility</span>
+          <div class="plugin-card-header">
+            <div class="plugin-icon">🔎</div>
+            <div class="plugin-meta">
+              <div class="plugin-name">Dataview</div>
+              <div class="plugin-author">by blacksmithgu</div>
+            </div>
+          </div>
+          <div class="plugin-desc">SQL-like queries over your notes. Create dynamic tables, lists, and task views from frontmatter and tags.</div>
+          <div class="plugin-footer">
+            <div class="plugin-stats">
+              <span>⬇ 45,310</span>
+              <span>⭐ 4.9</span>
+            </div>
+            <button class="plugin-install-btn" onclick="event.stopPropagation()">Install</button>
+          </div>
+        </div>
+
+        <!-- Templates -->
+        <div class="plugin-card fade-in" data-category="utility" data-plugin="templates">
+          <span class="plugin-category-badge cat-utility">Utility</span>
+          <div class="plugin-card-header">
+            <div class="plugin-icon">📝</div>
+            <div class="plugin-meta">
+              <div class="plugin-name">Templates</div>
+              <div class="plugin-author">by OxidianTeam</div>
+            </div>
+          </div>
+          <div class="plugin-desc">Insert note templates with dynamic variables like {{date}}, {{title}}, and custom fields.</div>
+          <div class="plugin-footer">
+            <div class="plugin-stats">
+              <span>⬇ 15,622</span>
+              <span>⭐ 4.6</span>
+            </div>
+            <button class="plugin-install-btn" onclick="event.stopPropagation()">Install</button>
+          </div>
+        </div>
+
+        <!-- Git Sync -->
+        <div class="plugin-card fade-in" data-category="integration" data-plugin="git-sync">
+          <span class="plugin-category-badge cat-integration">Integration</span>
+          <div class="plugin-card-header">
+            <div class="plugin-icon">🔄</div>
+            <div class="plugin-meta">
+              <div class="plugin-name">Git Sync</div>
+              <div class="plugin-author">by denolehov</div>
+            </div>
+          </div>
+          <div class="plugin-desc">Git-based vault synchronization. Auto-commit, auto-push, pull on startup. Works with any Git remote.</div>
+          <div class="plugin-footer">
+            <div class="plugin-stats">
+              <span>⬇ 22,890</span>
+              <span>⭐ 4.7</span>
+            </div>
+            <button class="plugin-install-btn" onclick="event.stopPropagation()">Install</button>
+          </div>
+        </div>
+
+        <!-- Daily Notes -->
+        <div class="plugin-card fade-in" data-category="utility" data-plugin="daily-notes">
+          <span class="plugin-category-badge cat-utility">Utility</span>
+          <div class="plugin-card-header">
+            <div class="plugin-icon">📆</div>
+            <div class="plugin-meta">
+              <div class="plugin-name">Daily Notes</div>
+              <div class="plugin-author">by OxidianTeam</div>
+            </div>
+          </div>
+          <div class="plugin-desc">Automatically create daily journal notes with customizable templates and date formats.</div>
+          <div class="plugin-footer">
+            <div class="plugin-stats">
+              <span>⬇ 18,445</span>
+              <span>⭐ 4.8</span>
+            </div>
+            <button class="plugin-install-btn" onclick="event.stopPropagation()">Install</button>
+          </div>
+        </div>
+
+        <!-- Slash Commands Extended -->
+        <div class="plugin-card fade-in" data-category="editor" data-plugin="slash-commands">
+          <span class="plugin-category-badge cat-editor">Editor</span>
+          <div class="plugin-card-header">
+            <div class="plugin-icon">⚡</div>
+            <div class="plugin-meta">
+              <div class="plugin-name">Slash Commands Extended</div>
+              <div class="plugin-author">by alephpiece</div>
+            </div>
+          </div>
+          <div class="plugin-desc">More slash commands: embed files, create callouts, insert timestamps, link notes inline.</div>
+          <div class="plugin-footer">
+            <div class="plugin-stats">
+              <span>⬇ 8,211</span>
+              <span>⭐ 4.5</span>
+            </div>
+            <button class="plugin-install-btn" onclick="event.stopPropagation()">Install</button>
+          </div>
+        </div>
+
+        <!-- Vim Mode -->
+        <div class="plugin-card fade-in" data-category="editor" data-plugin="vim-mode">
+          <span class="plugin-category-badge cat-editor">Editor</span>
+          <div class="plugin-card-header">
+            <div class="plugin-icon">⌨️</div>
+            <div class="plugin-meta">
+              <div class="plugin-name">Vim Mode</div>
+              <div class="plugin-author">by OxidianTeam</div>
+            </div>
+          </div>
+          <div class="plugin-desc">Full Vim keybindings — normal, insert, visual modes. Custom vimrc support. Ex commands.</div>
+          <div class="plugin-footer">
+            <div class="plugin-stats">
+              <span>⬇ 9,834</span>
+              <span>⭐ 4.8</span>
+            </div>
+            <button class="plugin-install-btn" onclick="event.stopPropagation()">Install</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================ -->
+      <!-- API Documentation Section -->
+      <!-- ============================================ -->
+      <div class="api-section" id="api">
+        <div class="section-header fade-in" style="margin-bottom: 48px;">
+          <span class="section-label">Developer Docs</span>
+          <h2 class="section-title">Build Your Own Plugin</h2>
+          <p class="section-desc">Oxidian plugins are JavaScript modules with a simple manifest. If you've written an Obsidian plugin, you already know how.</p>
+        </div>
+
+        <!-- Manifest -->
+        <div class="modal-section fade-in">
+          <h3>Plugin Manifest — manifest.json</h3>
+          <p style="font-size:0.92rem;color:var(--text-secondary);margin-bottom:12px;">Every plugin needs a <code style="color:var(--accent-light);background:var(--bg-card);padding:2px 6px;border-radius:4px;">manifest.json</code> in its root directory:</p>
+          <div class="api-code-block">
+{
+  <span class="str">"id"</span>: <span class="str">"my-plugin"</span>,
+  <span class="str">"name"</span>: <span class="str">"My Plugin"</span>,
+  <span class="str">"version"</span>: <span class="str">"1.0.0"</span>,
+  <span class="str">"author"</span>: <span class="str">"YourName"</span>,
+  <span class="str">"description"</span>: <span class="str">"What it does"</span>,
+  <span class="str">"main"</span>: <span class="str">"main.js"</span>,
+  <span class="str">"minOxidianVersion"</span>: <span class="str">"1.0.0"</span>
+}
+          </div>
+        </div>
+
+        <!-- Basic Plugin -->
+        <div class="modal-section fade-in">
+          <h3>Basic Plugin Structure — main.js</h3>
+          <div class="api-code-block">
+<span class="kw">const</span> { Plugin } = <span class="fn">require</span>(<span class="str">'oxidian'</span>);
+
+<span class="kw">class</span> <span class="fn">MyPlugin</span> <span class="kw">extends</span> <span class="fn">Plugin</span> {
+  <span class="fn">onload</span>() {
+    <span class="cm">// Register a command</span>
+    <span class="kw">this</span>.<span class="fn">addCommand</span>({
+      id: <span class="str">'say-hello'</span>,
+      name: <span class="str">'Say Hello'</span>,
+      <span class="fn">callback</span>: () => {
+        <span class="kw">new</span> <span class="fn">Notice</span>(<span class="str">'Hello from my plugin!'</span>);
+      }
+    });
+
+    <span class="cm">// Add a settings tab</span>
+    <span class="kw">this</span>.<span class="fn">addSettingTab</span>(<span class="kw">new</span> <span class="fn">MySettingTab</span>(<span class="kw">this</span>.app, <span class="kw">this</span>));
+
+    <span class="cm">// Register a custom view</span>
+    <span class="kw">this</span>.<span class="fn">registerView</span>(<span class="str">'my-view'</span>, (leaf) => <span class="kw">new</span> <span class="fn">MyView</span>(leaf));
+
+    console.<span class="fn">log</span>(<span class="str">'MyPlugin loaded!'</span>);
+  }
+
+  <span class="fn">onunload</span>() {
+    console.<span class="fn">log</span>(<span class="str">'MyPlugin unloaded.'</span>);
+  }
+}
+
+module.exports = <span class="fn">MyPlugin</span>;
+          </div>
+        </div>
+
+        <!-- API Reference Table -->
+        <div class="modal-section fade-in">
+          <h3>API Reference</h3>
+          <div style="overflow-x:auto;">
+            <table class="api-ref-table">
+              <thead>
+                <tr><th>Method</th><th>Description</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>addCommand(cmd)</td><td>Register a command in the palette. <code>cmd</code> has <code>id</code>, <code>name</code>, <code>callback</code>, optional <code>hotkeys</code>.</td></tr>
+                <tr><td>addSettingTab(tab)</td><td>Add a settings tab. Extend <code>PluginSettingTab</code> and implement <code>display()</code>.</td></tr>
+                <tr><td>registerView(type, factory)</td><td>Register a custom view type. Factory receives a <code>WorkspaceLeaf</code>.</td></tr>
+                <tr><td>addRibbonIcon(icon, title, cb)</td><td>Add an icon to the left ribbon sidebar.</td></tr>
+                <tr><td>addStatusBarItem()</td><td>Returns an HTMLElement appended to the status bar.</td></tr>
+                <tr><td>registerEvent(ref)</td><td>Auto-unregister an event listener on plugin unload.</td></tr>
+                <tr><td>registerInterval(id)</td><td>Auto-clear a <code>setInterval</code> on unload.</td></tr>
+                <tr><td>loadData()</td><td>Load persisted plugin data (returns <code>Promise&lt;any&gt;</code>).</td></tr>
+                <tr><td>saveData(data)</td><td>Persist plugin data as JSON.</td></tr>
+                <tr><td>app.vault.read(file)</td><td>Read a file's contents as string.</td></tr>
+                <tr><td>app.vault.modify(file, data)</td><td>Write new contents to a file.</td></tr>
+                <tr><td>app.vault.create(path, data)</td><td>Create a new file in the vault.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Submit Process -->
+        <div class="modal-section fade-in">
+          <h3>Submit Your Plugin</h3>
+          <p style="font-size:0.92rem;color:var(--text-secondary);margin-bottom:16px;">Share your plugin with the Oxidian community:</p>
+          <div class="submit-steps">
+            <div class="submit-step">
+              <div class="submit-step-num">1</div>
+              <h4>Fork</h4>
+              <p>Fork the <code style="color:var(--accent-light);">oxidian/plugin-registry</code> repo on GitHub.</p>
+            </div>
+            <div class="submit-step">
+              <div class="submit-step-num">2</div>
+              <h4>Add Manifest</h4>
+              <p>Add your <code style="color:var(--accent-light);">manifest.json</code> and repo URL to the registry.</p>
+            </div>
+            <div class="submit-step">
+              <div class="submit-step-num">3</div>
+              <h4>Submit PR</h4>
+              <p>Open a Pull Request. We'll review within 48 hours.</p>
+            </div>
+            <div class="submit-step">
+              <div class="submit-step-num">4</div>
+              <h4>Published!</h4>
+              <p>Once merged, your plugin appears in the Plugin Explorer.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Plugin Detail Modal -->
+  <div class="plugin-modal-overlay" id="pluginModal">
+    <div class="plugin-modal">
+      <button class="plugin-modal-close" id="modalClose">&times;</button>
+      <div class="modal-plugin-header">
+        <div class="modal-plugin-icon" id="modalIcon">📊</div>
+        <div>
+          <div class="modal-plugin-title" id="modalTitle">Plugin Name</div>
+          <div class="modal-plugin-author" id="modalAuthor">by Author</div>
+        </div>
+      </div>
+      <div class="modal-section">
+        <h3>Description</h3>
+        <p id="modalDesc">Full description here.</p>
+      </div>
+      <div class="modal-section">
+        <h3>Screenshots</h3>
+        <div class="modal-screenshots">
+          <div class="modal-screenshot">Screenshot 1 placeholder</div>
+          <div class="modal-screenshot">Screenshot 2 placeholder</div>
+        </div>
+      </div>
+      <div class="modal-section">
+        <h3>Changelog</h3>
+        <ul id="modalChangelog">
+          <li>v1.0.0 — Initial release</li>
+        </ul>
+      </div>
+      <div class="modal-section">
+        <h3>Install</h3>
+        <div class="modal-install-code">
+          Settings → Plugins → Browse → Search "<span id="modalInstallName">Plugin Name</span>" → Install
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <div class="footer-logo">
+            <span class="logo-icon">⬡</span>
+            <span class="logo-text">Oxidian</span>
+          </div>
+          <p class="footer-tagline">Made with 🦀 by Oxidian Studio</p>
+        </div>
+        <div class="footer-links">
+          <h4>Product</h4>
+          <a href="index.html#hypermark">HyperMark</a>
+          <a href="index.html#features">Features</a>
+          <a href="index.html#download">Download</a>
+        </div>
+        <div class="footer-links">
+          <h4>Resources</h4>
+          <a href="docs/index.html">Documentation</a>
+          <a href="plugins.html">Plugins</a>
+          <a href="releases.html">Releases</a>
+          <a href="https://github.com/nicokimmel/oxidian" target="_blank" rel="noopener">GitHub</a>
+        </div>
+        <div class="footer-links">
+          <h4>Community</h4>
+          <a href="https://github.com/nicokimmel/oxidian/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener">Contributing</a>
+          <a href="https://github.com/nicokimmel/oxidian/issues" target="_blank" rel="noopener">Issues</a>
+          <a href="https://github.com/nicokimmel/oxidian/discussions" target="_blank" rel="noopener">Discussions</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2026 Oxidian Studio. Open source under the MIT License.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/main.js"></script>
+  <script>
+    // Plugin data
+    const pluginData = {
+      'word-count': { icon: '📊', name: 'Word Count', author: 'OxidianTeam', desc: 'Displays word count, character count, sentence count, and estimated reading time in the status bar. Supports selection-based counting and per-document stats. Lightweight and fast — no performance impact even on large files.', changelog: ['v1.2.0 — Selection count, sentence count', 'v1.1.0 — Reading time estimation', 'v1.0.0 — Initial release'] },
+      'calendar': { icon: '📅', name: 'Calendar', author: 'liamcain', desc: 'Adds a beautiful calendar widget to the sidebar. Click any date to create or open its daily note. Supports weekly notes, custom date formats, and dot indicators for days that have notes. Integrates with the Daily Notes plugin.', changelog: ['v1.4.0 — Weekly notes support', 'v1.3.0 — Dot indicators', 'v1.2.0 — Custom date formats', 'v1.0.0 — Initial release'] },
+      'kanban': { icon: '📋', name: 'Kanban', author: 'mgmeyers', desc: 'Create full Kanban boards from Markdown lists. Each top-level list becomes a column, list items become cards. Drag and drop cards between columns. Everything is stored as plain Markdown — no proprietary format. Supports labels, dates, and card colors.', changelog: ['v2.0.0 — Labels & card colors', 'v1.5.0 — Date support on cards', 'v1.0.0 — Initial release'] },
+      'excalidraw': { icon: '🎨', name: 'Excalidraw', author: 'zsviczian', desc: 'Full Excalidraw drawing experience inside Oxidian. Create diagrams, wireframes, sketches, and visual notes. Supports embedding Markdown text, linking to notes, and exporting to PNG/SVG. Drawings are stored as JSON inside your vault.', changelog: ['v2.1.0 — Markdown embedding', 'v2.0.0 — Note linking', 'v1.0.0 — Initial release'] },
+      'dataview': { icon: '🔎', name: 'Dataview', author: 'blacksmithgu', desc: 'A high-performance data querying engine for your vault. Write SQL-like queries to create dynamic views of your notes based on frontmatter, tags, tasks, and inline fields. Supports TABLE, LIST, TASK, and CALENDAR query types. DataviewJS for advanced scripting.', changelog: ['v0.5.0 — CALENDAR queries', 'v0.4.0 — DataviewJS support', 'v0.3.0 — Inline fields', 'v0.1.0 — Initial release'] },
+      'templates': { icon: '📝', name: 'Templates', author: 'OxidianTeam', desc: 'Insert pre-defined templates into your notes. Supports dynamic variables: {{date}}, {{time}}, {{title}}, {{folder}}, and custom user variables. Templates are just Markdown files in a designated folder. Trigger via command palette or hotkey.', changelog: ['v1.3.0 — Custom variables', 'v1.2.0 — Folder variable', 'v1.0.0 — Initial release'] },
+      'git-sync': { icon: '🔄', name: 'Git Sync', author: 'denolehov', desc: 'Synchronize your vault with any Git remote. Auto-commit on save, scheduled push/pull, conflict resolution UI. Works with GitHub, GitLab, Gitea, and self-hosted repos. SSH and HTTPS authentication. Configurable commit messages with variables.', changelog: ['v2.0.0 — Conflict resolution UI', 'v1.5.0 — Scheduled sync', 'v1.0.0 — Initial release'] },
+      'daily-notes': { icon: '📆', name: 'Daily Notes', author: 'OxidianTeam', desc: 'Automatically create a new daily note on startup or via command. Configurable date format, template, and folder location. Navigate between days with keyboard shortcuts. Integrates with the Calendar plugin for a complete journaling workflow.', changelog: ['v1.2.0 — Navigation shortcuts', 'v1.1.0 — Custom templates', 'v1.0.0 — Initial release'] },
+      'slash-commands': { icon: '⚡', name: 'Slash Commands Extended', author: 'alephpiece', desc: 'Extends the built-in slash commands with more options: embed files, create callouts with custom types, insert timestamps, link notes inline, insert code blocks with language presets, and create tables from a template. Fully customizable.', changelog: ['v1.1.0 — Custom command builder', 'v1.0.0 — Initial release'] },
+      'vim-mode': { icon: '⌨️', name: 'Vim Mode', author: 'OxidianTeam', desc: 'Full Vim emulation: Normal, Insert, Visual, Visual Line, and Visual Block modes. Custom vimrc support for key mappings. Ex commands (:w, :q, :s, etc.). Registers, marks, macros. Status line shows current mode. Designed for HyperMark block-based editing.', changelog: ['v1.3.0 — Visual Block mode', 'v1.2.0 — Macro support', 'v1.1.0 — Custom vimrc', 'v1.0.0 — Initial release'] }
+    };
+
+    // Filter
+    const filterTabs = document.querySelectorAll('.filter-tab');
+    const cards = document.querySelectorAll('.plugin-card');
+    const searchInput = document.getElementById('pluginSearch');
+
+    function filterPlugins() {
+      const activeTab = document.querySelector('.filter-tab.active').dataset.category;
+      const query = searchInput.value.toLowerCase();
+      cards.forEach(card => {
+        const matchCat = activeTab === 'all' || card.dataset.category === activeTab;
+        const matchSearch = !query || card.textContent.toLowerCase().includes(query);
+        card.style.display = matchCat && matchSearch ? '' : 'none';
+      });
+    }
+
+    filterTabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        filterTabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        filterPlugins();
+      });
+    });
+    searchInput.addEventListener('input', filterPlugins);
+
+    // Modal
+    const modal = document.getElementById('pluginModal');
+    const modalClose = document.getElementById('modalClose');
+
+    cards.forEach(card => {
+      card.addEventListener('click', () => {
+        const p = pluginData[card.dataset.plugin];
+        if (!p) return;
+        document.getElementById('modalIcon').textContent = p.icon;
+        document.getElementById('modalTitle').textContent = p.name;
+        document.getElementById('modalAuthor').textContent = 'by ' + p.author;
+        document.getElementById('modalDesc').textContent = p.desc;
+        document.getElementById('modalInstallName').textContent = p.name;
+        const cl = document.getElementById('modalChangelog');
+        cl.innerHTML = p.changelog.map(c => '<li>' + c + '</li>').join('');
+        modal.classList.add('active');
+      });
+    });
+
+    modalClose.addEventListener('click', () => modal.classList.remove('active'));
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('active'); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') modal.classList.remove('active'); });
+  </script>
+</body>
+</html>

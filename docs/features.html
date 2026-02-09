@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Features — Oxidian Docs</title>
+  <meta name="description" content="Detailed guide to all Oxidian features: split panes, graph view, search, encryption, themes, and settings.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="docs.css">
+</head>
+<body>
+  <nav class="docs-topnav">
+    <div class="topnav-inner">
+      <div class="topnav-left">
+        <button class="mobile-menu-btn" aria-label="Toggle sidebar">☰</button>
+        <a href="../index.html" class="topnav-logo">
+          <span class="logo-icon">⬡</span>
+          <span>Oxidian</span>
+          <span class="logo-sep">/</span>
+          <span class="logo-docs">Docs</span>
+        </a>
+      </div>
+      <div class="topnav-right">
+        <div class="topnav-search">
+          <span class="search-icon">🔍</span>
+          <input type="text" placeholder="Search docs..." aria-label="Search documentation">
+          <div class="search-results-dropdown"></div>
+        </div>
+        <a href="../index.html" class="topnav-link">Home</a>
+        <a href="../releases.html" class="topnav-link">Releases</a>
+        <a href="https://github.com/nicokimmel/oxidian" class="topnav-github" target="_blank" rel="noopener">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="sidebar-backdrop"></div>
+
+  <div class="docs-layout">
+    <aside class="docs-sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-heading">Getting Started</div>
+        <a href="index.html" class="sidebar-link">Documentation Hub</a>
+        <a href="getting-started.html" class="sidebar-link">Getting Started</a>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-heading">Guides</div>
+        <a href="features.html" class="sidebar-link active">Features</a>
+        <a href="#hypermark" class="sidebar-sublink">HyperMark Editor</a>
+        <a href="#focus-mode" class="sidebar-sublink">Focus Mode</a>
+        <a href="#bookmarks" class="sidebar-sublink">Bookmarks</a>
+        <a href="#outline-panel" class="sidebar-sublink">Outline Panel</a>
+        <a href="#recent-files" class="sidebar-sublink">Recent Files</a>
+        <a href="#reading-time" class="sidebar-sublink">Reading Time</a>
+        <a href="#split-panes" class="sidebar-sublink">Split Panes</a>
+        <a href="#graph-view" class="sidebar-sublink">Graph View</a>
+        <a href="#full-text-search" class="sidebar-sublink">Full-Text Search</a>
+        <a href="#file-management" class="sidebar-sublink">File Management</a>
+        <a href="#encrypted-vaults" class="sidebar-sublink">Encrypted Vaults</a>
+        <a href="#themes" class="sidebar-sublink">Themes</a>
+        <a href="#view-modes" class="sidebar-sublink">View Modes</a>
+        <a href="#auto-updater" class="sidebar-sublink">Auto-Updater</a>
+        <a href="#status-bar" class="sidebar-sublink">Status Bar</a>
+        <a href="#settings" class="sidebar-sublink">Settings</a>
+        <a href="plugins.html" class="sidebar-link">Plugins</a>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-heading">Support</div>
+        <a href="troubleshooting.html" class="sidebar-link">Troubleshooting</a>
+        <a href="building.html" class="sidebar-link">Building from Source</a>
+      </div>
+    </aside>
+
+    <main class="docs-content">
+      <article class="docs-article">
+        <div class="breadcrumb">
+          <a href="../index.html">Oxidian</a>
+          <span class="sep">›</span>
+          <a href="index.html">Docs</a>
+          <span class="sep">›</span>
+          <span>Features</span>
+        </div>
+
+        <h1>Features</h1>
+        <p class="subtitle">A detailed guide to every feature in Oxidian — including HyperMark, Focus Mode, Bookmarks, Outline, and more.</p>
+
+        <!-- HyperMark Editor -->
+        <h2 id="hypermark">HyperMark Editor <span style="font-size: 0.6em; color: var(--green); font-weight: 500;">(v1.0)</span> <a href="#hypermark" class="anchor">#</a></h2>
+
+        <p>HyperMark is Oxidian's revolutionary block-based Markdown editor — the <strong>editor of the third kind</strong>. It's not a plain textarea, and it's not WYSIWYG. It's both.</p>
+
+        <h3>How It Works</h3>
+        <ul>
+          <li><strong>Unfocused blocks</strong> render as real HTML — headings, bold, links, code blocks all display rich</li>
+          <li><strong>The focused block</strong> (where your cursor is) shows raw Markdown in a full CodeMirror 6 editor</li>
+          <li><strong>Transition</strong> is seamless — ~100ms animated switch when you move between blocks</li>
+          <li><strong>Source of truth</strong> is always pure Markdown files on disk. Always.</li>
+        </ul>
+
+        <h3>Key Capabilities</h3>
+        <ul>
+          <li><strong>Block-aware editing</strong> — Drag & drop blocks, slash commands, block menus (Notion-style UX)</li>
+          <li><strong>AI-native</strong> — Ghost-text completions like Cursor. Inline streaming, Tab to accept</li>
+          <li><strong>Vim-ready</strong> — First-class Vim mode plugin, not an afterthought</li>
+          <li><strong>Custom block types</strong> — Create new block renderers in ~20 lines via the plugin API</li>
+          <li><strong>Performance</strong> — Virtual viewport renders only visible blocks. 60fps at 10,000+ lines</li>
+        </ul>
+
+        <h3>Tech Stack</h3>
+        <ul>
+          <li><strong>Data structure:</strong> Rope Buffer (O(log n) edits)</li>
+          <li><strong>Parsing:</strong> tree-sitter-markdown (WASM, incremental)</li>
+          <li><strong>Active block:</strong> CodeMirror 6 (instance pooling for performance)</li>
+          <li><strong>Preview:</strong> markdown-it → HTML</li>
+          <li><strong>Viewport:</strong> Custom virtual scroller</li>
+        </ul>
+
+        <!-- Focus Mode -->
+        <h2 id="focus-mode">Focus Mode <span style="font-size: 0.6em; color: var(--green); font-weight: 500;">(v0.9)</span> <a href="#focus-mode" class="anchor">#</a></h2>
+
+        <p>Focus Mode provides a distraction-free writing environment by hiding all UI elements except the editor content.</p>
+
+        <h3>What Gets Hidden</h3>
+        <ul>
+          <li>Sidebar and file tree</li>
+          <li>Ribbon bar</li>
+          <li>Status bar</li>
+          <li>Tab bar (single-note view)</li>
+        </ul>
+
+        <p>Toggle Focus Mode with <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> or via the command palette (<kbd>Ctrl</kbd>+<kbd>P</kbd> → "Toggle Focus Mode"). Press the same shortcut or <kbd>Esc</kbd> to exit.</p>
+
+        <!-- Bookmarks -->
+        <h2 id="bookmarks">Bookmarks <span style="font-size: 0.6em; color: var(--green); font-weight: 500;">(v0.9)</span> <a href="#bookmarks" class="anchor">#</a></h2>
+
+        <p>Pin your most-used notes for instant access. Bookmarked notes appear in a dedicated <strong>⭐ Bookmarks</strong> section at the top of the sidebar.</p>
+
+        <h3>How to Bookmark</h3>
+        <ul>
+          <li>Right-click a file in the sidebar → <strong>"Add to Bookmarks"</strong></li>
+          <li>Use the command palette: <kbd>Ctrl</kbd>+<kbd>P</kbd> → "Toggle Bookmark"</li>
+          <li>Click the ⭐ star icon in the editor header</li>
+        </ul>
+
+        <p>Remove a bookmark by right-clicking it in the Bookmarks section or toggling it off.</p>
+
+        <!-- Outline Panel -->
+        <h2 id="outline-panel">Outline Panel <span style="font-size: 0.6em; color: var(--green); font-weight: 500;">(v0.9)</span> <a href="#outline-panel" class="anchor">#</a></h2>
+
+        <p>The Outline Panel shows an auto-generated table of contents based on the headings in your current note. Click any heading to jump to that section.</p>
+
+        <ul>
+          <li>Appears in the <strong>right sidebar</strong> (toggle with the 📑 icon in the ribbon)</li>
+          <li>Updates in real-time as you type</li>
+          <li>Shows heading hierarchy with indentation (H1 → H2 → H3...)</li>
+          <li>Highlights the currently visible heading</li>
+        </ul>
+
+        <!-- Recent Files -->
+        <h2 id="recent-files">Recent Files <span style="font-size: 0.6em; color: var(--green); font-weight: 500;">(v0.9)</span> <a href="#recent-files" class="anchor">#</a></h2>
+
+        <p>The Recent Files panel shows your most recently opened notes for quick navigation. Access it via the 🕐 icon in the sidebar ribbon.</p>
+
+        <ul>
+          <li>Shows the last ~20 opened files</li>
+          <li>Click any entry to reopen the note</li>
+          <li>Persists across sessions</li>
+        </ul>
+
+        <!-- Reading Time -->
+        <h2 id="reading-time">Reading Time <span style="font-size: 0.6em; color: var(--green); font-weight: 500;">(v0.9)</span> <a href="#reading-time" class="anchor">#</a></h2>
+
+        <p>Every note displays an estimated reading time and word count in the status bar. Calculated at ~200 words per minute.</p>
+
+        <ul>
+          <li>Visible in the <strong>status bar</strong> at the bottom of the editor</li>
+          <li>Also shown in the <strong>Outline Panel</strong> info section</li>
+          <li>Updates in real-time as you type</li>
+        </ul>
+
+        <!-- Split Panes -->
+        <h2 id="split-panes">Split Panes <a href="#split-panes" class="anchor">#</a></h2>
+
+        <p>Work on multiple notes side by side using split panes. This is especially useful for referencing one note while writing another, or comparing two documents.</p>
+
+        <h3>How to Split</h3>
+        <ul>
+          <li><strong>Drag a tab</strong> to the right side of the editor to create a split view. A drop overlay appears when you drag a tab toward the edge.</li>
+          <li>You can also <strong>right-click a file</strong> in the sidebar and select "Open in Split Pane".</li>
+        </ul>
+
+        <h3>Working with Panes</h3>
+        <ul>
+          <li>Each pane has its <strong>own tab bar</strong> — you can have multiple tabs in each pane</li>
+          <li><strong>Resize</strong> panes by dragging the divider handle between them</li>
+          <li>Both panes support <strong>full editing</strong> with auto-save, preview, and all keyboard shortcuts</li>
+          <li><strong>Close the split</strong> by closing all tabs in the right pane, or dragging the last tab back to the left</li>
+        </ul>
+
+        <div class="callout callout-tip">
+          <span class="callout-icon">💡</span>
+          <div class="callout-content">
+            <p><strong>Tip:</strong> You can open the graph view or settings in one pane while editing a note in the other.</p>
+          </div>
+        </div>
+
+        <!-- Graph View -->
+        <h2 id="graph-view">Graph View <a href="#graph-view" class="anchor">#</a></h2>
+
+        <p>The graph view visualizes the connections between your notes as an interactive force-directed graph. Click the <strong>🗺️ graph icon</strong> in the sidebar ribbon or use the command palette (<kbd>Ctrl</kbd>+<kbd>P</kbd> → "Open graph view").</p>
+
+        <h3>How It Works</h3>
+        <ul>
+          <li>Every note appears as a <strong>node</strong> (circle) in the graph</li>
+          <li><strong>Wiki-links</strong> (<code>[[note name]]</code>) create edges between nodes</li>
+          <li>Nodes with more connections appear <strong>larger</strong></li>
+          <li>The graph uses a <strong>physics simulation</strong> — connected nodes attract, unconnected nodes repel</li>
+        </ul>
+
+        <h3>Interacting with the Graph</h3>
+        <table>
+          <thead><tr><th>Action</th><th>How</th></tr></thead>
+          <tbody>
+            <tr><td>Pan</td><td>Click and drag empty space</td></tr>
+            <tr><td>Zoom</td><td>Mouse wheel scroll</td></tr>
+            <tr><td>Move a node</td><td>Click and drag a node</td></tr>
+            <tr><td>Open a note</td><td>Double-click a node</td></tr>
+            <tr><td>See note name</td><td>Hover over a node</td></tr>
+          </tbody>
+        </table>
+
+        <div class="callout callout-info">
+          <span class="callout-icon">ℹ️</span>
+          <div class="callout-content">
+            <p><strong>Graph empty?</strong> The graph only shows connections made via <code>[[wiki-links]]</code>. If you don't have any wiki-links, the graph will show isolated nodes. Start linking your notes to see the connections!</p>
+          </div>
+        </div>
+
+        <!-- Full-Text Search -->
+        <h2 id="full-text-search">Full-Text Search <a href="#full-text-search" class="anchor">#</a></h2>
+
+        <p>Oxidian includes a powerful full-text search engine powered by <a href="https://github.com/quickwit-oss/tantivy" target="_blank" rel="noopener">Tantivy</a> — the Rust equivalent of Apache Lucene.</p>
+
+        <h3>Using Search</h3>
+        <ul>
+          <li>Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> to open the search panel in the sidebar</li>
+          <li>Type at least 2 characters to start searching</li>
+          <li>Results show the <strong>title</strong>, <strong>path</strong>, and a <strong>text snippet</strong> with context around the match</li>
+          <li>Click a result to open the note</li>
+          <li>Results are ranked by <strong>relevance score</strong></li>
+        </ul>
+
+        <h3>Search Features</h3>
+        <ul>
+          <li><strong>Title and body search</strong> — searches both note titles and full content</li>
+          <li><strong>Tag search</strong> — click a tag in the tags panel to search for all notes with that tag</li>
+          <li><strong>Instant results</strong> — search triggers 250ms after you stop typing</li>
+          <li><strong>Auto-indexing</strong> — notes are indexed automatically when saved</li>
+        </ul>
+
+        <p>The search index is stored in <code>.search_index/</code> inside your vault. If search results seem stale, you can delete this folder and Oxidian will rebuild the index on next launch.</p>
+
+        <!-- File Management -->
+        <h2 id="file-management">File Management <a href="#file-management" class="anchor">#</a></h2>
+
+        <p>The sidebar file tree provides full file management capabilities:</p>
+
+        <h3>Operations</h3>
+        <table>
+          <thead><tr><th>Action</th><th>How</th></tr></thead>
+          <tbody>
+            <tr><td>Create a note</td><td><kbd>Ctrl</kbd>+<kbd>N</kbd> or 📄 button</td></tr>
+            <tr><td>Create a folder</td><td>📁 button in sidebar toolbar</td></tr>
+            <tr><td>Rename</td><td>Right-click → Rename (or click the name after selecting)</td></tr>
+            <tr><td>Delete</td><td>Right-click → Delete (with confirmation)</td></tr>
+            <tr><td>Duplicate</td><td>Right-click → Duplicate</td></tr>
+            <tr><td>Open in split</td><td>Right-click → Open in Split Pane</td></tr>
+            <tr><td>Refresh</td><td>🔄 button in sidebar toolbar</td></tr>
+          </tbody>
+        </table>
+
+        <p>The sidebar also has a <strong>resizable width</strong> — drag the edge to adjust it. Files are sorted with folders first, then alphabetically.</p>
+
+        <h3>Backlinks</h3>
+        <p>When viewing a note, the preview pane shows a <strong>Backlinks</strong> section listing all other notes that link to the current note via wiki-links. Click a backlink to navigate to that note.</p>
+
+        <!-- Encrypted Vaults -->
+        <h2 id="encrypted-vaults">Encrypted Vaults <a href="#encrypted-vaults" class="anchor">#</a></h2>
+
+        <p>Oxidian can encrypt your entire vault using <strong>AES-256-GCM</strong> encryption with <strong>Argon2id</strong> key derivation — the same standards used in password managers.</p>
+
+        <h3>Setting Up Encryption</h3>
+        <div class="steps">
+          <div class="step">
+            <h4>Enable Encryption</h4>
+            <p>Go to <strong>Settings → Vault → Encryption</strong> and toggle it on. Or enable it during the onboarding wizard.</p>
+          </div>
+          <div class="step">
+            <h4>Set a Master Password</h4>
+            <p>Enter and confirm a strong master password. This password derives the encryption key using Argon2id.</p>
+          </div>
+          <div class="step">
+            <h4>Unlock on Launch</h4>
+            <p>When you open an encrypted vault, a password prompt appears. Enter your password to decrypt and access your notes.</p>
+          </div>
+        </div>
+
+        <h3>How It Works</h3>
+        <ul>
+          <li>Each note is encrypted individually when saved</li>
+          <li>Encrypted notes are stored as JSON containing: <code>salt</code> (Base64), <code>nonce</code> (Base64), and <code>data</code> (Base64 ciphertext)</li>
+          <li>A unique random salt (32 bytes) and nonce (12 bytes) are generated for each encryption operation</li>
+          <li>The search index stores <strong>plaintext</strong> content for searching — keep this in mind for your threat model</li>
+        </ul>
+
+        <h3>Changing Your Password</h3>
+        <p>Go to <strong>Settings → Vault → Change Password</strong>. You'll need to enter your current password and the new password.</p>
+
+        <div class="callout callout-danger">
+          <span class="callout-icon">⚠️</span>
+          <div class="callout-content">
+            <p><strong>Critical:</strong> There is <strong>no password recovery mechanism</strong>. If you forget your password, your encrypted notes cannot be decrypted. Keep a backup of your password in a secure location (e.g., a password manager).</p>
+          </div>
+        </div>
+
+        <!-- Themes -->
+        <h2 id="themes">Themes <a href="#themes" class="anchor">#</a></h2>
+
+        <p>Oxidian ships with four built-in themes and supports custom themes:</p>
+
+        <h3>Built-in Themes</h3>
+        <table>
+          <thead><tr><th>Theme</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Dark</strong></td><td>Default dark theme with Catppuccin-inspired colors. Purple accent, soft contrast.</td></tr>
+            <tr><td><strong>Light</strong></td><td>Clean light theme with white background and muted purple accents.</td></tr>
+            <tr><td><strong>Nord</strong></td><td>Nord color palette — cool blues and arctic tones on a dark base.</td></tr>
+            <tr><td><strong>Solarized</strong></td><td>Solarized Dark — the classic warm-dark palette by Ethan Schoonover.</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Custom Themes</h3>
+        <p>Create your own theme by placing a CSS file in your vault's theme directory. Custom themes override CSS variables:</p>
+
+        <div class="code-block-wrapper">
+          <span class="code-lang">css</span>
+          <button class="copy-btn">Copy</button>
+          <pre><code><span class="code-comment">/* Example: my-theme.css */</span>
+:root {
+  --bg-primary: #1a1b26;
+  --bg-sidebar: #16161e;
+  --text-primary: #a9b1d6;
+  --text-accent: #7aa2f7;
+  <span class="code-comment">/* ... override any CSS variable */</span>
+}</code></pre>
+        </div>
+
+        <h3>Accent Color</h3>
+        <p>Independent of the theme, you can customize the <strong>accent color</strong> in <strong>Settings → Appearance → Accent Color</strong> using a color picker. This changes the primary highlight color across the entire UI.</p>
+
+        <!-- View Modes -->
+        <h2 id="view-modes">View Modes <span style="font-size: 0.6em; color: var(--green); font-weight: 500;">(v1.1)</span> <a href="#view-modes" class="anchor">#</a></h2>
+
+        <p>Oxidian now supports three editing modes, matching Obsidian's workflow. Toggle between them with <kbd>Ctrl</kbd>+<kbd>E</kbd> or using the icons in the <strong>top-right toolbar</strong>.</p>
+
+        <ul>
+          <li><strong>Live Preview</strong> — Default mode. Unfocused blocks render as rich HTML; the focused block shows raw Markdown (HyperMark behavior).</li>
+          <li><strong>Source Mode</strong> — Plain Markdown editing across the entire document. No rendered blocks.</li>
+          <li><strong>Reading Mode</strong> — Read-only rendered view. No editing — just clean, styled output.</li>
+        </ul>
+
+        <p>View mode is <strong>per-tab</strong> and persisted across sessions, so each note remembers how you last viewed it.</p>
+
+        <h3>Top-Right Toolbar</h3>
+        <p>The toolbar also includes:</p>
+        <ul>
+          <li><strong>Backlinks panel</strong> — Toggle the backlinks sidebar for the current note</li>
+          <li><strong>More Options (⋮)</strong> — New pane, copy path, rename, delete, pin, export to PDF/HTML</li>
+        </ul>
+
+        <!-- Auto-Updater -->
+        <h2 id="auto-updater">Auto-Updater <span style="font-size: 0.6em; color: var(--green); font-weight: 500;">(v1.1)</span> <a href="#auto-updater" class="anchor">#</a></h2>
+
+        <p>Oxidian checks for updates automatically on startup by comparing your version against the latest <a href="https://github.com/nicokimmel/oxidian/releases" target="_blank" rel="noopener">GitHub Release</a> using semver comparison.</p>
+
+        <ul>
+          <li><strong>Update banner</strong> appears at the top with changelog summary and an install button</li>
+          <li><strong>Download progress</strong> displayed inline with auto-restart on completion</li>
+          <li>Configurable in <strong>Settings → General</strong>:
+            <ul>
+              <li><em>Auto-check for updates</em> — toggle startup check on/off</li>
+              <li><em>Auto-install updates</em> — download and install without prompting</li>
+            </ul>
+          </li>
+        </ul>
+
+        <div class="callout callout-info">
+          <span class="callout-icon">ℹ️</span>
+          <div class="callout-content">
+            <p>The update system uses <strong>reqwest</strong> (Rust HTTP client) and <strong>semver</strong> comparison on the backend. No telemetry is sent — it only fetches the GitHub Releases API.</p>
+          </div>
+        </div>
+
+        <!-- Status Bar -->
+        <h2 id="status-bar">Status Bar <span style="font-size: 0.6em; color: var(--green); font-weight: 500;">(v1.1)</span> <a href="#status-bar" class="anchor">#</a></h2>
+
+        <p>The status bar at the bottom of the editor provides real-time document statistics:</p>
+
+        <ul>
+          <li><strong>Backlinks</strong> — Number of notes linking to the current note</li>
+          <li><strong>Words</strong> — Total word count</li>
+          <li><strong>Characters</strong> — Total character count</li>
+          <li><strong>Reading Time</strong> — Estimated at ~200 wpm</li>
+          <li><strong>Ln/Col</strong> — Current cursor line and column position</li>
+        </ul>
+
+        <!-- Settings -->
+        <h2 id="settings">Settings <a href="#settings" class="anchor">#</a></h2>
+
+        <p>Open settings with <kbd>Ctrl</kbd>+<kbd>,</kbd> or click the ⚙️ icon in the ribbon. Settings open as a tab, so you can keep them side-by-side with your notes.</p>
+
+        <h3>General</h3>
+        <ul>
+          <li><strong>Vault Path</strong> — Location of your notes vault on disk</li>
+          <li><strong>Language</strong> — Interface language (English, Deutsch, Français)</li>
+          <li><strong>Startup Behavior</strong> — What to show when Oxidian starts: Welcome Screen, Last Session, or Daily Note</li>
+        </ul>
+
+        <h3>Editor</h3>
+        <ul>
+          <li><strong>Font Family</strong> — Editor font (default: JetBrains Mono)</li>
+          <li><strong>Font Size</strong> — Slider from 10px to 28px</li>
+          <li><strong>Line Height</strong> — Line spacing multiplier (1.0–2.5)</li>
+          <li><strong>Tab Size</strong> — 2, 4, or 8 spaces</li>
+          <li><strong>Spell Check</strong> — Enable browser spell checking</li>
+          <li><strong>Vim Mode</strong> — Experimental Vim keybindings</li>
+        </ul>
+
+        <h3>Appearance</h3>
+        <ul>
+          <li><strong>Theme</strong> — Select from built-in or custom themes</li>
+          <li><strong>Accent Color</strong> — Color picker for the primary accent</li>
+          <li><strong>Interface Font Size</strong> — UI font size (11px–18px)</li>
+        </ul>
+
+        <h3>Vault</h3>
+        <ul>
+          <li><strong>Encryption</strong> — Enable/disable AES-256-GCM encryption</li>
+          <li><strong>Change Password</strong> — Update your vault encryption password</li>
+          <li><strong>Auto Backup</strong> — Automatically backup vault periodically</li>
+        </ul>
+
+        <h3>Plugins</h3>
+        <ul>
+          <li>Lists all discovered <strong>Obsidian-compatible plugins</strong> and <strong>native plugins</strong></li>
+          <li>Toggle individual plugins on/off</li>
+          <li>Access plugin-specific settings via the ⚙ button</li>
+          <li><strong>Load Plugin</strong> button — browse to install a plugin folder</li>
+        </ul>
+
+        <p>All settings changes are <strong>auto-saved</strong> with a 500ms debounce — no save button needed. Live preview is applied immediately for visual settings like font size, theme, and accent color.</p>
+
+        <!-- Page Navigation -->
+        <div class="page-nav">
+          <a href="getting-started.html">
+            <div class="nav-label">← Previous</div>
+            <div class="nav-title">Getting Started</div>
+          </a>
+          <a href="plugins.html" class="next">
+            <div class="nav-label">Next →</div>
+            <div class="nav-title">Plugins</div>
+          </a>
+        </div>
+
+      </article>
+    </main>
+  </div>
+
+  <footer class="docs-footer">
+    <p>© 2026 Oxidian. Open source under the MIT License.</p>
+  </footer>
+
+  <script src="docs.js"></script>
+</body>
+</html>

@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Releases — Oxidian Changelog</title>
+  <meta name="description" content="Oxidian release history and changelog. Download links for all versions.">
+  <meta name="theme-color" content="#0d0d14">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .releases-page { padding: calc(var(--nav-height) + 60px) 0 120px; }
+    .release-timeline { max-width: 800px; margin: 0 auto; position: relative; }
+    .release-timeline::before {
+      content: '';
+      position: absolute;
+      left: 24px;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: linear-gradient(to bottom, var(--accent), var(--border));
+    }
+    .release-entry {
+      position: relative;
+      padding-left: 64px;
+      margin-bottom: 48px;
+    }
+    .release-dot {
+      position: absolute;
+      left: 16px;
+      top: 6px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--bg-surface);
+      border: 3px solid var(--accent);
+      z-index: 1;
+    }
+    .release-dot.upcoming {
+      border-color: var(--green);
+      background: var(--green);
+      box-shadow: 0 0 12px rgba(166, 227, 161, 0.5);
+    }
+    .release-dot.major { border-color: var(--accent); background: var(--accent); box-shadow: 0 0 12px var(--accent-glow); }
+    .release-version {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+    }
+    .release-version .tag {
+      display: inline-block;
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 2px 10px;
+      border-radius: 999px;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+    .tag-upcoming { background: rgba(166, 227, 161, 0.15); color: var(--green); border: 1px solid rgba(166, 227, 161, 0.3); }
+    .tag-latest { background: rgba(127, 109, 242, 0.15); color: var(--accent-light); border: 1px solid rgba(127, 109, 242, 0.3); }
+    .tag-fix { background: rgba(243, 139, 168, 0.15); color: var(--red); border: 1px solid rgba(243, 139, 168, 0.3); }
+    .release-date {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+    .release-title {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: var(--accent-light);
+      margin-bottom: 12px;
+    }
+    .release-body {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      backdrop-filter: blur(10px);
+    }
+    .release-body ul {
+      list-style: none;
+      padding: 0;
+    }
+    .release-body li {
+      padding: 4px 0;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+    .release-body li::before {
+      content: '•';
+      color: var(--accent);
+      font-weight: 700;
+      margin-right: 10px;
+    }
+    .release-body li.highlight-item { color: var(--text-primary); font-weight: 500; }
+    .release-download {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 12px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--accent-light);
+    }
+    .release-download:hover { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <!-- Navigation -->
+  <nav class="navbar" id="navbar">
+    <div class="nav-container">
+      <a href="index.html" class="nav-logo">
+        <span class="logo-icon">⬡</span>
+        <span class="logo-text">Oxidian</span>
+      </a>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="index.html#features">Features</a></li>
+        <li><a href="plugins.html">Plugins</a></li>
+        <li><a href="docs/index.html">Docs</a></li>
+        <li><a href="releases.html">Releases</a></li>
+        <li><a href="https://github.com/nicokimmel/oxidian" class="nav-github" target="_blank" rel="noopener">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        </a></li>
+      </ul>
+      <button class="hamburger" id="hamburger" aria-label="Toggle menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <section class="releases-page">
+    <div class="container">
+      <div class="section-header fade-in" style="margin-bottom: 80px;">
+        <span class="section-label">Changelog</span>
+        <h2 class="section-title" style="font-size: clamp(2.5rem, 5vw, 3.5rem);">Releases</h2>
+        <p class="section-desc">Every version of Oxidian, from the first commit to the latest build.</p>
+      </div>
+
+      <div class="release-timeline">
+
+        <!-- v1.1.2 -->
+        <div class="release-entry fade-in">
+          <div class="release-dot major"></div>
+          <div class="release-version">v1.1.2 <span class="tag tag-latest">LATEST</span></div>
+          <div class="release-date">February 9, 2026</div>
+          <div class="release-title">🧩 Plugin Explorer + Website Polish</div>
+          <div class="release-body">
+            <ul>
+              <li class="highlight-item">Plugin Explorer — browse, search, and install community plugins from the app</li>
+              <li class="highlight-item">Plugin API Documentation — manifest format, API reference, submission guide</li>
+              <li>Plugin category filters (Editor, Sidebar, Utility, Integration, Theme)</li>
+              <li>Plugin detail popups with descriptions, changelogs, and install instructions</li>
+              <li>Website: new Plugins page with full plugin marketplace UI</li>
+              <li>Various UI polish and consistency improvements</li>
+            </ul>
+            <a href="https://github.com/nicokimmel/oxidian/releases/tag/v1.1.2" class="release-download" target="_blank" rel="noopener">
+              ⬇ Download v1.1.2 →
+            </a>
+          </div>
+        </div>
+
+        <!-- v1.1.1 -->
+        <div class="release-entry fade-in">
+          <div class="release-dot"></div>
+          <div class="release-version">v1.1.1 <span class="tag tag-fix">POLISH</span></div>
+          <div class="release-date">February 9, 2026</div>
+          <div class="release-title">🔧 Stability & Edge Case Fixes</div>
+          <div class="release-body">
+            <ul>
+              <li>Fix: Auto-updater crash on network timeout</li>
+              <li>Fix: View mode toggle not persisting for newly created notes</li>
+              <li>Fix: Status bar word count off-by-one for empty lines</li>
+              <li>Improved error toast messages with actionable hints</li>
+              <li>Reduced startup time by ~15ms (lazy-load backlinks panel)</li>
+            </ul>
+            <a href="https://github.com/nicokimmel/oxidian/releases/tag/v1.1.1" class="release-download" target="_blank" rel="noopener">
+              ⬇ Download v1.1.1 →
+            </a>
+          </div>
+        </div>
+
+        <!-- v1.1.0 -->
+        <div class="release-entry fade-in">
+          <div class="release-dot major"></div>
+          <div class="release-version">v1.1.0</div>
+          <div class="release-date">February 9, 2026</div>
+          <div class="release-title">🚀 Obsidian UI Parity + Auto-Updater</div>
+          <div class="release-body">
+            <ul>
+              <li class="highlight-item">View Mode Icons — Live Preview / Source / Reading mode toggle (Ctrl+E)</li>
+              <li class="highlight-item">Auto-Update System — checks GitHub Releases, download progress, auto-restart</li>
+              <li>Backlinks panel button in top-right toolbar</li>
+              <li>More Options menu (⋮): new pane, copy path, rename, delete, pin, export</li>
+              <li>Single-pane default layout like Obsidian (removed permanent preview pane)</li>
+              <li>Per-tab view mode (persisted across sessions)</li>
+              <li>Split only via menu or drag</li>
+              <li>Status bar: Backlinks · Words · Characters · Reading Time · Ln/Col</li>
+              <li>Settings: auto-check, auto-install toggles for updates</li>
+              <li>Rust backend: reqwest + semver comparison for update checks</li>
+              <li>Fix: Click anywhere in editor to focus (not just on text blocks)</li>
+            </ul>
+            <a href="https://github.com/nicokimmel/oxidian/releases/tag/v1.1.0" class="release-download" target="_blank" rel="noopener">
+              ⬇ Download v1.1.0 →
+            </a>
+          </div>
+        </div>
+
+        <!-- v1.0.1 -->
+        <div class="release-entry fade-in">
+          <div class="release-dot"></div>
+          <div class="release-version">v1.0.1 <span class="tag tag-fix">POLISH</span></div>
+          <div class="release-date">February 2026</div>
+          <div class="release-title">🎯 Obsidian-like Polish</div>
+          <div class="release-body">
+            <ul>
+              <li>Invisible blocks: no borders, no backgrounds, no glow</li>
+              <li>Seamless textarea: same font, no border, matches rendered text</li>
+              <li>Frontmatter badge only for real YAML frontmatter</li>
+              <li>Subtle drag handles (opacity 0.3)</li>
+              <li>Command Palette fully implemented (Ctrl+P)</li>
+              <li>HyperMark insertAtCursor + wrapSelection (Ctrl+B/I work)</li>
+              <li>Editor Mode toggle in Settings</li>
+              <li>Outline click works in HyperMark</li>
+              <li>Light theme color-scheme fix</li>
+              <li>Removed heading anchors, code block gradient bars</li>
+            </ul>
+            <a href="https://github.com/nicokimmel/oxidian/releases/tag/v1.0.1" class="release-download" target="_blank" rel="noopener">
+              ⬇ Download v1.0.1 →
+            </a>
+          </div>
+        </div>
+
+        <!-- v1.0.0 -->
+        <div class="release-entry fade-in">
+          <div class="release-dot major"></div>
+          <div class="release-version">v1.0.0</div>
+          <div class="release-date">February 2026</div>
+          <div class="release-title">🚀 HyperMark Editor — The Editor of the Third Kind</div>
+          <div class="release-body">
+            <ul>
+              <li class="highlight-item">HyperMark: Revolutionary block-based Markdown editing</li>
+              <li class="highlight-item">Unfocused blocks render as rich HTML, focused block shows raw Markdown</li>
+              <li>CodeMirror 6 integration with instance pooling</li>
+              <li>Tree-sitter WASM for incremental Markdown parsing</li>
+              <li>Virtual viewport — only visible blocks in DOM</li>
+              <li>AI-native ghost-text completions (inline streaming, Tab to accept)</li>
+              <li>Slash commands and block menus (Notion-style UX)</li>
+              <li>Drag & drop block reordering</li>
+              <li>Vim mode as first-class plugin</li>
+              <li>Custom block types via plugin API (20 lines of code)</li>
+              <li>Rope buffer data structure (O(log n) edits)</li>
+              <li>100ms block transition animations</li>
+            </ul>
+            <a href="https://github.com/nicokimmel/oxidian/releases/tag/v1.0.0" class="release-download" target="_blank" rel="noopener">
+              ⬇ Download v1.0.0 →
+            </a>
+          </div>
+        </div>
+
+        <!-- v0.9.0 -->
+        <div class="release-entry fade-in">
+          <div class="release-dot"></div>
+          <div class="release-version">v0.9.0</div>
+          <div class="release-date">February 9, 2026</div>
+          <div class="release-title">Full Studio Sprint — 5 New Features, Security Hardening</div>
+          <div class="release-body">
+            <ul>
+              <li class="highlight-item">Focus Mode — distraction-free writing (hides sidebar, ribbon, status bar)</li>
+              <li class="highlight-item">Bookmarks — star/pin frequently used notes</li>
+              <li class="highlight-item">Outline Panel — auto-generated heading navigation</li>
+              <li class="highlight-item">Recent Files — quick-access panel for recently opened notes</li>
+              <li class="highlight-item">Reading Time — word count and estimated read time per note</li>
+              <li>XSS sanitization fix for rendered Markdown</li>
+              <li>Full plugin security audit</li>
+              <li>Improved error handling across all features</li>
+            </ul>
+            <a href="https://github.com/nicokimmel/oxidian/releases/tag/v0.9.0" class="release-download" target="_blank" rel="noopener">
+              ⬇ Download v0.9.0 →
+            </a>
+          </div>
+        </div>
+
+        <!-- v0.8.0 -->
+        <div class="release-entry fade-in">
+          <div class="release-dot"></div>
+          <div class="release-version">v0.8.0</div>
+          <div class="release-date">February 9, 2026</div>
+          <div class="release-title">First Studio Build — RAM Optimization, UI Polish, Theming</div>
+          <div class="release-body">
+            <ul>
+              <li>Significant RAM optimization — reduced baseline memory usage</li>
+              <li>UI polish pass across all components</li>
+              <li>Catppuccin-inspired default theme</li>
+              <li>Custom accent color picker</li>
+              <li>Theme system overhaul (CSS variable-based)</li>
+              <li>Improved sidebar resizing and layout</li>
+            </ul>
+            <a href="https://github.com/nicokimmel/oxidian/releases/tag/v0.8.0" class="release-download" target="_blank" rel="noopener">
+              ⬇ Download v0.8.0 →
+            </a>
+          </div>
+        </div>
+
+        <!-- v0.7.1 -->
+        <div class="release-entry fade-in">
+          <div class="release-dot"></div>
+          <div class="release-version">v0.7.1 <span class="tag tag-fix">HOTFIX</span></div>
+          <div class="release-date">February 8, 2026</div>
+          <div class="release-title">Emergency Fix — Duplicate Class Declarations</div>
+          <div class="release-body">
+            <ul>
+              <li>Fixed duplicate class declarations in API shim that broke plugin loading</li>
+              <li>Stabilized plugin initialization order</li>
+            </ul>
+            <a href="https://github.com/nicokimmel/oxidian/releases/tag/v0.7.1" class="release-download" target="_blank" rel="noopener">
+              ⬇ Download v0.7.1 →
+            </a>
+          </div>
+        </div>
+
+        <!-- v0.7.0 -->
+        <div class="release-entry fade-in">
+          <div class="release-dot"></div>
+          <div class="release-version">v0.7.0</div>
+          <div class="release-date">February 8, 2026</div>
+          <div class="release-title">User-Test Fixes — Auto-save, Tag Search, Onboarding</div>
+          <div class="release-body">
+            <ul>
+              <li>Auto-save with 2-second debounce</li>
+              <li>Tag search — click any tag to find all notes with that tag</li>
+              <li>First-launch onboarding wizard</li>
+              <li>Improved vault creation flow</li>
+              <li>Various UX fixes from user testing sessions</li>
+            </ul>
+            <a href="https://github.com/nicokimmel/oxidian/releases/tag/v0.7.0" class="release-download" target="_blank" rel="noopener">
+              ⬇ Download v0.7.0 →
+            </a>
+          </div>
+        </div>
+
+        <!-- v0.6.0 -->
+        <div class="release-entry fade-in">
+          <div class="release-dot"></div>
+          <div class="release-version">v0.6.0</div>
+          <div class="release-date">February 8, 2026</div>
+          <div class="release-title">Complete Obsidian API — 3,585 Lines, 118KB Shim</div>
+          <div class="release-body">
+            <ul>
+              <li class="highlight-item">Complete Obsidian API compatibility shim (3,585 lines, 118KB)</li>
+              <li>Full Plugin, App, Vault, Workspace, Notice, Modal, Setting classes</li>
+              <li>Component lifecycle management</li>
+              <li>Events system with on/off/trigger</li>
+              <li>TFile, TFolder, TAbstractFile hierarchy</li>
+              <li>PluginSettingTab with all Setting control types</li>
+              <li>setIcon, addIcon, getIconIds utilities</li>
+              <li>Stub warnings for unimplemented methods</li>
+            </ul>
+            <a href="https://github.com/nicokimmel/oxidian/releases/tag/v0.6.0" class="release-download" target="_blank" rel="noopener">
+              ⬇ Download v0.6.0 →
+            </a>
+          </div>
+        </div>
+
+        <!-- v0.5.0 -->
+        <div class="release-entry fade-in">
+          <div class="release-dot"></div>
+          <div class="release-version">v0.5.0</div>
+          <div class="release-date">February 8, 2026</div>
+          <div class="release-title">Split Panes, DOM Extensions, Vault API</div>
+          <div class="release-body">
+            <ul>
+              <li>Split pane editing — work on two notes side by side</li>
+              <li>DOM extension helpers (createEl, createDiv, createSpan)</li>
+              <li>Expanded Vault API (read, create, modify, delete, rename)</li>
+              <li>Tab drag-to-split with visual drop overlay</li>
+              <li>Resizable pane divider</li>
+            </ul>
+            <a href="https://github.com/nicokimmel/oxidian/releases/tag/v0.5.0" class="release-download" target="_blank" rel="noopener">
+              ⬇ Download v0.5.0 →
+            </a>
+          </div>
+        </div>
+
+        <!-- v0.4.0 -->
+        <div class="release-entry fade-in">
+          <div class="release-dot"></div>
+          <div class="release-version">v0.4.0</div>
+          <div class="release-date">February 8, 2026</div>
+          <div class="release-title">QA Fixes — UTF-8 Crash, Path Traversal, moment.js</div>
+          <div class="release-body">
+            <ul>
+              <li>Fixed crash on invalid UTF-8 in file names</li>
+              <li>Fixed path traversal vulnerability in vault file operations</li>
+              <li>Added moment.js compatibility shim for date-dependent plugins</li>
+              <li>Improved error messages for common issues</li>
+              <li>Better handling of binary files in vault</li>
+            </ul>
+            <a href="https://github.com/nicokimmel/oxidian/releases/tag/v0.4.0" class="release-download" target="_blank" rel="noopener">
+              ⬇ Download v0.4.0 →
+            </a>
+          </div>
+        </div>
+
+        <!-- v0.3.0 -->
+        <div class="release-entry fade-in">
+          <div class="release-dot"></div>
+          <div class="release-version">v0.3.0</div>
+          <div class="release-date">February 8, 2026</div>
+          <div class="release-title">Plugin Compatibility — API Shim, Plugin Loader, Command Palette</div>
+          <div class="release-body">
+            <ul>
+              <li class="highlight-item">Obsidian plugin compatibility layer</li>
+              <li>Plugin loader with sandboxed CommonJS execution</li>
+              <li>Command palette (Ctrl+P) with fuzzy search</li>
+              <li>Plugin commands integrated into palette</li>
+              <li>Plugin settings UI</li>
+              <li>manifest.json and main.js plugin structure</li>
+            </ul>
+            <a href="https://github.com/nicokimmel/oxidian/releases/tag/v0.3.0" class="release-download" target="_blank" rel="noopener">
+              ⬇ Download v0.3.0 →
+            </a>
+          </div>
+        </div>
+
+        <!-- v0.2.0 -->
+        <div class="release-entry fade-in">
+          <div class="release-dot"></div>
+          <div class="release-version">v0.2.0</div>
+          <div class="release-date">February 8, 2026</div>
+          <div class="release-title">Obsidian-Style UI — Ribbon, Tabs, Graph, Context Menus</div>
+          <div class="release-body">
+            <ul>
+              <li>Sidebar ribbon with icon buttons</li>
+              <li>Tab system for multiple open notes</li>
+              <li>Interactive graph view (force-directed)</li>
+              <li>Right-click context menus</li>
+              <li>Status bar with file info</li>
+              <li>Improved sidebar file tree</li>
+            </ul>
+            <a href="https://github.com/nicokimmel/oxidian/releases/tag/v0.2.0" class="release-download" target="_blank" rel="noopener">
+              ⬇ Download v0.2.0 →
+            </a>
+          </div>
+        </div>
+
+        <!-- v0.1.0 -->
+        <div class="release-entry fade-in">
+          <div class="release-dot"></div>
+          <div class="release-version">v0.1.0</div>
+          <div class="release-date">February 8, 2026</div>
+          <div class="release-title">Initial Release — Tauri v2, Markdown Editor, Search, Vault</div>
+          <div class="release-body">
+            <ul>
+              <li class="highlight-item">First public release of Oxidian</li>
+              <li>Tauri v2 + Rust backend</li>
+              <li>Markdown editor with CommonMark rendering</li>
+              <li>Full-text search powered by Tantivy</li>
+              <li>Vault system with file tree sidebar</li>
+              <li>Wiki-links and tag support</li>
+              <li>AES-256-GCM encrypted vaults</li>
+              <li>Daily notes with templates</li>
+              <li>Dark theme (Catppuccin-inspired)</li>
+              <li>Slash commands for quick formatting</li>
+            </ul>
+            <a href="https://github.com/nicokimmel/oxidian/releases/tag/v0.1.0" class="release-download" target="_blank" rel="noopener">
+              ⬇ Download v0.1.0 →
+            </a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <div class="footer-logo">
+            <span class="logo-icon">⬡</span>
+            <span class="logo-text">Oxidian</span>
+          </div>
+          <p class="footer-tagline">Made with 🦀 by Oxidian Studio</p>
+        </div>
+        <div class="footer-links">
+          <h4>Product</h4>
+          <a href="index.html#hypermark">HyperMark</a>
+          <a href="index.html#features">Features</a>
+          <a href="index.html#download">Download</a>
+        </div>
+        <div class="footer-links">
+          <h4>Resources</h4>
+          <a href="docs/index.html">Documentation</a>
+          <a href="plugins.html">Plugins</a>
+          <a href="releases.html">Releases</a>
+          <a href="https://github.com/nicokimmel/oxidian" target="_blank" rel="noopener">GitHub</a>
+        </div>
+        <div class="footer-links">
+          <h4>Community</h4>
+          <a href="https://github.com/nicokimmel/oxidian/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener">Contributing</a>
+          <a href="https://github.com/nicokimmel/oxidian/issues" target="_blank" rel="noopener">Issues</a>
+          <a href="https://github.com/nicokimmel/oxidian/discussions" target="_blank" rel="noopener">Discussions</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2026 Oxidian Studio. Open source under the MIT License.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/main.js"></script>
+</body>
+</html>
