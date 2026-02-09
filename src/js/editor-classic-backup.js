@@ -1,15 +1,5 @@
-// Oxidian — Editor Component (CodeMirror 6 + Classic Fallback)
+// Oxidian — Editor Component (Enhanced Classic Editor)
 const { invoke } = window.__TAURI__.core;
-
-// Try to import CodeMirror, fall back to classic editor if it fails
-let CodeMirrorEditor = null;
-try {
-  const module = await import('./codemirror-editor.js');
-  CodeMirrorEditor = module.CodeMirrorEditor;
-  console.log('✅ CodeMirror 6 editor loaded successfully');
-} catch (error) {
-  console.warn('⚠️ CodeMirror 6 failed to load, using classic textarea fallback:', error);
-}
 
 export class Editor {
     constructor(app) {
@@ -22,14 +12,9 @@ export class Editor {
         this.previewVisible = true;
         this.currentPath = null;
         this.showLineNumbers = localStorage.getItem('oxidian-line-numbers') === 'true';
-        
-        // CodeMirror or fallback
-        this.useCodeMirror = CodeMirrorEditor !== null && localStorage.getItem('oxidian-disable-codemirror') !== 'true';
-        this.cmEditor = null;
-        
         // HyperMark integration
         this._hypermark = null;
-        // Auto-close pairs (for classic editor)
+        // Auto-close pairs
         this._autoPairs = {
             '(': ')',
             '[': ']',
@@ -39,81 +24,10 @@ export class Editor {
         };
         // Matching bracket highlight state
         this._bracketHighlightTimer = null;
-        
-        // *** FIX: Event listener leak prevention ***
-        this._abortController = null;
-        this._eventListeners = [];
-        
-        // *** FIX: Performance optimizations ***
-        this._renderQueue = null; // For requestIdleCallback
-        this._lastRenderContent = ''; // For diff-based rendering
-        
-        if (this.useCodeMirror && CodeMirrorEditor) {
-            this.cmEditor = new CodeMirrorEditor(app);
-            console.log('🚀 Using CodeMirror 6 editor');
-        } else {
-            console.log('📝 Using classic textarea editor');
-        }
     }
 
-    attach(container, previewEl) {
-        // *** FIX: Clean up previous event listeners to prevent leaks ***
-        this.detach();
-        
+    attach(textarea, previewEl) {
         this._hypermark = null;
-        this.previewEl = previewEl;
-        
-        if (this.useCodeMirror && this.cmEditor) {
-            // Use CodeMirror 6
-            try {
-                this.cmEditor.attach(container, previewEl);
-                console.log('✅ CodeMirror editor attached successfully');
-                return;
-            } catch (error) {
-                console.error('❌ CodeMirror attach failed, falling back to textarea:', error);
-                this.useCodeMirror = false;
-                localStorage.setItem('oxidian-disable-codemirror', 'true');
-            }
-        }
-        
-        // Fallback to classic textarea
-        this.attachClassic(container, previewEl);
-    }
-
-    // *** FIX: Cleanup method to prevent event listener leaks ***
-    detach() {
-        // Cancel any pending renders
-        clearTimeout(this.renderTimeout);
-        if (this._renderQueue) {
-            cancelIdleCallback(this._renderQueue);
-            this._renderQueue = null;
-        }
-        
-        // Abort all event listeners
-        if (this._abortController) {
-            this._abortController.abort();
-        }
-        this._abortController = new AbortController();
-        
-        // Clear references
-        this.textarea = null;
-        this.previewEl = null;
-        this.highlightEl = null;
-        this.lineNumberEl = null;
-        this._hypermark = null;
-    }
-    
-    attachClassic(container, previewEl) {
-        // Find or create textarea in container
-        let textarea = container.querySelector('.editor-textarea');
-        if (!textarea) {
-            textarea = document.createElement('textarea');
-            textarea.className = 'editor-textarea';
-            textarea.placeholder = 'Start writing... (Markdown supported)';
-            textarea.spellCheck = true;
-            container.appendChild(textarea);
-        }
-        
         this.textarea = textarea;
         this.previewEl = previewEl;
         this._setupHighlightOverlay();
@@ -123,11 +37,6 @@ export class Editor {
 
     /** Attach a HyperMarkEditor instance instead of a textarea */
     attachHyperMark(hypermark, previewEl) {
-        if (this.useCodeMirror && this.cmEditor) {
-            this.cmEditor.attachHyperMark(hypermark, previewEl);
-            return;
-        }
-        
         this.textarea = null;
         this.highlightEl = null;
         this.lineNumberEl = null;
@@ -138,7 +47,7 @@ export class Editor {
     /** Create a highlight underlay behind the textarea for syntax coloring */
     _setupHighlightOverlay() {
         // DISABLED — overlay causes garbled double-text rendering.
-        // CodeMirror 6 handles syntax highlighting natively.
+        // Will be replaced by CodeMirror 6 integration.
         return;
     }
 
@@ -163,13 +72,6 @@ export class Editor {
     /** Toggle line numbers on/off */
     toggleLineNumbers(show) {
         this.showLineNumbers = show;
-        localStorage.setItem('oxidian-line-numbers', show.toString());
-        
-        if (this.useCodeMirror && this.cmEditor) {
-            this.cmEditor.toggleLineNumbers(show);
-            return;
-        }
-
         if (!this.textarea) return;
 
         if (show && !this.lineNumberEl) {
@@ -267,15 +169,7 @@ export class Editor {
     }
 
     bindEvents() {
-        if (this.useCodeMirror && this.cmEditor) {
-            // CodeMirror handles its own events
-            return;
-        }
-        
         if (!this.textarea) return;
-
-        // *** FIX: Use AbortController to prevent event listener leaks ***
-        const signal = this._abortController.signal;
 
         this.textarea.addEventListener('input', () => {
             this.app.markDirty();
@@ -285,30 +179,27 @@ export class Editor {
             this._syncLineNumbers();
             // Notify slash menu
             this.app.slashMenu?.onInput(this.textarea);
-        }, { signal });
+        });
 
         this.textarea.addEventListener('click', () => {
             this.updateCursor();
             this._highlightMatchingBracket();
-        }, { signal });
-        
+        });
         this.textarea.addEventListener('keyup', (e) => {
             // Don't update on modifier-only keys
             if (!e.ctrlKey && !e.metaKey && !e.altKey) {
                 this.updateCursor();
                 this._highlightMatchingBracket();
             }
-        }, { signal });
+        });
 
-        this.textarea.addEventListener('keydown', (e) => this.handleEditorKeys(e), { signal });
+        this.textarea.addEventListener('keydown', (e) => this.handleEditorKeys(e));
 
         this.textarea.addEventListener('blur', () => {
             if (this.app.isDirty) {
-                this.app.saveCurrentFile().catch(() => {
-                    // Error already handled in app.js
-                });
+                this.app.saveCurrentFile();
             }
-        }, { signal });
+        });
 
         this.textarea.addEventListener('scroll', () => {
             this.syncScroll();
@@ -319,19 +210,14 @@ export class Editor {
             if (this.lineNumberEl) {
                 this.lineNumberEl.scrollTop = this.textarea.scrollTop;
             }
-        }, { signal });
+        });
 
         this.textarea.addEventListener('contextmenu', (e) => {
-            this.app.contextMenu?.showEditorMenu(e, this.textarea);
-        }, { signal });
+            this.app.contextMenu.showEditorMenu(e, this.textarea);
+        });
     }
 
     setContent(content) {
-        if (this.useCodeMirror && this.cmEditor) {
-            this.cmEditor.setContent(content);
-            return;
-        }
-        
         if (this._hypermark) {
             this._hypermark.setContent(content);
             this.renderPreview();
@@ -350,58 +236,8 @@ export class Editor {
     }
 
     getContent() {
-        if (this.useCodeMirror && this.cmEditor) {
-            return this.cmEditor.getContent();
-        }
-        
         if (this._hypermark) return this._hypermark.getContent();
         return this.textarea ? this.textarea.value : '';
-    }
-
-    /** Get current selection */
-    getSelection() {
-        if (this.useCodeMirror && this.cmEditor) {
-            return this.cmEditor.getSelection();
-        }
-        
-        if (!this.textarea) return '';
-        const start = this.textarea.selectionStart;
-        const end = this.textarea.selectionEnd;
-        return this.textarea.value.substring(start, end);
-    }
-
-    /** Replace current selection */
-    replaceSelection(text) {
-        if (this.useCodeMirror && this.cmEditor) {
-            this.cmEditor.replaceSelection(text);
-            return;
-        }
-        
-        if (!this.textarea) return;
-        const start = this.textarea.selectionStart;
-        const end = this.textarea.selectionEnd;
-        const value = this.textarea.value;
-        this.textarea.value = value.substring(0, start) + text + value.substring(end);
-        this.textarea.selectionStart = this.textarea.selectionEnd = start + text.length;
-        this.app.markDirty();
-        this.scheduleRender();
-        this._syncHighlight();
-        this._syncLineNumbers();
-    }
-
-    /** Get cursor position */
-    getCursor() {
-        if (this.useCodeMirror && this.cmEditor) {
-            return this.cmEditor.getCursor();
-        }
-        
-        if (!this.textarea) return { line: 1, ch: 0 };
-        const pos = this.textarea.selectionStart;
-        const text = this.textarea.value;
-        const lines = text.substring(0, pos).split('\n');
-        const line = lines.length;
-        const ch = lines[lines.length - 1].length;
-        return { line, ch };
     }
 
     /** Update word/char stats from a content string (used by HyperMark path) */
@@ -422,75 +258,26 @@ export class Editor {
     }
 
     scheduleRender() {
-        // *** FIX: Increased debounce to 500ms for better performance ***
         clearTimeout(this.renderTimeout);
-        if (this._renderQueue) {
-            cancelIdleCallback(this._renderQueue);
-            this._renderQueue = null;
-        }
-        
-        this.renderTimeout = setTimeout(() => {
-            // *** FIX: Use requestIdleCallback for non-blocking render ***
-            this._renderQueue = requestIdleCallback(() => {
-                this.renderPreview();
-                this._renderQueue = null;
-            }, { timeout: 1000 }); // Fallback to force render after 1s
-        }, 500);
+        this.renderTimeout = setTimeout(() => this.renderPreview(), 200);
     }
 
     async renderPreview() {
-        if (this.useCodeMirror && this.cmEditor) {
-            await this.cmEditor.renderPreview();
-            return;
-        }
-        
         if (!this.textarea || !this.previewEl) return;
         const content = this.textarea.value;
-        
-        // *** FIX: Skip render if content hasn't changed (diff-based optimization) ***
-        if (content === this._lastRenderContent) {
-            return;
-        }
-        
         if (!content.trim()) {
             this.previewEl.innerHTML = '<p style="color: var(--text-faint)">Preview will appear here...</p>';
-            this._lastRenderContent = content;
             return;
         }
-        
         try {
-            // *** FIX: Use app's renderMarkdown for consistent error handling ***
-            const html = await this.app.renderMarkdown(content);
-            
-            // *** FIX: Diff-based DOM update instead of innerHTML replacement ***
-            if (this.previewEl.innerHTML !== html) {
-                // Store scroll position before update
-                const scrollTop = this.previewEl.scrollTop;
-                this.previewEl.innerHTML = html;
-                
-                // *** FIX: Post-process for mermaid and other features ***
-                await this.app.postProcessRendered?.(this.previewEl);
-                
-                // Restore scroll position (minimize jumping)
-                this.previewEl.scrollTop = scrollTop;
-            }
-            
-            this._lastRenderContent = content;
-            
+            const html = await invoke('render_markdown', { content });
+            this.previewEl.innerHTML = html;
         } catch (err) {
             console.error('Render failed:', err);
-            this.previewEl.innerHTML = `<div class="render-error" style="color: var(--text-error, #dc2626); padding: 12px; border: 1px solid var(--border-error, #dc2626); border-radius: 4px;">
-                <strong>Render Error:</strong> ${err.message || err}
-            </div>`;
         }
     }
 
     togglePreview() {
-        if (this.useCodeMirror && this.cmEditor) {
-            this.cmEditor.togglePreview();
-            return;
-        }
-        
         if (!this.textarea) return;
         const previewPane = this.previewEl?.closest('.preview-pane-half');
         if (!previewPane) return;
@@ -500,22 +287,24 @@ export class Editor {
     }
 
     updateStats() {
-        if (this.useCodeMirror && this.cmEditor) {
-            this.cmEditor.updateStats();
-            return;
-        }
-        
         if (!this.textarea) return;
         const content = this.textarea.value;
-        this.updateStatsFromContent(content);
+        const words = content.trim() ? content.trim().split(/\s+/).length : 0;
+        const chars = content.length;
+        const readingTime = Math.max(1, Math.ceil(words / 238));
+
+        const wc = document.getElementById('status-word-count');
+        const cc = document.getElementById('status-char-count');
+        const rt = document.getElementById('status-reading-time');
+        if (wc) wc.textContent = `${words} words`;
+        if (cc) cc.textContent = `${chars} characters`;
+        if (rt) rt.textContent = `${readingTime} min read`;
+
+        // Update outline panel if visible
+        this.app.updateOutline?.(content);
     }
 
     updateCursor() {
-        if (this.useCodeMirror && this.cmEditor) {
-            this.cmEditor.updateCursor();
-            return;
-        }
-        
         if (!this.textarea) return;
         const text = this.textarea.value;
         const pos = this.textarea.selectionStart;
@@ -528,11 +317,6 @@ export class Editor {
     }
 
     syncScroll() {
-        if (this.useCodeMirror && this.cmEditor) {
-            this.cmEditor.syncScroll();
-            return;
-        }
-        
         if (!this.previewVisible || !this.textarea || !this.previewEl) return;
         const previewPane = this.previewEl.closest('.preview-pane-half');
         if (!previewPane) return;
@@ -605,65 +389,6 @@ export class Editor {
         }
     }
 
-    /** Insert markdown text at cursor — delegates to CodeMirror or HyperMark if active */
-    insertMarkdown(text) {
-        if (this.useCodeMirror && this.cmEditor) {
-            this.cmEditor.insertMarkdown(text);
-            return;
-        }
-        
-        if (this._hypermark) {
-            this._hypermark.insertAtCursor(text);
-            this.app.markDirty();
-            return;
-        }
-        if (!this.textarea) return;
-        const start = this.textarea.selectionStart;
-        const value = this.textarea.value;
-        this.textarea.value = value.substring(0, start) + text + value.substring(start);
-        this.textarea.selectionStart = this.textarea.selectionEnd = start + text.length;
-        this.textarea.focus();
-        this.app.markDirty();
-        this.scheduleRender();
-        this._syncHighlight();
-        this._syncLineNumbers();
-    }
-
-    wrapSelection(before, after) {
-        if (this.useCodeMirror && this.cmEditor) {
-            this.cmEditor.wrapSelection(before, after);
-            return;
-        }
-        
-        if (this._hypermark) {
-            this._hypermark.wrapSelection(before, after);
-            this.app.markDirty();
-            return;
-        }
-        if (!this.textarea) return;
-        const start = this.textarea.selectionStart;
-        const end = this.textarea.selectionEnd;
-        const value = this.textarea.value;
-        const selected = value.substring(start, end);
-
-        const replacement = before + (selected || 'text') + after;
-        this.textarea.value = value.substring(0, start) + replacement + value.substring(end);
-
-        if (selected) {
-            this.textarea.selectionStart = start;
-            this.textarea.selectionEnd = start + replacement.length;
-        } else {
-            this.textarea.selectionStart = start + before.length;
-            this.textarea.selectionEnd = start + before.length + 4;
-        }
-
-        this.textarea.focus();
-        this.app.markDirty();
-        this.scheduleRender();
-        this._syncHighlight();
-    }
-
-    // Classic editor keyboard handling (only used for textarea fallback)
     handleEditorKeys(e) {
         // Let slash menu handle keys first
         if (this.app.slashMenu?.handleKeyDown(e)) return;
@@ -768,6 +493,12 @@ export class Editor {
             const value = this.textarea.value;
             const closeChar = this._autoPairs[e.key];
 
+            // Special handling for ** (bold)
+            if (e.key === '*') {
+                // Don't auto-close single *, let it type naturally
+                // We handle ** via looking at previous char
+            }
+
             if (start !== end) {
                 // Wrap selection
                 e.preventDefault();
@@ -803,6 +534,20 @@ export class Editor {
                 this.app.markDirty();
                 this._syncHighlight();
                 return;
+            }
+        }
+
+        // Skip over auto-inserted closing characters
+        if (!ctrl && !e.altKey) {
+            const closingChars = ')]}';
+            if (closingChars.includes(e.key)) {
+                const start = this.textarea.selectionStart;
+                const value = this.textarea.value;
+                if (value[start] === e.key) {
+                    e.preventDefault();
+                    this.textarea.selectionStart = this.textarea.selectionEnd = start + 1;
+                    return;
+                }
             }
         }
 
@@ -876,8 +621,6 @@ export class Editor {
     }
 
     cycleHeading() {
-        if (!this.textarea) return;
-        
         const pos = this.textarea.selectionStart;
         const value = this.textarea.value;
         const lineStart = value.lastIndexOf('\n', pos - 1) + 1;
@@ -920,6 +663,54 @@ export class Editor {
             this.textarea.value = value.substring(0, start) + replacement + value.substring(end);
             this.textarea.selectionStart = start + 1;
             this.textarea.selectionEnd = start + 5;
+        }
+
+        this.textarea.focus();
+        this.app.markDirty();
+        this.scheduleRender();
+        this._syncHighlight();
+    }
+
+    /** Insert markdown text at cursor — delegates to HyperMark if active */
+    insertMarkdown(text) {
+        if (this._hypermark) {
+            this._hypermark.insertAtCursor(text);
+            this.app.markDirty();
+            return;
+        }
+        if (!this.textarea) return;
+        const start = this.textarea.selectionStart;
+        const value = this.textarea.value;
+        this.textarea.value = value.substring(0, start) + text + value.substring(start);
+        this.textarea.selectionStart = this.textarea.selectionEnd = start + text.length;
+        this.textarea.focus();
+        this.app.markDirty();
+        this.scheduleRender();
+        this._syncHighlight();
+        this._syncLineNumbers();
+    }
+
+    wrapSelection(before, after) {
+        if (this._hypermark) {
+            this._hypermark.wrapSelection(before, after);
+            this.app.markDirty();
+            return;
+        }
+        if (!this.textarea) return;
+        const start = this.textarea.selectionStart;
+        const end = this.textarea.selectionEnd;
+        const value = this.textarea.value;
+        const selected = value.substring(start, end);
+
+        const replacement = before + (selected || 'text') + after;
+        this.textarea.value = value.substring(0, start) + replacement + value.substring(end);
+
+        if (selected) {
+            this.textarea.selectionStart = start;
+            this.textarea.selectionEnd = start + replacement.length;
+        } else {
+            this.textarea.selectionStart = start + before.length;
+            this.textarea.selectionEnd = start + before.length + 4;
         }
 
         this.textarea.focus();

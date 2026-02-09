@@ -11,12 +11,29 @@ export class TabManager {
         this.dragState = null;
         this._dropOverlay = null;
 
+        // *** FIX: Null safety check ***
+        if (!this.tabList) {
+            console.error('Tab list container not found');
+            return;
+        }
+
         this.initDragDrop();
     }
 
     openTab(path, title, type = 'note', pane = 0) {
+        // *** FIX: Input validation ***
+        if (!path) {
+            console.error('Cannot open tab: path is required');
+            return null;
+        }
+        
         const existing = this.tabs.find(t => t.path === path && t.type === type);
         if (existing) {
+            // *** FIX: Update existing tab's pane if different ***
+            if (existing.pane !== pane) {
+                existing.pane = pane;
+                this.renderTabs();
+            }
             this.activateTab(existing.id);
             return existing.id;
         }
@@ -28,22 +45,55 @@ export class TabManager {
             type,
             dirty: false,
             pane,
+            // *** FIX: Add timestamp for better tab ordering ***
+            created: Date.now(),
         };
+        
         this.tabs.push(tab);
+        
+        // *** FIX: Limit number of tabs to prevent memory issues ***
+        const maxTabs = 20;
+        if (this.tabs.length > maxTabs) {
+            // Remove oldest non-dirty tabs
+            const oldTabs = this.tabs
+                .filter(t => !t.dirty && t.id !== tab.id)
+                .sort((a, b) => a.created - b.created);
+            if (oldTabs.length > 0) {
+                this.closeTab(oldTabs[0].id);
+            }
+        }
+        
         this.renderTabs();
         this.activateTab(tab.id);
         return tab.id;
     }
 
     activateTab(id, forceUpdate = false) {
+        // *** FIX: Input validation ***
+        if (!id && id !== 0) {
+            console.warn('Invalid tab ID for activation:', id);
+            return;
+        }
+        
         const changed = this.activeTabId !== id;
         if (!changed && !forceUpdate) return;
+        
+        const tab = this.tabs.find(t => t.id === id);
+        if (!tab) {
+            console.warn('Tab not found for activation:', id);
+            return;
+        }
+        
         this.activeTabId = id;
         this.renderTabs();
 
-        const tab = this.tabs.find(t => t.id === id);
-        if (!tab) return;
-        this.app.onTabActivated(tab);
+        // *** FIX: Safe callback with error handling ***
+        try {
+            this.app?.onTabActivated?.(tab);
+        } catch (err) {
+            console.error('Error in onTabActivated callback:', err);
+            this.app?.showErrorToast?.('Failed to activate tab');
+        }
     }
 
     closeTab(id) {

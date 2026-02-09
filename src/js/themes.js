@@ -2,125 +2,21 @@
 const { invoke } = window.__TAURI__.core;
 
 const BUILT_IN_THEMES = {
-    dark: {
-        '--bg-ribbon': '#141419',
-        '--bg-sidebar': '#1a1a24',
-        '--bg-primary': '#1e1e2e',
-        '--bg-secondary': '#1a1a24',
-        '--bg-tertiary': '#141419',
-        '--bg-surface': '#2a2a3c',
-        '--bg-hover': '#2e2e42',
-        '--bg-active': '#3e3e56',
-        '--bg-tab': '#1e1e2e',
-        '--bg-tab-active': '#262636',
-        '--text-primary': '#dcddde',
-        '--text-secondary': '#a9aaab',
-        '--text-muted': '#686a6e',
-        '--text-faint': '#4a4c50',
-        '--text-accent': '#7f6df2',
-        '--text-accent-hover': '#8b7cf3',
-        '--text-green': '#a6e3a1',
-        '--text-yellow': '#f9e2af',
-        '--text-red': '#f38ba8',
-        '--text-purple': '#cba6f7',
-        '--text-teal': '#94e2d5',
-        '--text-pink': '#f5c2e7',
-        '--text-blue': '#89b4fa',
-        '--text-orange': '#fab387',
-        '--border-color': '#2a2a3c',
-        '--border-light': '#353548',
-    },
-    light: {
-        '--bg-ribbon': '#e8e8ee',
-        '--bg-sidebar': '#f0f0f5',
-        '--bg-primary': '#ffffff',
-        '--bg-secondary': '#f5f5fa',
-        '--bg-tertiary': '#e8e8ee',
-        '--bg-surface': '#eeeef3',
-        '--bg-hover': '#e2e2ea',
-        '--bg-active': '#d5d5e0',
-        '--bg-tab': '#f0f0f5',
-        '--bg-tab-active': '#ffffff',
-        '--text-primary': '#1e1e2e',
-        '--text-secondary': '#444455',
-        '--text-muted': '#888899',
-        '--text-faint': '#aaaabc',
-        '--text-accent': '#6c5ce7',
-        '--text-accent-hover': '#5a4bd5',
-        '--text-green': '#2ecc71',
-        '--text-yellow': '#f39c12',
-        '--text-red': '#e74c3c',
-        '--text-purple': '#9b59b6',
-        '--text-teal': '#1abc9c',
-        '--text-pink': '#e91e8c',
-        '--text-blue': '#3498db',
-        '--text-orange': '#e67e22',
-        '--border-color': '#d5d5e0',
-        '--border-light': '#e0e0ea',
-    },
-    nord: {
-        '--bg-ribbon': '#2e3440',
-        '--bg-sidebar': '#3b4252',
-        '--bg-primary': '#2e3440',
-        '--bg-secondary': '#3b4252',
-        '--bg-tertiary': '#2e3440',
-        '--bg-surface': '#434c5e',
-        '--bg-hover': '#434c5e',
-        '--bg-active': '#4c566a',
-        '--bg-tab': '#3b4252',
-        '--bg-tab-active': '#2e3440',
-        '--text-primary': '#eceff4',
-        '--text-secondary': '#d8dee9',
-        '--text-muted': '#7b88a1',
-        '--text-faint': '#616e88',
-        '--text-accent': '#88c0d0',
-        '--text-accent-hover': '#8fbcbb',
-        '--text-green': '#a3be8c',
-        '--text-yellow': '#ebcb8b',
-        '--text-red': '#bf616a',
-        '--text-purple': '#b48ead',
-        '--text-teal': '#8fbcbb',
-        '--text-pink': '#b48ead',
-        '--text-blue': '#81a1c1',
-        '--text-orange': '#d08770',
-        '--border-color': '#434c5e',
-        '--border-light': '#4c566a',
-    },
-    solarized: {
-        '--bg-ribbon': '#002b36',
-        '--bg-sidebar': '#073642',
-        '--bg-primary': '#002b36',
-        '--bg-secondary': '#073642',
-        '--bg-tertiary': '#002b36',
-        '--bg-surface': '#073642',
-        '--bg-hover': '#0a4050',
-        '--bg-active': '#1a5060',
-        '--bg-tab': '#073642',
-        '--bg-tab-active': '#002b36',
-        '--text-primary': '#fdf6e3',
-        '--text-secondary': '#eee8d5',
-        '--text-muted': '#839496',
-        '--text-faint': '#657b83',
-        '--text-accent': '#268bd2',
-        '--text-accent-hover': '#2aa198',
-        '--text-green': '#859900',
-        '--text-yellow': '#b58900',
-        '--text-red': '#dc322f',
-        '--text-purple': '#6c71c4',
-        '--text-teal': '#2aa198',
-        '--text-pink': '#d33682',
-        '--text-blue': '#268bd2',
-        '--text-orange': '#cb4b16',
-        '--border-color': '#094959',
-        '--border-light': '#0a5468',
-    },
+    system: 'System',
+    dark: 'Dark',
+    light: 'Light', 
+    'high-contrast': 'High Contrast',
+    nord: 'Nord',
+    solarized: 'Solarized'
 };
 
 export class ThemeManager {
     constructor(app) {
         this.app = app;
-        this.currentTheme = 'dark';
+        this.currentTheme = 'system';
+        this.systemPreference = this.getSystemPreference();
         this.customStyleEl = null;
+        this.mediaQuery = null;
     }
 
     async init() {
@@ -128,24 +24,41 @@ export class ThemeManager {
         this.customStyleEl = document.createElement('style');
         this.customStyleEl.id = 'custom-theme-style';
         document.head.appendChild(this.customStyleEl);
+
+        // Listen for system theme changes
+        this.mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        this.mediaQuery.addEventListener('change', () => {
+            this.systemPreference = this.getSystemPreference();
+            if (this.currentTheme === 'system') {
+                this.applyActualTheme(this.systemPreference);
+            }
+        });
+    }
+
+    getSystemPreference() {
+        return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     }
 
     applyTheme(themeName) {
         this.currentTheme = themeName;
-        const root = document.documentElement;
-
-        if (BUILT_IN_THEMES[themeName]) {
-            // Clear custom CSS
-            this.customStyleEl.textContent = '';
-            const vars = BUILT_IN_THEMES[themeName];
-            for (const [prop, value] of Object.entries(vars)) {
-                root.style.setProperty(prop, value);
-            }
-            // Update color-scheme for native elements (scrollbars, inputs, etc.)
-            document.documentElement.style.colorScheme = themeName === 'light' ? 'light' : 'dark';
+        
+        if (themeName === 'system') {
+            this.applyActualTheme(this.systemPreference);
+        } else if (BUILT_IN_THEMES[themeName]) {
+            this.applyActualTheme(themeName);
         } else {
             // Try loading custom theme
             this.loadCustomTheme(themeName);
+        }
+    }
+
+    applyActualTheme(actualTheme) {
+        const root = document.documentElement;
+        
+        // Clear custom CSS when applying built-in themes
+        if (BUILT_IN_THEMES[actualTheme]) {
+            this.customStyleEl.textContent = '';
+            root.setAttribute('data-theme', actualTheme);
         }
     }
 
@@ -153,19 +66,100 @@ export class ThemeManager {
         try {
             const css = await invoke('load_custom_theme', { name });
             this.customStyleEl.textContent = css;
+            document.documentElement.setAttribute('data-theme', 'custom');
         } catch (err) {
             console.error('Failed to load custom theme:', err);
+            // Fallback to dark theme
+            this.applyActualTheme('dark');
         }
     }
 
     setAccentColor(color) {
         document.documentElement.style.setProperty('--text-accent', color);
-        // Generate hover variant
-        document.documentElement.style.setProperty('--text-accent-hover', color);
+        // Generate hover variant (slightly lighter)
+        const hoverColor = this.lightenColor(color, 10);
+        document.documentElement.style.setProperty('--text-accent-hover', hoverColor);
+        // Update focus border
+        document.documentElement.style.setProperty('--border-focus', color);
+        // Update selection background
+        const selectionColor = this.hexToRgba(color, 0.15);
+        document.documentElement.style.setProperty('--bg-selection', selectionColor);
+    }
+
+    lightenColor(color, percent) {
+        // Simple color lightening - convert hex to HSL, increase lightness, convert back
+        const hex = color.replace('#', '');
+        const r = parseInt(hex.substr(0, 2), 16);
+        const g = parseInt(hex.substr(2, 2), 16);
+        const b = parseInt(hex.substr(4, 2), 16);
+        
+        const hsl = this.rgbToHsl(r, g, b);
+        hsl[2] = Math.min(1, hsl[2] + percent / 100);
+        const rgb = this.hslToRgb(hsl[0], hsl[1], hsl[2]);
+        
+        return `#${Math.round(rgb[0]).toString(16).padStart(2, '0')}${Math.round(rgb[1]).toString(16).padStart(2, '0')}${Math.round(rgb[2]).toString(16).padStart(2, '0')}`;
+    }
+
+    hexToRgba(hex, alpha) {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        if (!result) return hex;
+        const r = parseInt(result[1], 16);
+        const g = parseInt(result[2], 16);
+        const b = parseInt(result[3], 16);
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+
+    rgbToHsl(r, g, b) {
+        r /= 255; g /= 255; b /= 255;
+        const max = Math.max(r, g, b), min = Math.min(r, g, b);
+        let h, s, l = (max + min) / 2;
+        
+        if (max === min) {
+            h = s = 0;
+        } else {
+            const d = max - min;
+            s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+            switch (max) {
+                case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                case g: h = (b - r) / d + 2; break;
+                case b: h = (r - g) / d + 4; break;
+            }
+            h /= 6;
+        }
+        return [h, s, l];
+    }
+
+    hslToRgb(h, s, l) {
+        let r, g, b;
+        
+        if (s === 0) {
+            r = g = b = l;
+        } else {
+            const hue2rgb = (p, q, t) => {
+                if (t < 0) t += 1;
+                if (t > 1) t -= 1;
+                if (t < 1/6) return p + (q - p) * 6 * t;
+                if (t < 1/2) return q;
+                if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+                return p;
+            };
+            
+            const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+            const p = 2 * l - q;
+            r = hue2rgb(p, q, h + 1/3);
+            g = hue2rgb(p, q, h);
+            b = hue2rgb(p, q, h - 1/3);
+        }
+        
+        return [r * 255, g * 255, b * 255];
     }
 
     getBuiltInThemeNames() {
         return Object.keys(BUILT_IN_THEMES);
+    }
+
+    getBuiltInThemeLabels() {
+        return BUILT_IN_THEMES;
     }
 
     async getCustomThemeNames() {
@@ -174,5 +168,13 @@ export class ThemeManager {
         } catch {
             return [];
         }
+    }
+
+    getCurrentTheme() {
+        return this.currentTheme;
+    }
+
+    getSystemPreferenceTheme() {
+        return this.systemPreference;
     }
 }

@@ -15,10 +15,25 @@ export class Sidebar {
             this.render(files);
         } catch (err) {
             console.error('Failed to list files:', err);
+            // *** FIX: Show error to user and render empty state ***
+            this.app?.showErrorToast?.(`Failed to load file list: ${err.message || err}`);
+            this.render([]); // Render empty state instead of leaving UI broken
         }
     }
 
     render(nodes, depth = 0) {
+        // *** FIX: Null safety check ***
+        if (!this.container) {
+            console.warn('Sidebar container not found');
+            return document.createDocumentFragment();
+        }
+        
+        // *** FIX: Ensure nodes is an array ***
+        if (!Array.isArray(nodes)) {
+            console.warn('Invalid nodes data for sidebar render');
+            nodes = [];
+        }
+
         if (depth === 0) {
             this.container.innerHTML = '';
         }
@@ -26,10 +41,17 @@ export class Sidebar {
         const fragment = document.createDocumentFragment();
 
         for (const node of nodes) {
-            if (node.is_dir) {
-                fragment.appendChild(this.createFolderNode(node, depth));
-            } else {
-                fragment.appendChild(this.createFileNode(node, depth));
+            if (!node) continue; // Skip null/undefined nodes
+            
+            try {
+                if (node.is_dir) {
+                    fragment.appendChild(this.createFolderNode(node, depth));
+                } else {
+                    fragment.appendChild(this.createFileNode(node, depth));
+                }
+            } catch (err) {
+                console.error('Failed to create tree node:', err, node);
+                // Continue with other nodes instead of breaking
             }
         }
 

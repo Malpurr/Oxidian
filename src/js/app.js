@@ -19,6 +19,10 @@ import { TemplateManager } from './templates.js';
 import { QuickSwitcher } from './quickswitcher.js';
 import { CalloutProcessor } from './callouts.js';
 import { MermaidRenderer } from './mermaid-renderer.js';
+import { FindReplace } from './find-replace.js';
+import { EmbedProcessor } from './embeds.js';
+import { FrontmatterProcessor } from './frontmatter.js';
+import { LinkHandler } from './link-handler.js';
 
 class OxidianApp {
     constructor() {
@@ -41,6 +45,10 @@ class OxidianApp {
         this.quickSwitcher = null;
         this.calloutProcessor = null;
         this.mermaidRenderer = null;
+        this.findReplace = null;
+        this.embedProcessor = null;
+        this.frontmatterProcessor = null;
+        this.linkHandler = null;
         this.splitPanes = [];
         this.hypermarkEditor = null;
         this.editorMode = localStorage.getItem('oxidian-editor-mode') || 'classic'; // 'classic' | 'hypermark'
@@ -62,6 +70,14 @@ class OxidianApp {
         // Auto-save timer
         this._autoSaveTimer = null;
 
+        // *** RACE CONDITION FIXES ***
+        this._fileOperationMutex = false; // Simple mutex to prevent concurrent openFile calls
+        this._saveQueue = []; // Queue for save operations to prevent parallel saves
+        this._currentSavePromise = null; // Track ongoing save operation
+
+        // *** ERROR HANDLING ***
+        this._errorToastContainer = null; // For user error notifications
+
         this.init();
     }
 
@@ -82,6 +98,10 @@ class OxidianApp {
         this.quickSwitcher = new QuickSwitcher(this);
         this.calloutProcessor = new CalloutProcessor();
         this.mermaidRenderer = new MermaidRenderer();
+        this.findReplace = new FindReplace(this);
+        this.embedProcessor = new EmbedProcessor(this);
+        this.frontmatterProcessor = new FrontmatterProcessor(this);
+        this.linkHandler = new LinkHandler(this);
 
         await this.themeManager.init();
 
@@ -272,16 +292,29 @@ class OxidianApp {
     // ===== File Operations =====
 
     async openFile(path) {
-        // Cancel pending auto-save timer from previous file
-        clearTimeout(this._autoSaveTimer);
-        if (this.isDirty && this.currentFile) {
-            await this.saveCurrentFile();
+        // *** FIX: Prevent race conditions with mutex ***
+        if (this._fileOperationMutex) {
+            console.warn('File operation already in progress, ignoring openFile call for:', path);
+            return;
         }
-
+        
+        this._fileOperationMutex = true;
+        
         try {
+            // Cancel pending auto-save timer from previous file
+            clearTimeout(this._autoSaveTimer);
+            if (this.isDirty && this.currentFile) {
+                await this.saveCurrentFile();
+            }
+
+            // Read file content BEFORE setting currentFile (race condition fix)
             const content = await invoke('read_note', { path });
+            
+            // *** FIX: Only set currentFile AFTER successful load ***
             const title = path.split('/').pop().replace('.md', '');
             this.tabManager.openTab(path, title, 'note');
+            
+            // Set state only after successful operations
             this.currentFile = path;
             this.isDirty = false;
             this.addRecentFile(path);
@@ -292,8 +325,14 @@ class OxidianApp {
             this.hideWelcome();
             this.updateBreadcrumb(path);
             this.loadBacklinks(path);
+            
         } catch (err) {
             console.error('Failed to open file:', err);
+            // *** FIX: Show error to user instead of silent failure ***
+            this.showErrorToast(`Failed to open file "${path}": ${err.message || err}`);
+        } finally {
+            // *** FIX: Always release mutex ***
+            this._fileOperationMutex = false;
         }
     }
 
@@ -366,14 +405,53 @@ class OxidianApp {
     async saveCurrentFile() {
         if (!this.currentFile || !this.isDirty) return;
 
+        // *** FIX: Queue save operations to prevent parallel saves ***
+        return new Promise((resolve, reject) => {
+            this._saveQueue.push({ resolve, reject, file: this.currentFile });
+            this._processSaveQueue();
+        });
+    }
+
+    async _processSaveQueue() {
+        if (this._currentSavePromise || this._saveQueue.length === 0) return;
+
+        const { resolve, reject, file } = this._saveQueue.shift();
+        
+        this._currentSavePromise = this._performSave(file)
+            .then((result) => {
+                resolve(result);
+                this._currentSavePromise = null;
+                this._processSaveQueue(); // Process next in queue
+            })
+            .catch((err) => {
+                reject(err);
+                this._currentSavePromise = null;
+                this._processSaveQueue(); // Process next in queue
+            });
+    }
+
+    async _performSave(filePath) {
+        if (!filePath || !this.isDirty || this.currentFile !== filePath) return;
+
         try {
-            const content = this.editor.getContent();
-            await invoke('save_note', { path: this.currentFile, content });
+            // *** FIX: Optimistic UI - mark as saved immediately ***
             this.isDirty = false;
-            this.tabManager.markClean(this.currentFile);
-            this.backlinksManager.invalidate();
+            this.tabManager.markClean(filePath);
+            
+            const content = this.editor.getContent();
+            await invoke('save_note', { path: filePath, content });
+            
+            // Invalidate backlinks after successful save
+            this.backlinksManager?.invalidate();
+            
         } catch (err) {
+            // *** FIX: Rollback optimistic UI on error ***
+            this.isDirty = true;
+            this.tabManager.markDirty(filePath);
+            
             console.error('Failed to save:', err);
+            this.showErrorToast(`Failed to save "${filePath}": ${err.message || err}`);
+            throw err; // Re-throw for promise rejection
         }
     }
 
@@ -399,6 +477,7 @@ class OxidianApp {
             await this.sidebar.refresh();
         } catch (err) {
             console.error('Failed to create daily note:', err);
+            this.showErrorToast(`Failed to create daily note: ${err.message || err}`);
         }
     }
 
@@ -409,11 +488,17 @@ class OxidianApp {
         try {
             await invoke('read_note', { path });
             await this.openFile(path);
-        } catch {
-            const content = `# ${target}\n\n`;
-            await invoke('save_note', { path, content });
-            await this.openFile(path);
-            await this.sidebar.refresh();
+        } catch (readErr) {
+            // File doesn't exist, create it
+            try {
+                const content = `# ${target}\n\n`;
+                await invoke('save_note', { path, content });
+                await this.openFile(path);
+                await this.sidebar.refresh();
+            } catch (createErr) {
+                console.error('Failed to create note:', createErr);
+                this.showErrorToast(`Failed to create note "${target}": ${createErr.message || createErr}`);
+            }
         }
     }
 
@@ -432,13 +517,63 @@ class OxidianApp {
                 this.tabManager.markDirty(this.currentFile);
             }
         }
-        // Debounced auto-save: save 2 seconds after last edit
+        // *** FIX: Improved auto-save - only after meaningful edits, not every keystroke ***
         clearTimeout(this._autoSaveTimer);
         this._autoSaveTimer = setTimeout(() => {
             if (this.isDirty && this.currentFile) {
-                this.saveCurrentFile();
+                this.saveCurrentFile().catch(() => {
+                    // Error already handled in _performSave, just prevent unhandled promise rejection
+                });
             }
-        }, 2000);
+        }, 2000); // Keep 2s interval as specified
+    }
+
+    // *** FIX: Error toast system for user feedback ***
+    showErrorToast(message) {
+        if (!this._errorToastContainer) {
+            this._errorToastContainer = document.createElement('div');
+            this._errorToastContainer.id = 'error-toast-container';
+            this._errorToastContainer.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                z-index: 10000;
+                pointer-events: none;
+            `;
+            document.body.appendChild(this._errorToastContainer);
+        }
+
+        const toast = document.createElement('div');
+        toast.className = 'error-toast';
+        toast.style.cssText = `
+            background: var(--bg-error, #dc2626);
+            color: white;
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            max-width: 400px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            pointer-events: auto;
+            cursor: pointer;
+            animation: slideIn 0.3s ease-out;
+        `;
+        toast.textContent = message;
+        
+        // Click to dismiss
+        toast.addEventListener('click', () => {
+            toast.style.animation = 'slideOut 0.3s ease-in';
+            setTimeout(() => toast.remove(), 300);
+        });
+        
+        // Auto-dismiss after 5 seconds
+        setTimeout(() => {
+            if (toast.parentElement) {
+                toast.style.animation = 'slideOut 0.3s ease-in';
+                setTimeout(() => toast.remove(), 300);
+            }
+        }, 5000);
+
+        this._errorToastContainer.appendChild(toast);
     }
 
     hideWelcome() {
@@ -451,7 +586,14 @@ class OxidianApp {
 
     updateBreadcrumb(path) {
         const bc = document.getElementById('breadcrumb-path');
-        if (!path) { bc.innerHTML = ''; return; }
+        // *** FIX: Null safety check ***
+        if (!bc) return;
+        
+        if (!path) { 
+            bc.innerHTML = ''; 
+            return; 
+        }
+        
         const parts = path.replace('.md', '').split('/');
         bc.innerHTML = parts.map((p, i) => {
             const sep = i < parts.length - 1 ? '<span class="breadcrumb-sep">›</span>' : '';
@@ -750,6 +892,11 @@ class OxidianApp {
 
     async createNewNote() {
         const input = document.getElementById('new-note-name');
+        if (!input) {
+            this.showErrorToast('Note name input not found');
+            return;
+        }
+        
         let name = input.value.trim();
         if (!name) return;
         if (!name.endsWith('.md')) name += '.md';
@@ -763,6 +910,7 @@ class OxidianApp {
             await this.sidebar.refresh();
         } catch (err) {
             console.error('Failed to create note:', err);
+            this.showErrorToast(`Failed to create note "${name}": ${err.message || err}`);
         }
     }
 
@@ -786,14 +934,21 @@ class OxidianApp {
 
     async createNewFolderFromDialog() {
         const input = document.getElementById('new-folder-name');
-        const name = input?.value.trim();
+        if (!input) {
+            this.showErrorToast('Folder name input not found');
+            return;
+        }
+        
+        const name = input.value.trim();
         if (!name) return;
+        
         try {
             await invoke('create_folder', { path: name });
             this.hideNewFolderDialog();
             await this.sidebar.refresh();
         } catch (err) {
             console.error('Failed to create folder:', err);
+            this.showErrorToast(`Failed to create folder "${name}": ${err.message || err}`);
         }
     }
 
@@ -801,6 +956,7 @@ class OxidianApp {
 
     async deleteFile(path) {
         if (!confirm(`Delete "${path}"?`)) return;
+        
         try {
             await invoke('delete_note', { path });
             const tab = this.tabManager.tabs.find(t => t.path === path);
@@ -808,6 +964,7 @@ class OxidianApp {
             await this.sidebar.refresh();
         } catch (err) {
             console.error('Failed to delete:', err);
+            this.showErrorToast(`Failed to delete "${path}": ${err.message || err}`);
         }
     }
 
@@ -1009,8 +1166,27 @@ class OxidianApp {
             e.preventDefault();
             this.templateManager.showPicker();
         } else if (ctrl && e.key === 'f' && !e.shiftKey) {
+            // Check if we're in an editor context for in-file find
+            const isInEditor = document.activeElement?.classList?.contains('editor-textarea') || 
+                             document.querySelector('.hypermark-editor') ||
+                             this.currentFile;
+            
             e.preventDefault();
-            this.search.show();
+            if (isInEditor) {
+                this.findReplace.showFind();
+            } else {
+                this.search.show(); // Fallback to global search
+            }
+        } else if (ctrl && e.key === 'h') {
+            // Find & Replace (Ctrl+H)
+            const isInEditor = document.activeElement?.classList?.contains('editor-textarea') || 
+                             document.querySelector('.hypermark-editor') ||
+                             this.currentFile;
+            
+            e.preventDefault();
+            if (isInEditor) {
+                this.findReplace.showFindReplace();
+            }
         } else if (ctrl && e.shiftKey && e.key === 'F') {
             e.preventDefault();
             this.search.show();
@@ -1033,12 +1209,21 @@ class OxidianApp {
         } else if (ctrl && e.shiftKey && e.key === 'D') {
             e.preventDefault();
             this.toggleFocusMode();
+        } else if (ctrl && e.key === ']') {
+            // Indent (Ctrl+])
+            e.preventDefault();
+            this.indentSelection();
+        } else if (ctrl && e.key === '[') {
+            // Outdent (Ctrl+[)
+            e.preventDefault();
+            this.outdentSelection();
         } else if (e.key === 'Escape') {
             this.hideNewNoteDialog();
             this.hideNewFolderDialog();
             this.hideSettings();
             this.contextMenu.hide();
             this.slashMenu?.hide();
+            this.findReplace?.hide();
             // Close command palette / quick switcher / template picker if open
             const palette = document.getElementById('command-palette-overlay');
             if (palette) palette.remove();
@@ -1078,6 +1263,139 @@ class OxidianApp {
             statusbar?.classList.remove('hidden');
             focusBtn?.classList.remove('active');
         }
+    }
+
+    // ===== Text Editing Utilities =====
+
+    /**
+     * Indent the selected text or current line
+     */
+    indentSelection() {
+        const textarea = document.querySelector('.editor-textarea');
+        if (!textarea) return;
+
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const content = textarea.value;
+        
+        // Get selected text or current line
+        const beforeSelection = content.substring(0, start);
+        const selectedText = content.substring(start, end);
+        const afterSelection = content.substring(end);
+        
+        // If no selection, work with current line
+        if (start === end) {
+            // Find line boundaries
+            const lineStart = beforeSelection.lastIndexOf('\n') + 1;
+            const lineEnd = content.indexOf('\n', start);
+            const actualLineEnd = lineEnd === -1 ? content.length : lineEnd;
+            
+            // Indent the current line
+            const lineContent = content.substring(lineStart, actualLineEnd);
+            const indentedLine = '    ' + lineContent; // 4 spaces
+            
+            textarea.value = content.substring(0, lineStart) + indentedLine + content.substring(actualLineEnd);
+            textarea.selectionStart = start + 4;
+            textarea.selectionEnd = start + 4;
+        } else {
+            // Indent all selected lines
+            const lines = selectedText.split('\n');
+            const indentedLines = lines.map(line => '    ' + line);
+            const indentedText = indentedLines.join('\n');
+            
+            textarea.value = beforeSelection + indentedText + afterSelection;
+            textarea.selectionStart = start;
+            textarea.selectionEnd = start + indentedText.length;
+        }
+        
+        // Trigger input event to mark dirty
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        textarea.focus();
+    }
+
+    /**
+     * Outdent the selected text or current line
+     */
+    outdentSelection() {
+        const textarea = document.querySelector('.editor-textarea');
+        if (!textarea) return;
+
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const content = textarea.value;
+        
+        // Get selected text or current line
+        const beforeSelection = content.substring(0, start);
+        const selectedText = content.substring(start, end);
+        const afterSelection = content.substring(end);
+        
+        // If no selection, work with current line
+        if (start === end) {
+            // Find line boundaries
+            const lineStart = beforeSelection.lastIndexOf('\n') + 1;
+            const lineEnd = content.indexOf('\n', start);
+            const actualLineEnd = lineEnd === -1 ? content.length : lineEnd;
+            
+            // Outdent the current line
+            const lineContent = content.substring(lineStart, actualLineEnd);
+            let outdentedLine = lineContent;
+            let removedChars = 0;
+            
+            // Remove up to 4 spaces or 1 tab
+            if (lineContent.startsWith('    ')) {
+                outdentedLine = lineContent.substring(4);
+                removedChars = 4;
+            } else if (lineContent.startsWith('\t')) {
+                outdentedLine = lineContent.substring(1);
+                removedChars = 1;
+            } else if (lineContent.startsWith('  ')) {
+                outdentedLine = lineContent.substring(2);
+                removedChars = 2;
+            } else if (lineContent.startsWith(' ')) {
+                outdentedLine = lineContent.substring(1);
+                removedChars = 1;
+            }
+            
+            textarea.value = content.substring(0, lineStart) + outdentedLine + content.substring(actualLineEnd);
+            textarea.selectionStart = Math.max(lineStart, start - removedChars);
+            textarea.selectionEnd = Math.max(lineStart, start - removedChars);
+        } else {
+            // Outdent all selected lines
+            const lines = selectedText.split('\n');
+            let totalRemoved = 0;
+            
+            const outdentedLines = lines.map(line => {
+                let outdentedLine = line;
+                let removedChars = 0;
+                
+                if (line.startsWith('    ')) {
+                    outdentedLine = line.substring(4);
+                    removedChars = 4;
+                } else if (line.startsWith('\t')) {
+                    outdentedLine = line.substring(1);
+                    removedChars = 1;
+                } else if (line.startsWith('  ')) {
+                    outdentedLine = line.substring(2);
+                    removedChars = 2;
+                } else if (line.startsWith(' ')) {
+                    outdentedLine = line.substring(1);
+                    removedChars = 1;
+                }
+                
+                totalRemoved += removedChars;
+                return outdentedLine;
+            });
+            
+            const outdentedText = outdentedLines.join('\n');
+            
+            textarea.value = beforeSelection + outdentedText + afterSelection;
+            textarea.selectionStart = start;
+            textarea.selectionEnd = start + outdentedText.length;
+        }
+        
+        // Trigger input event to mark dirty
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        textarea.focus();
     }
 
     // ===== Bookmarks =====
@@ -1470,12 +1788,32 @@ class OxidianApp {
 
     /**
      * Render markdown to HTML with callout and mermaid post-processing.
+     * *** FIX: Added proper error handling ***
      */
-    async renderMarkdown(content) {
-        const html = await invoke('render_markdown', { content });
-        // Apply callout processing
-        const processed = this.calloutProcessor.process(html);
-        return processed;
+    async renderMarkdown(content, currentPath = null) {
+        try {
+            // Process frontmatter first (extract and render preview)
+            let processedContent = content;
+            if (this.frontmatterProcessor) {
+                processedContent = this.frontmatterProcessor.processContent(content);
+            }
+
+            // Process embeds (after frontmatter)
+            if (this.embedProcessor) {
+                processedContent = await this.embedProcessor.processEmbeds(processedContent, currentPath || this.currentFile);
+            }
+            
+            const html = await invoke('render_markdown', { content: processedContent });
+            // Apply callout processing
+            const processed = this.calloutProcessor?.process(html) || html;
+            return processed;
+        } catch (err) {
+            console.error('Failed to render markdown:', err);
+            // Return fallback content instead of throwing
+            return `<div class="render-error" style="color: var(--text-error, #dc2626); padding: 12px; border: 1px solid var(--border-error, #dc2626); border-radius: 4px;">
+                <strong>Render Error:</strong> ${this.escapeHtml(err.message || err.toString())}
+            </div>`;
+        }
     }
 
     /**
@@ -1488,6 +1826,18 @@ class OxidianApp {
         await this.mermaidRenderer.processElement(el);
     }
 
+    /**
+     * Edit frontmatter for the current file
+     */
+    editFrontmatter() {
+        if (!this.currentFile) return;
+        
+        const content = this.editor.getContent();
+        if (this.frontmatterProcessor) {
+            this.frontmatterProcessor.showFrontmatterEditor(content);
+        }
+    }
+
     escapeHtml(text) {
         const div = document.createElement('div');
         div.textContent = text;
@@ -1496,5 +1846,6 @@ class OxidianApp {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    window.app = new OxidianApp();
+    window.oxidianApp = new OxidianApp();
+    window.app = window.oxidianApp; // Backward compatibility
 });

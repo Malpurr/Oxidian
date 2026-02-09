@@ -33,30 +33,105 @@ export class QuickSwitcher {
     }
 
     /**
-     * Simple fuzzy match: all chars of query appear in order in target.
-     * Returns score (lower = better) or -1 for no match.
+     * Enhanced fuzzy match with better scoring.
+     * Returns score object or null for no match.
      */
     fuzzyMatch(query, target) {
         const q = query.toLowerCase();
         const t = target.toLowerCase();
+        const filename = target.split('/').pop().replace('.md', '').toLowerCase();
 
-        // Exact substring match gets best score
-        const subIdx = t.indexOf(q);
-        if (subIdx !== -1) return subIdx;
+        if (!q || q.length === 0) {
+            return { score: 0, matches: [], isExact: false, isFilenameMatch: false };
+        }
 
-        // Fuzzy: chars in order
-        let qi = 0;
+        // Exact matches get highest priority
+        if (t.includes(q)) {
+            const index = t.indexOf(q);
+            return {
+                score: index === 0 ? 1 : (filename.includes(q) ? 5 : 10),
+                matches: [{ start: index, end: index + q.length }],
+                isExact: true,
+                isFilenameMatch: filename.includes(q)
+            };
+        }
+
+        // Fuzzy matching
+        const matches = [];
+        let queryIndex = 0;
         let score = 0;
-        let lastMatch = -1;
-        for (let ti = 0; ti < t.length && qi < q.length; ti++) {
-            if (t[ti] === q[qi]) {
-                // Penalize gaps
-                if (lastMatch !== -1) score += (ti - lastMatch - 1);
-                lastMatch = ti;
-                qi++;
+        let consecutiveMatches = 0;
+        let lastMatchIndex = -1;
+
+        for (let i = 0; i < t.length && queryIndex < q.length; i++) {
+            if (t[i] === q[queryIndex]) {
+                matches.push({ start: i, end: i + 1 });
+
+                // Bonus for consecutive matches
+                if (i === lastMatchIndex + 1) {
+                    consecutiveMatches++;
+                    score -= consecutiveMatches * 2; // Bonus gets bigger
+                } else {
+                    consecutiveMatches = 0;
+                    // Penalty for gaps (but smaller for word boundaries)
+                    const gap = lastMatchIndex >= 0 ? i - lastMatchIndex - 1 : 0;
+                    const isWordBoundary = lastMatchIndex >= 0 && 
+                        (t[lastMatchIndex + 1] === '/' || t[lastMatchIndex + 1] === ' ' || t[lastMatchIndex + 1] === '-');
+                    score += gap * (isWordBoundary ? 0.5 : 1);
+                }
+
+                // Bonus for matching at word start
+                if (i === 0 || t[i - 1] === '/' || t[i - 1] === ' ' || t[i - 1] === '-') {
+                    score -= 5;
+                }
+
+                // Bonus for filename matches
+                if (filename.includes(q[queryIndex])) {
+                    score -= 2;
+                }
+
+                lastMatchIndex = i;
+                queryIndex++;
             }
         }
-        return qi === q.length ? score + 100 : -1; // +100 to rank below substring matches
+
+        // Must match all query characters
+        if (queryIndex < q.length) {
+            return null;
+        }
+
+        // Additional scoring factors
+        const filenameMatch = this.fuzzyMatchString(q, filename);
+        if (filenameMatch && filenameMatch.score < score) {
+            score = filenameMatch.score - 10; // Bonus for filename match
+        }
+
+        return {
+            score: score + target.length * 0.1, // Small penalty for longer paths
+            matches,
+            isExact: false,
+            isFilenameMatch: filename.includes(q)
+        };
+    }
+
+    /**
+     * Helper for fuzzy matching a single string
+     */
+    fuzzyMatchString(query, target) {
+        const q = query.toLowerCase();
+        const t = target.toLowerCase();
+        let score = 0;
+        let queryIndex = 0;
+
+        for (let i = 0; i < t.length && queryIndex < q.length; i++) {
+            if (t[i] === q[queryIndex]) {
+                queryIndex++;
+            } else {
+                score++;
+            }
+        }
+
+        return queryIndex === q.length ? { score } : null;
     }
 
     /**
@@ -141,9 +216,31 @@ export class QuickSwitcher {
                 filtered = this._getInitialList();
             } else {
                 filtered = this.allFiles
-                    .map(path => ({ path, score: this.fuzzyMatch(q, path) }))
-                    .filter(item => item.score !== -1)
-                    .sort((a, b) => a.score - b.score)
+                    .map(path => {
+                        const match = this.fuzzyMatch(q, path);
+                        return match ? { 
+                            path, 
+                            score: match.score,
+                            matchInfo: match,
+                            recent: this._isRecentFile(path)
+                        } : null;
+                    })
+                    .filter(item => item !== null)
+                    .sort((a, b) => {
+                        // Recent files get priority boost
+                        const aScore = a.score - (a.recent ? 50 : 0);
+                        const bScore = b.score - (b.recent ? 50 : 0);
+                        
+                        // Exact matches get highest priority
+                        if (a.matchInfo.isExact && !b.matchInfo.isExact) return -1;
+                        if (!a.matchInfo.isExact && b.matchInfo.isExact) return 1;
+                        
+                        // Filename matches get priority over path matches
+                        if (a.matchInfo.isFilenameMatch && !b.matchInfo.isFilenameMatch) return -1;
+                        if (!a.matchInfo.isFilenameMatch && b.matchInfo.isFilenameMatch) return 1;
+                        
+                        return aScore - bScore;
+                    })
                     .slice(0, 50);
             }
             selectedIndex = 0;
@@ -208,16 +305,69 @@ export class QuickSwitcher {
     }
 
     /**
-     * Load a note preview into the preview pane.
+     * Check if a file is in the recent files list
+     */
+    _isRecentFile(path) {
+        return (this.app.recentFiles || []).includes(path);
+    }
+
+    /**
+     * Load a note preview into the preview pane with enhanced content.
      */
     async _loadPreview(path, previewEl) {
         try {
             const content = await invoke('read_note', { path });
-            const html = await invoke('render_markdown', { content: content.substring(0, 2000) });
-            previewEl.innerHTML = `<div class="quick-switcher-preview-content">${html}</div>`;
-        } catch {
-            previewEl.innerHTML = '<div class="quick-switcher-preview-empty">Failed to load preview</div>';
+            
+            // Get first 500 words for preview
+            const words = content.split(/\s+/).slice(0, 500).join(' ');
+            
+            // Process with app's markdown renderer for consistency
+            const html = await this.app.renderMarkdown(words);
+            
+            // Add metadata
+            const stats = this._getContentStats(content);
+            const metadata = `
+                <div class="quick-switcher-preview-meta">
+                    <span>${stats.words} words</span>
+                    <span>${stats.lines} lines</span>
+                    <span>${this._formatFileSize(content.length)}</span>
+                    ${this._isRecentFile(path) ? '<span class="recent-badge">Recent</span>' : ''}
+                </div>
+            `;
+            
+            previewEl.innerHTML = `
+                <div class="quick-switcher-preview-header">
+                    <h4>${path.replace('.md', '').split('/').pop()}</h4>
+                    <span class="quick-switcher-preview-path">${path}</span>
+                </div>
+                ${metadata}
+                <div class="quick-switcher-preview-content">${html}</div>
+            `;
+        } catch (error) {
+            previewEl.innerHTML = `
+                <div class="quick-switcher-preview-empty">
+                    Failed to load preview: ${error.message}
+                </div>
+            `;
         }
+    }
+
+    /**
+     * Get basic content statistics
+     */
+    _getContentStats(content) {
+        const lines = content.split('\n').length;
+        const words = content.split(/\s+/).filter(word => word.length > 0).length;
+        return { lines, words };
+    }
+
+    /**
+     * Format file size in human readable format
+     */
+    _formatFileSize(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + ' KB';
+        return Math.round(bytes / (1024 * 1024)) + ' MB';
     }
 
     _escapeHtml(text) {

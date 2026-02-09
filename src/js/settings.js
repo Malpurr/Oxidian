@@ -391,17 +391,63 @@ export class SettingsPage {
         const grid = wrapper.querySelector('#theme-grid');
         if (!grid) return;
 
-        const builtIn = this.app.themeManager?.getBuiltInThemeNames() || ['dark', 'light', 'nord', 'solarized'];
+        const themeLabels = this.app.themeManager?.getBuiltInThemeLabels() || {
+            'system': 'System',
+            'dark': 'Dark',
+            'light': 'Light',
+            'high-contrast': 'High Contrast',
+            'nord': 'Nord',
+            'solarized': 'Solarized'
+        };
+        
         let customThemes = [];
-        try { customThemes = await invoke('list_custom_themes'); } catch {}
+        try { 
+            customThemes = await this.app.themeManager?.getCustomThemeNames() || [];
+        } catch {}
 
-        const allThemes = [...builtIn, ...customThemes];
         grid.innerHTML = '';
 
-        for (const name of allThemes) {
+        // Built-in themes with proper labels
+        for (const [themeKey, themeLabel] of Object.entries(themeLabels)) {
+            const card = document.createElement('div');
+            card.className = 'theme-card' + (themeKey === this.settings.appearance.theme ? ' active' : '');
+            
+            // Special handling for system theme
+            let previewClass = themeKey;
+            if (themeKey === 'system') {
+                // Show current system preference in preview
+                const systemPref = this.app.themeManager?.getSystemPreferenceTheme() || 'dark';
+                previewClass = systemPref;
+                card.classList.add('system-theme');
+            }
+            
+            card.innerHTML = `
+                <div class="theme-preview theme-preview-${previewClass}">
+                    ${themeKey === 'system' ? '<span class="system-indicator">⚙</span>' : ''}
+                </div>
+                <span>${themeLabel}</span>
+            `;
+            
+            card.addEventListener('click', () => {
+                grid.querySelectorAll('.theme-card').forEach(c => c.classList.remove('active'));
+                card.classList.add('active');
+                this.settings.appearance.theme = themeKey;
+                this.app.themeManager?.applyTheme(themeKey);
+                this.saveAll(wrapper);
+            });
+            grid.appendChild(card);
+        }
+
+        // Custom themes
+        for (const name of customThemes) {
             const card = document.createElement('div');
             card.className = 'theme-card' + (name === this.settings.appearance.theme ? ' active' : '');
-            card.innerHTML = `<div class="theme-preview theme-preview-${name}"></div><span>${name.charAt(0).toUpperCase() + name.slice(1)}</span>`;
+            card.innerHTML = `
+                <div class="theme-preview theme-preview-custom">
+                    <span class="custom-indicator">◉</span>
+                </div>
+                <span>${name.charAt(0).toUpperCase() + name.slice(1)}</span>
+            `;
             card.addEventListener('click', () => {
                 grid.querySelectorAll('.theme-card').forEach(c => c.classList.remove('active'));
                 card.classList.add('active');
