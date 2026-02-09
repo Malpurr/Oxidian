@@ -1,6 +1,6 @@
 {
   "productName": "Oxidian",
-  "version": "1.1.2",
+  "version": "1.2.1",
   "identifier": "com.oxidian.app",
   "build": {
     "frontendDist": "../src",

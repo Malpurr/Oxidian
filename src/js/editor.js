@@ -46,26 +46,9 @@ export class Editor {
 
     /** Create a highlight underlay behind the textarea for syntax coloring */
     _setupHighlightOverlay() {
-        if (!this.textarea) return;
-        const parent = this.textarea.parentElement;
-        if (!parent) return;
-
-        // Ensure parent is positioned
-        if (getComputedStyle(parent).position === 'static') {
-            parent.style.position = 'relative';
-        }
-
-        // Create highlight backdrop
-        const highlight = document.createElement('pre');
-        highlight.className = 'editor-highlight-backdrop';
-        highlight.setAttribute('aria-hidden', 'true');
-        parent.insertBefore(highlight, this.textarea);
-
-        // Make textarea transparent background so backdrop shows through
-        this.textarea.classList.add('editor-textarea-transparent');
-
-        this.highlightEl = highlight;
-        this._syncHighlight();
+        // DISABLED — overlay causes garbled double-text rendering.
+        // Will be replaced by CodeMirror 6 integration.
+        return;
     }
 
     /** Setup line numbers gutter */
