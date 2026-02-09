@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Background -->
+  <rect x="16" y="16" width="480" height="480" rx="96" ry="96" fill="#7c3aed"/>
+  
+  <!-- Diamond/Crystal -->
+  <g transform="translate(256, 230)">
+    <!-- Right facet (lighter) -->
+    <polygon points="0,-130 90,15 0,150" fill="#ddd6fe"/>
+    <!-- Left facet (darker) -->
+    <polygon points="0,-130 -90,15 0,150" fill="#c4b5fd"/>
+    <!-- Inner right -->
+    <polygon points="0,-130 90,15 0,15" fill="#ede9fe"/>
+    <!-- Inner left -->
+    <polygon points="0,-130 -90,15 0,15" fill="#ddd6fe"/>
+    <!-- Bottom right -->
+    <polygon points="90,15 0,150 0,15" fill="#c4b5fd"/>
+    <!-- Bottom left -->
+    <polygon points="-90,15 0,150 0,15" fill="#a78bfa"/>
+    
+    <!-- Rust-orange orbit ring -->
+    <circle cx="0" cy="10" r="110" stroke="#f97316" stroke-width="4" fill="none" stroke-dasharray="14 20" opacity="0.8"/>
+    
+    <!-- Oxide dots -->
+    <circle cx="-100" cy="-45" r="5" fill="#fb923c"/>
+    <circle cx="100" cy="-45" r="5" fill="#fb923c"/>
+    <circle cx="-95" cy="65" r="4" fill="#f97316"/>
+    <circle cx="95" cy="65" r="4" fill="#f97316"/>
+    <circle cx="0" cy="-125" r="4.5" fill="#fb923c"/>
+  </g>
+  
+  <!-- OXIDIAN text -->
+  <text x="256" y="448" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="bold" font-size="56" fill="#ffffff" letter-spacing="6">OXIDIAN</text>
+</svg>

@@ -1,107 +1,138 @@
-# Oxidian
+<p align="center">
+  <img src="assets/logo.png" alt="Oxidian Logo" width="200"/>
+</p>
 
-An open-source note-taking and daily journaling app inspired by Obsidian.
-Built with Tauri v2, Rust, and vanilla web technologies.
+<h1 align="center">Oxidian</h1>
 
-![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)
+<p align="center">
+  <strong>The open-source Obsidian alternative, built in Rust.</strong><br/>
+  Fast. Private. Extensible. No Electron.
+</p>
 
-## Features
+<p align="center">
+  <a href="https://malpurr.github.io/Oxidian/"><img src="https://img.shields.io/badge/website-oxidian-7c3aed?style=for-the-badge" alt="Website"/></a>
+  <a href="https://malpurr.github.io/Oxidian/docs/"><img src="https://img.shields.io/badge/docs-read-blue?style=for-the-badge" alt="Docs"/></a>
+  <img src="https://img.shields.io/badge/license-MIT-green?style=for-the-badge" alt="MIT License"/>
+  <img src="https://img.shields.io/badge/built%20with-Rust%20%2B%20Tauri-f97316?style=for-the-badge" alt="Built with Rust"/>
+</p>
 
-- **Markdown Editor** with live preview (powered by pulldown-cmark)
-- **Daily Notes / Journaling** — auto-creates `YYYY-MM-DD.md` files
-- **Wiki-links** `[[like this]]` with click-to-navigate
-- **Tags** `#tag` support with highlighting
-- **Full-text Search** across your vault (powered by Tantivy)
-- **File/Folder Tree** sidebar for vault navigation
-- **Plugin System** (WASM-based architecture)
-- **Dark Theme** — clean, modern aesthetic
-- **File-based Vault** — plain `.md` files, no lock-in
+---
 
-## Tech Stack
+## ✨ Features
+
+- 📝 **Markdown Editor** with live preview (pulldown-cmark)
+- 📅 **Daily Notes / Journaling** — auto-creates daily files
+- 🔗 **Wiki-links** `[[like this]]` with click-to-navigate
+- 🏷️ **Tags** `#tag` support with search
+- 🔍 **Full-text Search** across your vault (Tantivy)
+- 📂 **File/Folder Tree** sidebar
+- 🧩 **Obsidian Plugin Compatibility** — runs real community plugins
+- 🎨 **Themes** — dark/light with custom CSS support
+- 📊 **Graph View** — visualize note connections
+- ✂️ **Split Panes** — edit multiple notes side-by-side
+- ⌨️ **Command Palette** (Ctrl+P)
+- 🔒 **Encrypted Notes** (AES-256-GCM)
+- 🚀 **~16MB binary** — no Electron, no bloat
+
+## 🏗️ Tech Stack
 
 | Component | Technology |
 |-----------|-----------|
-| Desktop App | Tauri v2 |
-| Backend | Rust |
+| Desktop App | **Tauri v2** |
+| Backend | **Rust** |
 | Frontend | Vanilla HTML/CSS/JS |
 | Markdown | pulldown-cmark |
 | Search | Tantivy |
-| Plugins | WASM (wasmtime) |
+| Plugins | JS (Obsidian-compatible API shim) |
 
-## Getting Started
-
-### Prerequisites
-
-- [Rust](https://rustup.rs/) (1.70+)
-- [Node.js](https://nodejs.org/) (18+)
-- System dependencies for Tauri: see [Tauri Prerequisites](https://v2.tauri.app/start/prerequisites/)
-
-### Build & Run
+## 🚀 Quick Start
 
 ```bash
-# Install JS dependencies
+# Clone
+git clone https://github.com/Malpurr/Oxidian.git
+cd Oxidian
+
+# Install dependencies
 npm install
 
-# Run in development mode
+# Development
 npm run tauri dev
 
-# Build for production
+# Production build
 npm run tauri build
 ```
 
-### Vault
+> **NixOS users:** See [Building from Source](https://malpurr.github.io/Oxidian/docs/building.html) for FHS environment setup.
 
-By default, Oxidian stores notes in `~/.oxidian/vault/`. You can change this in settings.
+## 🧩 Plugin Compatibility
 
-## Project Structure
+Oxidian ships with a **3,500+ line Obsidian API shim** that lets you run real Obsidian community plugins:
 
-```
-oxidian/
-├── src-tauri/          # Rust backend
-│   ├── src/
-│   │   ├── main.rs     # Tauri app entry
-│   │   ├── commands.rs  # Tauri IPC commands
-│   │   ├── search.rs    # Tantivy full-text search
-│   │   ├── markdown.rs  # Markdown rendering
-│   │   ├── vault.rs     # File/vault operations
-│   │   └── plugin.rs    # WASM plugin system
-│   ├── Cargo.toml
-│   └── tauri.conf.json
-├── src/                # Frontend
-│   ├── index.html
-│   ├── css/style.css
-│   └── js/
-│       ├── app.js      # Main application logic
-│       ├── editor.js   # Editor component
-│       ├── sidebar.js  # File tree sidebar
-│       └── search.js   # Search UI
-├── plugins/            # Example WASM plugin
-├── package.json
-├── LICENSE
-└── README.md
-```
+- Command palette integration
+- Settings tabs
+- Markdown post-processing
+- Event system (file open/save/delete)
+- Vault API, Workspace API, MetadataCache
 
-## Plugin System
-
-Oxidian supports WASM-based plugins. Plugins implement the `OxidianPlugin` trait:
-
-```rust
-pub trait OxidianPlugin {
-    fn name(&self) -> String;
-    fn version(&self) -> String;
-    fn on_load(&mut self);
-    fn on_note_open(&mut self, path: &str, content: &str) -> Option<String>;
-    fn on_note_save(&mut self, path: &str, content: &str) -> Option<String>;
-    fn on_render(&mut self, html: &str) -> Option<String>;
+```javascript
+// Plugins just work™
+class MyPlugin extends Plugin {
+  onload() {
+    this.addCommand({
+      id: 'my-command',
+      name: 'Do Something',
+      callback: () => console.log('Hello from Oxidian!')
+    });
+  }
 }
 ```
 
-See `plugins/example-plugin/` for a reference implementation.
+## 📁 Project Structure
 
-## Contributing
+```
+oxidian/
+├── src-tauri/           # Rust backend
+│   └── src/
+│       ├── main.rs      # Tauri entry
+│       ├── commands.rs   # IPC commands
+│       ├── search.rs     # Tantivy search
+│       ├── vault.rs      # File operations
+│       ├── encryption.rs # AES-256-GCM
+│       └── settings.rs   # App settings
+├── src/                 # Frontend
+│   ├── js/
+│   │   ├── app.js       # Core app
+│   │   ├── editor.js    # Editor
+│   │   ├── tabs.js      # Tab system
+│   │   ├── graph.js     # Graph view
+│   │   ├── settings.js  # Settings UI
+│   │   ├── plugin-loader.js
+│   │   └── obsidian-api.js  # 3500+ line API shim
+│   └── css/style.css
+└── assets/
+    └── logo.png
+```
 
-Contributions are welcome! Please open an issue or submit a pull request.
+## 🏢 Built by Oxidian Studio
 
-## License
+Oxidian is developed by **Oxidian Studio** — a team of AI agents working daily to build the best open-source note-taking app.
+
+| Role | Agent | Focus |
+|------|-------|-------|
+| CEO | Marcel | Vision & Direction |
+| CTO | Clawy | Architecture & Coordination |
+| Research | Scout | Competitive Analysis |
+| Backend | Forge | Rust & Performance |
+| Frontend | Pixel | UI/UX |
+| QA | Breaker | Testing & Bugs |
+| Docs | Scribe | Documentation |
+
+## 📄 License
 
 MIT — see [LICENSE](LICENSE) for details.
+
+---
+
+<p align="center">
+  <sub>Made with 🦀 Rust and ☕ by machines that don't sleep</sub>
+</p>
