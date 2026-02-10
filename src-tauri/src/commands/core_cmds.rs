@@ -34,12 +34,15 @@ pub fn save_note(state: State<AppState>, path: String, content: String) -> Resul
     let password = state.vault_password.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     let settings = settings::load_settings(&vault_path);
 
+    // Create snapshot before saving (file recovery)
+    crate::features::file_recovery::create_snapshot(&vault_path, &path).ok();
+
     if settings.vault.encryption_enabled {
         if let Some(ref pwd) = *password {
             let encrypted = encryption::encrypt_file_content(&content, pwd)?;
             vault_ops::save_note(&vault_path, &path, &encrypted)?;
         } else {
-            vault_ops::save_note(&vault_path, &path, &content)?;
+            return Err("Vault is locked — cannot save encrypted note".to_string());
         }
     } else {
         vault_ops::save_note(&vault_path, &path, &content)?;
@@ -62,6 +65,10 @@ pub fn delete_note(state: State<AppState>, path: String) -> Result<(), String> {
 
     if let Ok(mut cache) = state.meta_cache.lock() {
         cache.remove_file(&path);
+    }
+
+    if let Ok(mut search) = state.search_index.lock() {
+        let _ = search.delete_path(&path);
     }
 
     Ok(())
@@ -137,7 +144,19 @@ pub fn create_folder(state: State<AppState>, path: String) -> Result<(), String>
 #[tauri::command]
 pub fn rename_file(state: State<AppState>, old_path: String, new_path: String) -> Result<(), String> {
     let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
-    vault_ops::rename_file(&vault_path, &old_path, &new_path)
+    vault_ops::rename_file(&vault_path, &old_path, &new_path)?;
+
+    // Update search index: delete old, index new
+    if let Ok(mut search) = state.search_index.lock() {
+        let _ = search.delete_path(&old_path);
+        if new_path.ends_with(".md") {
+            if let Ok(content) = vault_ops::read_note(&vault_path, &new_path) {
+                let _ = search.index_note(&vault_path, &new_path, &content);
+            }
+        }
+    }
+
+    Ok(())
 }
 
 #[tauri::command]
@@ -164,11 +183,14 @@ pub fn get_backlinks(state: State<AppState>, note_path: String) -> Result<Vec<St
 pub fn duplicate_note(state: State<AppState>, path: String) -> Result<String, String> {
     let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     let content = vault_ops::read_note(&vault_path, &path)?;
-    let new_path = if path.ends_with(".md") {
-        format!("{} copy.md", path.trim_end_matches(".md"))
-    } else {
-        format!("{} copy", path)
-    };
+    let stem = if path.ends_with(".md") { path.trim_end_matches(".md") } else { &path };
+    let ext = if path.ends_with(".md") { ".md" } else { "" };
+    let mut new_path = format!("{} copy{}", stem, ext);
+    let mut counter = 2u32;
+    while std::path::Path::new(&*vault_path).join(&new_path).exists() {
+        new_path = format!("{} copy {}{}", stem, counter, ext);
+        counter += 1;
+    }
     vault_ops::save_note(&vault_path, &new_path, &content)?;
     Ok(new_path)
 }
@@ -274,30 +296,36 @@ pub fn change_password(state: State<AppState>, old_password: String, new_passwor
         }
     }
 
+    // Phase 1: Re-encrypt all files to .md.tmp
+    let mut temp_files: Vec<std::path::PathBuf> = Vec::new();
     for entry in walkdir::WalkDir::new(&*vault_path).into_iter().filter_map(|e| e.ok()) {
         let path = entry.path();
         if path.extension().map(|e| e == "md").unwrap_or(false) {
             if let Ok(content) = std::fs::read_to_string(path) {
                 if content.starts_with('{') && content.contains("\"salt\"") {
-                    match encryption::decrypt_file_content(&content, &old_password) {
-                        Ok(plaintext) => {
-                            match encryption::encrypt_file_content(&plaintext, &new_password) {
-                                Ok(new_encrypted) => {
-                                    if let Err(e) = std::fs::write(path, new_encrypted) {
-                                        log::error!("Failed to re-encrypt {}: {}", path.display(), e);
-                                    }
-                                }
-                                Err(e) => {
-                                    log::error!("Failed to encrypt {} with new password: {}", path.display(), e);
-                                }
-                            }
-                        }
-                        Err(e) => {
-                            log::warn!("Skipping file {} (not encrypted or wrong format): {}", path.display(), e);
-                        }
-                    }
+                    let plaintext = encryption::decrypt_file_content(&content, &old_password)
+                        .map_err(|e| format!("Failed to decrypt {}: {}", path.display(), e))?;
+                    let new_encrypted = encryption::encrypt_file_content(&plaintext, &new_password)
+                        .map_err(|e| format!("Failed to encrypt {}: {}", path.display(), e))?;
+                    let tmp_path = path.with_extension("md.tmp");
+                    std::fs::write(&tmp_path, new_encrypted)
+                        .map_err(|e| {
+                            // Cleanup temp files on failure
+                            for t in &temp_files { let _ = std::fs::remove_file(t); }
+                            format!("Failed to write temp file {}: {}", tmp_path.display(), e)
+                        })?;
+                    temp_files.push(tmp_path);
                 }
             }
+        }
+    }
+
+    // Phase 2: Atomically rename all .md.tmp → .md
+    for tmp_path in &temp_files {
+        let final_path = tmp_path.with_extension("");  // removes .tmp, leaving .md
+        if let Err(e) = std::fs::rename(tmp_path, &final_path) {
+            log::error!("CRITICAL: Failed to rename {} → {}: {}", tmp_path.display(), final_path.display(), e);
+            return Err(format!("Atomic rename failed for {}: {} — vault may need manual recovery", final_path.display(), e));
         }
     }
 
@@ -318,23 +346,33 @@ pub fn disable_encryption(state: State<AppState>) -> Result<(), String> {
 
     let pwd = password.as_ref().ok_or("No password available — vault must be unlocked to disable encryption")?;
 
+    // Phase 1: Decrypt all files to .md.tmp
+    let mut temp_files: Vec<std::path::PathBuf> = Vec::new();
     for entry in walkdir::WalkDir::new(&*vault_path).into_iter().filter_map(|e| e.ok()) {
         let path = entry.path();
         if path.extension().map(|e| e == "md").unwrap_or(false) {
             if let Ok(content) = std::fs::read_to_string(path) {
                 if content.starts_with('{') && content.contains("\"salt\"") {
-                    match encryption::decrypt_file_content(&content, pwd) {
-                        Ok(plaintext) => {
-                            if let Err(e) = std::fs::write(path, &plaintext) {
-                                log::error!("Failed to write decrypted {}: {}", path.display(), e);
-                            }
-                        }
-                        Err(e) => {
-                            log::warn!("Skipping {} (decrypt failed): {}", path.display(), e);
-                        }
-                    }
+                    let plaintext = encryption::decrypt_file_content(&content, pwd)
+                        .map_err(|e| format!("Failed to decrypt {}: {}", path.display(), e))?;
+                    let tmp_path = path.with_extension("md.tmp");
+                    std::fs::write(&tmp_path, &plaintext)
+                        .map_err(|e| {
+                            for t in &temp_files { let _ = std::fs::remove_file(t); }
+                            format!("Failed to write temp file {}: {}", tmp_path.display(), e)
+                        })?;
+                    temp_files.push(tmp_path);
                 }
             }
+        }
+    }
+
+    // Phase 2: Atomically rename all .md.tmp → .md
+    for tmp_path in &temp_files {
+        let final_path = tmp_path.with_extension("");
+        if let Err(e) = std::fs::rename(tmp_path, &final_path) {
+            log::error!("CRITICAL: Failed to rename {} → {}: {}", tmp_path.display(), final_path.display(), e);
+            return Err(format!("Atomic rename failed for {}: {} — vault may need manual recovery", final_path.display(), e));
         }
     }
 
@@ -422,6 +460,37 @@ pub fn get_current_version() -> String {
     crate::updater::get_current_version()
 }
 
+// ===== Block Reference Commands =====
+
+#[tauri::command]
+pub fn generate_block_id() -> String {
+    crate::engine::blocks::generate_block_id()
+}
+
+#[tauri::command]
+pub fn find_block(state: State<AppState>, block_id: String) -> Result<Option<crate::engine::blocks::BlockResult>, String> {
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+    Ok(crate::engine::blocks::find_block_by_id(&vault_path, &block_id))
+}
+
+#[tauri::command]
+pub fn get_block_content(state: State<AppState>, note_path: String, block_id: String) -> Result<String, String> {
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+    crate::engine::blocks::get_block_content(&vault_path, &note_path, &block_id)
+}
+
+#[tauri::command]
+pub fn list_block_ids(state: State<AppState>, note_path: String) -> Result<Vec<crate::engine::blocks::BlockResult>, String> {
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+    crate::engine::blocks::list_block_ids(&vault_path, &note_path)
+}
+
+#[tauri::command]
+pub fn list_all_block_ids(state: State<AppState>) -> Result<Vec<crate::engine::blocks::BlockResult>, String> {
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+    Ok(crate::engine::blocks::list_all_block_ids(&vault_path))
+}
+
 // ===== Markdown Parsing Commands =====
 
 #[tauri::command]
@@ -495,15 +564,19 @@ pub fn resolve_link(state: State<AppState>, link: String) -> Result<Vec<crate::e
 #[tauri::command]
 pub fn update_links_on_rename(state: State<AppState>, old_name: String, new_name: String) -> Result<u32, String> {
     let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+    let escaped = regex::escape(&old_name);
+    let re = regex::Regex::new(&format!(r"\[\[([^\]|]*/)?{}(\|[^\]]+)?\]\]", escaped))
+        .map_err(|e| format!("Regex error: {}", e))?;
     let mut count = 0u32;
     for entry in walkdir::WalkDir::new(&*vault_path).into_iter().filter_map(|e| e.ok()) {
         let path = entry.path();
         if path.extension().map(|e| e == "md").unwrap_or(false) {
             if let Ok(content) = std::fs::read_to_string(path) {
-                let new_content = content.replace(
-                    &format!("[[{}]]", old_name),
-                    &format!("[[{}]]", new_name),
-                );
+                let new_content = re.replace_all(&content, |caps: &regex::Captures| {
+                    let prefix = caps.get(1).map(|m| m.as_str()).unwrap_or("");
+                    let alias = caps.get(2).map(|m| m.as_str()).unwrap_or("");
+                    format!("[[{}{}{}]]", prefix, new_name, alias)
+                }).to_string();
                 if new_content != content {
                     std::fs::write(path, &new_content).map_err(|e| format!("Write error: {}", e))?;
                     count += 1;
@@ -544,12 +617,9 @@ pub fn index_note(state: State<AppState>, path: String, content: String) -> Resu
 }
 
 #[tauri::command]
-pub fn remove_from_index(state: State<AppState>, _path: String) -> Result<(), String> {
-    // Re-index the vault without the removed file (tantivy doesn't expose simple delete by path easily)
-    // For now, just re-index
-    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+pub fn remove_from_index(state: State<AppState>, path: String) -> Result<(), String> {
     let mut search = state.search_index.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
-    search.reindex_vault(&vault_path)
+    search.delete_path(&path)
 }
 
 // ===== Vault Commands =====
@@ -570,7 +640,16 @@ pub fn move_entry(state: State<AppState>, source_path: String, dest_dir: String)
 #[tauri::command]
 pub fn trash_entry(state: State<AppState>, path: String) -> Result<(), String> {
     let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
-    vault_ops::trash_entry(&vault_path, &path)
+    vault_ops::trash_entry(&vault_path, &path)?;
+
+    if let Ok(mut search) = state.search_index.lock() {
+        let _ = search.delete_path(&path);
+    }
+    if let Ok(mut cache) = state.meta_cache.lock() {
+        cache.remove_file(&path);
+    }
+
+    Ok(())
 }
 
 #[tauri::command]
@@ -596,4 +675,139 @@ pub fn load_settings(state: State<AppState>) -> Result<Settings, String> {
 #[tauri::command]
 pub fn validate_settings(new_settings: Settings) -> Result<Vec<String>, String> {
     Ok(new_settings.validate())
+}
+
+#[tauri::command]
+pub fn get_platform_info() -> Result<serde_json::Value, String> {
+    Ok(serde_json::json!({
+        "os": std::env::consts::OS,
+        "arch": std::env::consts::ARCH,
+        "family": std::env::consts::FAMILY,
+    }))
+}
+
+// ── Vault Manager ──
+
+use crate::engine::vault_manager;
+
+#[tauri::command]
+pub fn list_vaults() -> Result<Vec<vault_manager::VaultInfo>, String> {
+    Ok(vault_manager::list_vaults())
+}
+
+#[tauri::command]
+pub fn add_vault(name: String, path: String) -> Result<(), String> {
+    vault_manager::add_vault(&name, &path)
+}
+
+#[tauri::command]
+pub fn remove_vault(name: String) -> Result<(), String> {
+    vault_manager::remove_vault(&name)
+}
+
+#[tauri::command]
+pub fn switch_vault(state: State<AppState>, path: String) -> Result<(), String> {
+    // Validate path exists
+    if !std::path::Path::new(&path).exists() {
+        return Err(format!("Vault path does not exist: {}", path));
+    }
+
+    // Update vault path
+    {
+        let mut vp = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+        *vp = path.clone();
+    }
+
+    // Rebuild meta cache
+    {
+        let mut cache = state.meta_cache.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+        cache.rebuild(&path);
+    }
+
+    // Reindex search
+    {
+        let mut idx = state.search_index.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+        let _ = idx.reindex_vault(&path);
+    }
+
+    // Rebuild tag index
+    {
+        let mut tags = state.tag_index.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+        tags.build_from_vault(&path);
+    }
+
+    // Touch last_opened
+    vault_manager::touch_vault(&path).ok();
+
+    Ok(())
+}
+
+// ── Workspaces ──
+
+#[tauri::command]
+pub fn save_workspace(state: State<AppState>, name: String, data: String) -> Result<(), String> {
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+    let dir = std::path::Path::new(&*vault_path).join(".oxidian").join("workspaces");
+    std::fs::create_dir_all(&dir).map_err(|e| format!("Failed to create workspaces dir: {}", e))?;
+    let file = dir.join(format!("{}.json", name));
+    std::fs::write(&file, &data).map_err(|e| format!("Failed to save workspace: {}", e))
+}
+
+#[tauri::command]
+pub fn load_workspace(state: State<AppState>, name: String) -> Result<String, String> {
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+    let file = std::path::Path::new(&*vault_path).join(".oxidian").join("workspaces").join(format!("{}.json", name));
+    std::fs::read_to_string(&file).map_err(|e| format!("Failed to load workspace: {}", e))
+}
+
+#[tauri::command]
+pub fn list_workspaces(state: State<AppState>) -> Result<Vec<String>, String> {
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+    let dir = std::path::Path::new(&*vault_path).join(".oxidian").join("workspaces");
+    if !dir.exists() {
+        return Ok(Vec::new());
+    }
+    let mut names = Vec::new();
+    for entry in std::fs::read_dir(&dir).map_err(|e| format!("Read dir error: {}", e))? {
+        if let Ok(entry) = entry {
+            let name = entry.file_name().to_string_lossy().to_string();
+            if name.ends_with(".json") {
+                names.push(name.trim_end_matches(".json").to_string());
+            }
+        }
+    }
+    names.sort();
+    Ok(names)
+}
+
+// ── Audio Recorder: Save binary file ──
+
+#[tauri::command]
+pub fn save_binary_file(state: State<AppState>, relative_path: String, base64_data: String) -> Result<String, String> {
+    use base64::Engine;
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+    let full_path = std::path::Path::new(&*vault_path).join(&relative_path);
+
+    // Ensure parent dir exists
+    if let Some(parent) = full_path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| format!("Failed to create dir: {}", e))?;
+    }
+
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(&base64_data)
+        .map_err(|e| format!("Base64 decode error: {}", e))?;
+
+    std::fs::write(&full_path, &bytes).map_err(|e| format!("Write error: {}", e))?;
+
+    Ok(relative_path)
+}
+
+#[tauri::command]
+pub fn delete_workspace(state: State<AppState>, name: String) -> Result<(), String> {
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+    let file = std::path::Path::new(&*vault_path).join(".oxidian").join("workspaces").join(format!("{}.json", name));
+    if file.exists() {
+        std::fs::remove_file(&file).map_err(|e| format!("Failed to delete workspace: {}", e))?;
+    }
+    Ok(())
 }

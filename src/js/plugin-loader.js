@@ -3,7 +3,7 @@
 // Refactored: Plugin discovery, enable/disable, settings → Rust backend via invoke()
 import { invoke } from './tauri-bridge.js';
 
-import ObsidianAPI, { App, Plugin, Notice, TFile, installDomExtensions, setIcon, getIconIds } from './obsidian-api.js';
+import ObsidianAPI, { App, Plugin, Notice, TFile, MarkdownView, WorkspaceLeaf, installDomExtensions, setIcon, getIconIds } from './obsidian-api.js';
 
 class PluginRegistry {
     constructor() {
@@ -70,6 +70,22 @@ export class PluginLoader {
         if (!window.setIcon) window.setIcon = setIcon;
         if (!window.getIconIds) window.getIconIds = getIconIds;
 
+        // Ensure ribbon .ribbon-top exists (defensive — plugins use it for addRibbonIcon)
+        const ribbon = document.getElementById('ribbon');
+        if (ribbon && !ribbon.querySelector('.ribbon-top')) {
+            const ribbonTop = document.createElement('div');
+            ribbonTop.className = 'ribbon-top';
+            ribbon.prepend(ribbonTop);
+        }
+
+        // Ensure statusbar .status-right exists (defensive — plugins use it for addStatusBarItem)
+        const statusbar = document.getElementById('statusbar');
+        if (statusbar && !statusbar.querySelector('.status-right')) {
+            const statusRight = document.createElement('div');
+            statusRight.className = 'status-right';
+            statusbar.appendChild(statusRight);
+        }
+
         // Create the Obsidian App object that plugins will use
         this.obsidianApp = new App();
 
@@ -99,8 +115,49 @@ export class PluginLoader {
         this.oxidianApp.openFile = async function (path) {
             await origOpenFile(path);
             const file = new TFile(path);
-            self.obsidianApp.workspace.setActiveFile(file);
+            self._updateActiveLeaf(file);
         };
+
+        // Hook into tab activation to keep activeLeaf in sync
+        const origOnTabActivated = this.oxidianApp.onTabActivated.bind(this.oxidianApp);
+        this.oxidianApp.onTabActivated = function (tab) {
+            origOnTabActivated(tab);
+            if (tab.type === 'note' && tab.path) {
+                const file = new TFile(tab.path);
+                self._updateActiveLeaf(file);
+            }
+        };
+    }
+
+    /**
+     * Update workspace.activeLeaf and workspace.activeEditor so plugins
+     * that rely on them (e.g. editorCallback commands) work correctly.
+     */
+    _updateActiveLeaf(file) {
+        const workspace = this.obsidianApp.workspace;
+
+        // Get or create a leaf
+        let leaf = workspace.activeLeaf;
+        if (!leaf) {
+            leaf = workspace.getLeaf();
+        }
+
+        // Create a MarkdownView with an Editor wired to the real CodeMirror content
+        const view = new MarkdownView(leaf);
+        view.file = file;
+
+        // Try to sync editor content from the real Oxidian editor
+        if (this.oxidianApp.editor) {
+            const content = this.oxidianApp.editor.getContent?.() || '';
+            view.editor.setValue(content);
+        }
+
+        leaf.view = view;
+        workspace.activeLeaf = leaf;
+        workspace.activeEditor = { editor: view.editor, file };
+        workspace._activeFile = file;
+        workspace.trigger('file-open', file);
+        workspace.trigger('active-leaf-change', leaf);
     }
 
     _registerBuiltinCommands() {

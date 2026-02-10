@@ -36,6 +36,8 @@ import { PropertiesPanel } from './properties-panel.js';
 import { HoverPreview } from './hover-preview.js';
 import { Canvas } from './canvas.js';
 import { CommandPalette } from './command-palette.js';
+import { NoteComposer } from './note-composer.js';
+import { FileRecovery } from './file-recovery.js';
 import { BookmarksManager } from './bookmarks.js';
 import { DailyNotes } from './daily-notes.js';
 import { Remember } from './remember.js';
@@ -44,6 +46,11 @@ import { RememberExtract } from './remember-extract.js';
 import { RememberSources } from './remember-sources.js';
 import { RememberCards } from './remember-cards.js';
 import { startReviewSession } from './remember-review.js';
+import { VaultPicker } from './vault-picker.js';
+import { Workspaces } from './workspaces.js';
+import { OutgoingLinks } from './outgoing-links.js';
+import { CSSSnippets } from './css-snippets.js';
+import { AudioRecorder } from './audio-recorder.js';
 
 // DOM Safety Helpers
 function safeGetElement(id) {
@@ -105,6 +112,10 @@ class OxidianApp {
         this.commandPalette = null;
         this.bookmarksManagerModule = null;
         this.dailyNotes = null;
+
+        this.outgoingLinks = null;
+        this.cssSnippets = null;
+        this.audioRecorder = null;
 
         // Feature state
         this.focusMode = false;
@@ -184,8 +195,15 @@ class OxidianApp {
         this.canvas = safeInitModule('Canvas', () => new Canvas(this));
         this.navHistory = safeInitModule('NavHistory', () => new NavHistory(this));
         this.commandPalette = safeInitModule('CommandPalette', () => new CommandPalette(this));
+        this.noteComposer = safeInitModule('NoteComposer', () => new NoteComposer(this));
+        this.fileRecovery = safeInitModule('FileRecovery', () => new FileRecovery(this));
         this.bookmarksManagerModule = safeInitModule('BookmarksManager', () => new BookmarksManager(this));
+        this.outgoingLinks = safeInitModule('OutgoingLinks', () => new OutgoingLinks(this));
+        this.cssSnippets = safeInitModule('CSSSnippets', () => new CSSSnippets(this));
+        this.audioRecorder = safeInitModule('AudioRecorder', () => new AudioRecorder(this));
         this.dailyNotes = safeInitModule('DailyNotes', () => new DailyNotes(this));
+        this.vaultPicker = safeInitModule('VaultPicker', () => new VaultPicker(this));
+        this.workspaces = safeInitModule('Workspaces', () => new Workspaces(this));
         // PERF: Lazy-load Remember system — only init when Remember tab is opened
         // This saves ~100+ IPC calls on startup (reading all Cards/ and Sources/)
         this.remember = null;
@@ -207,6 +225,9 @@ class OxidianApp {
 
         // Load and apply settings
         try { await this.applySettings(); } catch(e) { console.error('[Oxidian] applySettings failed:', e); }
+
+        // Load CSS snippets
+        try { await this.cssSnippets?.init(); } catch(e) { console.error('[Oxidian] cssSnippets.init failed:', e); }
 
         // Global navigation
         window.navigateToNote = (target) => this.navigateToNote(target);
@@ -303,6 +324,20 @@ class OxidianApp {
 
         // Global keyboard shortcuts
         document.addEventListener('keydown', (e) => this.handleKeyboard(e));
+
+        // Ctrl+Click on links → open in new tab
+        document.addEventListener('click', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.target.closest('a[href], .internal-link, .wiki-link')) {
+                e.preventDefault();
+                const link = e.target.closest('a[href], .internal-link, .wiki-link');
+                const href = link.getAttribute('href') || link.dataset.href || link.textContent;
+                if (href && !href.startsWith('http')) {
+                    this.openFileInSplit(href.endsWith('.md') ? href : href + '.md');
+                } else if (href) {
+                    window.open(href, '_blank');
+                }
+            }
+        });
 
         // Sidebar resize
         try { this.initSidebarResize(); } catch(e) { console.error('[Oxidian] initSidebarResize failed:', e); }
@@ -1037,6 +1072,28 @@ class OxidianApp {
         this.tabManager.openTab('__graph__', 'Graph View', 'graph');
     }
 
+    openLocalGraph() {
+        // Open graph in local mode for the current file
+        if (!this.currentFile) {
+            this.showErrorToast('No file open. Open a note first to see its local graph.');
+            return;
+        }
+        this.tabManager.openTab('__graph_local__', 'Local Graph', 'graph');
+        // After the tab opens and showGraphPane is called, set to local mode
+        setTimeout(() => {
+            if (this.graphView) {
+                this.graphView.mode = 'local';
+                this.graphView.centerNote = this.currentFile;
+                this.graphView._toolbar?.querySelectorAll('.graph-mode-btn').forEach(b => {
+                    b.style.background = b.dataset.mode === 'local' ? 'var(--accent-color,#7f6df2)' : 'var(--bg-secondary,#313244)';
+                });
+                const depthSelect = this.graphView._toolbar?.querySelector('#graph-depth-select');
+                if (depthSelect) depthSelect.style.display = 'block';
+                this.graphView.load();
+            }
+        }, 100);
+    }
+
     showGraphPane(pane = 0) {
         if (this.isDirty && this.currentFile) {
             this.saveCurrentFile();
@@ -1512,6 +1569,8 @@ class OxidianApp {
 
     handleKeyboard(e) {
         const ctrl = e.ctrlKey || e.metaKey;
+        const shift = e.shiftKey;
+        const alt = e.altKey;
         
         // Try new feature shortcuts first
         if (this.handleNewFeatureShortcuts(e)) {
@@ -1534,34 +1593,39 @@ class OxidianApp {
         } else if (ctrl && e.key === 'o') {
             e.preventDefault();
             this.quickSwitcher.show();
-        } else if (ctrl && e.key === 't') {
+        } else if (ctrl && e.key === 'g') {
+            // Ctrl+G → Open Graph View
             e.preventDefault();
-            this.templateManager.showPicker();
-        } else if (ctrl && e.key === 'f' && !e.shiftKey) {
-            // Check if we're in an editor context for in-file find
+            this.openGraphView();
+        } else if (ctrl && e.key === 't') {
+            // Ctrl+T → New Tab (open new note dialog)
+            e.preventDefault();
+            this.showNewNoteDialog();
+        } else if (ctrl && e.key === 'f' && !shift) {
             const isInEditor = document.activeElement?.classList?.contains('editor-textarea') || 
                              document.querySelector('.hypermark-editor') ||
                              this.currentFile;
-            
             e.preventDefault();
             if (isInEditor) {
                 this.findReplace.showFind();
             } else {
-                this.search.show(); // Fallback to global search
+                this.search.show();
             }
         } else if (ctrl && e.key === 'h') {
-            // Find & Replace (Ctrl+H)
             const isInEditor = document.activeElement?.classList?.contains('editor-textarea') || 
                              document.querySelector('.hypermark-editor') ||
                              this.currentFile;
-            
             e.preventDefault();
             if (isInEditor) {
                 this.findReplace.showFindReplace();
             }
-        } else if (ctrl && e.shiftKey && e.key === 'F') {
+        } else if (ctrl && shift && e.key === 'F') {
             e.preventDefault();
             this.search.show();
+        } else if (ctrl && shift && e.key === 'D') {
+            // Ctrl+Shift+D → Open today's daily note
+            e.preventDefault();
+            this.openDailyNote();
         } else if (ctrl && e.key === 'd' && document.activeElement?.classList?.contains('editor-textarea')) {
             // Let editor handle Ctrl+D (duplicate line) when textarea focused
             return;
@@ -1572,23 +1636,37 @@ class OxidianApp {
             e.preventDefault();
             this.cycleViewMode();
         } else if (ctrl && e.key === 'w') {
+            // Ctrl+W → Close Tab
             e.preventDefault();
             const active = this.tabManager.getActiveTab();
             if (active) this.tabManager.closeTab(active.id);
         } else if (ctrl && e.key === ',') {
+            // Ctrl+, → Open Settings
             e.preventDefault();
             this.openSettingsTab();
-        } else if (ctrl && e.shiftKey && e.key === 'D') {
+        } else if (ctrl && e.key === 'k') {
+            // Ctrl+K → Insert link (wrap selection)
             e.preventDefault();
-            this.toggleFocusMode();
+            this.insertLink();
         } else if (ctrl && e.key === ']') {
-            // Indent (Ctrl+])
+            // Ctrl+] → Indent
             e.preventDefault();
             this.indentSelection();
         } else if (ctrl && e.key === '[') {
-            // Outdent (Ctrl+[)
+            // Ctrl+[ → Outdent
             e.preventDefault();
             this.outdentSelection();
+        } else if (ctrl && e.key === 'Enter') {
+            // Ctrl+Enter → Toggle checkbox on current line
+            e.preventDefault();
+            this.toggleCheckbox();
+        } else if (alt && e.key === 'Enter') {
+            // Alt+Enter → Follow link under cursor
+            e.preventDefault();
+            this.followLinkUnderCursor();
+        } else if (ctrl && e.key === '/') {
+            e.preventDefault();
+            window._showKeyboardShortcuts();
         } else if (e.key === 'Escape') {
             this.hideNewNoteDialog();
             this.hideNewFolderDialog();
@@ -1596,13 +1674,111 @@ class OxidianApp {
             this.contextMenu.hide();
             this.slashMenu?.hide();
             this.findReplace?.hide();
-            // Close command palette / quick switcher / template picker if open
+            this.vaultPicker?.hide();
             const palette = document.getElementById('command-palette-overlay');
             if (palette) palette.remove();
             const qs = document.getElementById('quick-switcher-overlay');
             if (qs) qs.remove();
             const tp = document.getElementById('template-picker-overlay');
             if (tp) tp.remove();
+            const vp = document.getElementById('vault-picker-overlay');
+            if (vp) vp.remove();
+            const wm = document.getElementById('workspace-manager-overlay');
+            if (wm) wm.remove();
+        }
+    }
+
+    /**
+     * Insert a markdown link, wrapping selection if present
+     */
+    insertLink() {
+        const textarea = document.querySelector('.editor-textarea');
+        if (!textarea) {
+            if (this.hypermarkEditor?.wrapSelection) {
+                this.hypermarkEditor.wrapSelection('[', '](url)');
+            }
+            return;
+        }
+
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const selected = textarea.value.substring(start, end);
+
+        if (selected) {
+            const link = `[${selected}](url)`;
+            textarea.value = textarea.value.substring(0, start) + link + textarea.value.substring(end);
+            // Position cursor on "url"
+            textarea.selectionStart = start + selected.length + 2;
+            textarea.selectionEnd = start + selected.length + 5;
+        } else {
+            const link = '[text](url)';
+            textarea.value = textarea.value.substring(0, start) + link + textarea.value.substring(end);
+            textarea.selectionStart = start + 1;
+            textarea.selectionEnd = start + 5;
+        }
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        textarea.focus();
+    }
+
+    /**
+     * Toggle checkbox on current line: no checkbox → - [ ] → - [x] → remove
+     */
+    toggleCheckbox() {
+        const textarea = document.querySelector('.editor-textarea');
+        if (!textarea) return;
+
+        const pos = textarea.selectionStart;
+        const content = textarea.value;
+        const lineStart = content.lastIndexOf('\n', pos - 1) + 1;
+        const lineEnd = content.indexOf('\n', pos);
+        const actualEnd = lineEnd === -1 ? content.length : lineEnd;
+        const line = content.substring(lineStart, actualEnd);
+
+        let newLine;
+        if (/^(\s*)- \[x\]/.test(line)) {
+            newLine = line.replace(/^(\s*)- \[x\]\s?/, '$1');
+        } else if (/^(\s*)- \[ \]/.test(line)) {
+            newLine = line.replace(/^(\s*)- \[ \]/, '$1- [x]');
+        } else {
+            newLine = line.replace(/^(\s*)(.*)/, '$1- [ ] $2');
+        }
+
+        textarea.value = content.substring(0, lineStart) + newLine + content.substring(actualEnd);
+        textarea.selectionStart = textarea.selectionEnd = lineStart + newLine.length;
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        textarea.focus();
+    }
+
+    /**
+     * Follow the wikilink or markdown link under the cursor
+     */
+    followLinkUnderCursor() {
+        const textarea = document.querySelector('.editor-textarea');
+        if (!textarea) return;
+
+        const pos = textarea.selectionStart;
+        const content = textarea.value;
+        // Check surrounding text for [[...]] or [...](...) patterns
+        const before = content.substring(Math.max(0, pos - 200), pos);
+        const after = content.substring(pos, Math.min(content.length, pos + 200));
+        const around = before + after;
+
+        // Try wikilink
+        const wikiMatch = around.match(/\[\[([^\]]+)\]\]/);
+        if (wikiMatch) {
+            this.navigateToNote(wikiMatch[1].split('|')[0].trim());
+            return;
+        }
+
+        // Try markdown link
+        const mdMatch = around.match(/\[([^\]]*)\]\(([^)]+)\)/);
+        if (mdMatch) {
+            const target = mdMatch[2];
+            if (target.startsWith('http')) {
+                window.open(target, '_blank');
+            } else {
+                this.navigateToNote(target);
+            }
         }
     }
 
@@ -1930,7 +2106,14 @@ class OxidianApp {
         const tab = this.tabManager.getActiveTab();
         if (tab) tab.viewMode = this.viewMode;
 
-        // DO NOT rebuild editor pane — just toggle visibility + reading view
+        // Switch editor mode to match view mode
+        if (newMode === 'source') {
+            await this.setEditorMode('classic');
+        } else if (newMode === 'live-preview') {
+            await this.setEditorMode('hypermark');
+        }
+
+        // Apply visibility + reading view
         this.applyViewMode();
         this.updateViewModeButton();
     }
@@ -2092,6 +2275,10 @@ class OxidianApp {
             let processed = this.calloutProcessor?.process(html) || html;
             // Apply footnote processing
             processed = this._processFootnotes(processed, processedContent);
+            // Apply image resize syntax
+            processed = this._processImageResize(processed);
+            // Apply audio/video embeds
+            processed = this._processMediaEmbeds(processed);
             return processed;
         } catch (err) {
             console.error('Failed to render markdown:', err);
@@ -2110,6 +2297,10 @@ class OxidianApp {
         this.calloutProcessor.processElement(el);
         // Mermaid diagrams
         await this.mermaidRenderer.processElement(el);
+        // Embedded search queries
+        if (this.embeddedSearch) {
+            await this.embeddedSearch.processContainer(el);
+        }
     }
 
     /**
@@ -2167,7 +2358,12 @@ class OxidianApp {
         safeAttach('PropertiesPanel', () => {
             if (this.propertiesPanel) {
                 this.propertiesPanel.init(pane);
-                if (textarea) this.propertiesPanel.attachTo(textarea);
+                if (textarea) {
+                    this.propertiesPanel.attachTo(textarea);
+                } else if (this.editor?.cmEditor?.view) {
+                    // CodeMirror mode: hook into CM6 content changes
+                    this.propertiesPanel.attachToCodeMirror(this.editor.cmEditor.view);
+                }
             }
         });
 
@@ -2282,10 +2478,14 @@ class OxidianApp {
             return true;
         }
 
-        // Extract to Card: Cmd+Shift+E
+        // Extract to new note: Cmd+Shift+E
         if (ctrl && shift && e.key === 'E') {
             e.preventDefault();
-            this.extractToCard();
+            if (this.noteComposer) {
+                this.noteComposer.extractSelectionToNote();
+            } else {
+                this.extractSelectionToNote();
+            }
             return true;
         }
 
@@ -2328,6 +2528,58 @@ class OxidianApp {
      * Process footnotes: convert [^N] references to superscript links
      * and render footnote definitions as a block at the end.
      */
+    // ===== Feature: Image Resize Syntax =====
+    // Supports: ![alt|300](url), ![alt|300x200](url), ![[img.png|300]], ![[img.png|300x200]]
+    _processImageResize(html) {
+        // Handle standard markdown images with size: <img alt="alt|300" src="...">
+        html = html.replace(/<img\s([^>]*?)alt="([^"]*?\|(\d+(?:x\d+)?))"([^>]*?)>/gi, (match, before, fullAlt, size, after) => {
+            const cleanAlt = fullAlt.replace(/\|[^"]*$/, '');
+            let style = '';
+            if (size.includes('x')) {
+                const [w, h] = size.split('x');
+                style = `width:${w}px;height:${h}px;`;
+            } else {
+                style = `width:${size}px;`;
+            }
+            return `<img ${before}alt="${cleanAlt}" style="${style}"${after}>`;
+        });
+
+        // Handle wikilink embeds with size that were rendered as images
+        // Pattern: src contains the filename, and there may be a size suffix we need to detect
+        // This handles cases where ![[image.png|300]] was converted by the embed processor
+        return html;
+    }
+
+    // ===== Feature: Audio/Video Embeds =====
+    _processMediaEmbeds(html) {
+        const audioExts = /\.(mp3|wav|ogg|m4a|flac|webm)$/i;
+        const videoExts = /\.(mp4|webm|mov|mkv|avi)$/i;
+
+        // Convert embed placeholders or remaining ![[file.ext]] to media elements
+        // Handle cases where the embed processor left unresolved media embeds
+        html = html.replace(/!\[\[([^\]]+?)\]\]/g, (match, inner) => {
+            // Strip size suffix for media detection
+            const name = inner.split('|')[0].trim();
+            if (audioExts.test(name)) {
+                return `<audio controls src="${this.escapeHtml(name)}" style="width:100%;max-width:500px;margin:8px 0;"></audio>`;
+            }
+            if (videoExts.test(name)) {
+                return `<video controls src="${this.escapeHtml(name)}" style="width:100%;max-width:700px;margin:8px 0;"></video>`;
+            }
+            return match; // Not a media file, leave as is
+        });
+
+        // Also post-process any <a> or <p> tags that wrap media file references  
+        // from the embed processor output that has embed wrappers for media
+        html = html.replace(/<div class="embedded-content[^"]*"[^>]*data-source="([^"]*\.(mp3|wav|ogg|m4a|flac))"[^>]*>[\s\S]*?<\/div>\s*<\/div>\s*<\/div>/gi, 
+            (match, src) => `<audio controls src="${this.escapeHtml(src)}" style="width:100%;max-width:500px;margin:8px 0;"></audio>`);
+        
+        html = html.replace(/<div class="embedded-content[^"]*"[^>]*data-source="([^"]*\.(mp4|webm|mov|mkv))"[^>]*>[\s\S]*?<\/div>\s*<\/div>\s*<\/div>/gi,
+            (match, src) => `<video controls src="${this.escapeHtml(src)}" style="width:100%;max-width:700px;margin:8px 0;"></video>`);
+
+        return html;
+    }
+
     _processFootnotes(html, rawMarkdown) {
         if (!rawMarkdown || !rawMarkdown.includes('[^')) return html;
 
@@ -2388,6 +2640,23 @@ class OxidianApp {
         } catch (err) {
             console.error('[Oxidian] Random note failed:', err);
             this.showErrorToast('Failed to open random note: ' + (err.message || err));
+        }
+    }
+
+    // ===== Feature: Unique Note Creator =====
+
+    async createUniqueNote() {
+        try {
+            const now = new Date();
+            const pad = (n, len = 2) => String(n).padStart(len, '0');
+            const filename = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}.md`;
+            await invoke('save_note', { path: filename, content: '' });
+            this.invalidateFileTreeCache();
+            this.sidebar?.refresh();
+            await this.openFile(filename);
+        } catch (err) {
+            console.error('[Oxidian] Create unique note failed:', err);
+            this.showErrorToast('Failed to create unique note: ' + (err.message || err));
         }
     }
 
@@ -2499,6 +2768,111 @@ class OxidianApp {
         }
     }
 }
+
+// ===== INTERACTION UTILITIES (Micro-interactions & A11y) =====
+
+/**
+ * Focus trap for modals — keeps Tab/Shift+Tab inside a container.
+ * Returns a cleanup function to remove the trap.
+ */
+function trapFocus(container) {
+    const focusable = container.querySelectorAll(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    function handler(e) {
+        if (e.key !== 'Tab') return;
+        if (focusable.length === 0) { e.preventDefault(); return; }
+        if (e.shiftKey) {
+            if (document.activeElement === first) { e.preventDefault(); last?.focus(); }
+        } else {
+            if (document.activeElement === last) { e.preventDefault(); first?.focus(); }
+        }
+    }
+
+    container.addEventListener('keydown', handler);
+    // Auto-focus first element
+    requestAnimationFrame(() => first?.focus());
+    return () => container.removeEventListener('keydown', handler);
+}
+
+/**
+ * Keyboard shortcuts overlay (Ctrl+/)
+ */
+function showKeyboardShortcuts() {
+    // Remove existing if open
+    document.getElementById('keyboard-shortcuts-overlay')?.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'keyboard-shortcuts-overlay';
+    overlay.className = 'keyboard-shortcuts-overlay';
+
+    const shortcuts = [
+        { group: 'General', items: [
+            ['Ctrl+S', 'Save file'],
+            ['Ctrl+N', 'New note'],
+            ['Ctrl+P', 'Command palette'],
+            ['Ctrl+O', 'Quick switcher'],
+            ['Ctrl+,', 'Settings'],
+            ['Ctrl+/', 'Keyboard shortcuts'],
+            ['Escape', 'Close dialog/menu'],
+        ]},
+        { group: 'Editor', items: [
+            ['Ctrl+E', 'Cycle view mode'],
+            ['Ctrl+F', 'Find in file'],
+            ['Ctrl+H', 'Find & replace'],
+            ['Ctrl+K', 'Insert link'],
+            ['Ctrl+Enter', 'Toggle checkbox'],
+            ['Alt+Enter', 'Follow link'],
+            ['Ctrl+D', 'Duplicate line'],
+            ['Ctrl+]', 'Indent'],
+            ['Ctrl+[', 'Outdent'],
+        ]},
+        { group: 'Navigation', items: [
+            ['Ctrl+G', 'Graph view'],
+            ['Ctrl+Shift+D', 'Daily note'],
+            ['Ctrl+W', 'Close tab'],
+            ['Ctrl+Alt+←', 'Go back'],
+            ['Ctrl+Alt+→', 'Go forward'],
+            ['Ctrl+Shift+F', 'Search vault'],
+        ]},
+    ];
+
+    overlay.innerHTML = `
+        <div class="keyboard-shortcuts-panel">
+            <h2>⌨️ Keyboard Shortcuts</h2>
+            ${shortcuts.map(g => `
+                <div class="shortcut-group">
+                    <h3>${g.group}</h3>
+                    ${g.items.map(([key, desc]) => `
+                        <div class="shortcut-row">
+                            <span>${desc}</span>
+                            <kbd>${key}</kbd>
+                        </div>
+                    `).join('')}
+                </div>
+            `).join('')}
+        </div>
+    `;
+
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) overlay.remove();
+    });
+    overlay.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') overlay.remove();
+    });
+
+    document.body.appendChild(overlay);
+    const cleanup = trapFocus(overlay.querySelector('.keyboard-shortcuts-panel'));
+    const origRemove = overlay.remove.bind(overlay);
+    overlay.remove = () => { cleanup(); origRemove(); };
+}
+
+// Export for use in handleKeyboard
+window._showKeyboardShortcuts = showKeyboardShortcuts;
+window._trapFocus = trapFocus;
 
 document.addEventListener('DOMContentLoaded', async () => {
     try {

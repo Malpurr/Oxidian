@@ -1,4 +1,7 @@
-// Oxidian — Live Preview Implementation
+// @deprecated — This module is unused. Live preview is now handled by HyperMark editor.
+// Kept for reference; safe to remove in a future cleanup pass.
+//
+// Oxidian — Live Preview Implementation (DEPRECATED)
 // Refactored: Markdown rendering delegated to Rust via invoke().
 // JS retains: CM6 Decorations, Widget rendering, DOM layout, event handling.
 

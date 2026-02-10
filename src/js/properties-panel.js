@@ -99,6 +99,7 @@ export class PropertiesPanel {
         if (!textarea) return;
 
         this.textarea = textarea;
+        this._cmView = null;
         
         // Parse existing content
         this.parsePropertiesFromContent(textarea.value);
@@ -107,6 +108,31 @@ export class PropertiesPanel {
         textarea.addEventListener('input', () => {
             if (!this.isUpdating) {
                 this.parsePropertiesFromContent(textarea.value);
+            }
+        });
+    }
+
+    /**
+     * Attach to a CodeMirror 6 EditorView to sync properties
+     */
+    attachToCodeMirror(view) {
+        if (!view) return;
+
+        this._cmView = view;
+        this.textarea = null;
+
+        // Parse existing content
+        const content = view.state.doc.toString();
+        this.parsePropertiesFromContent(content);
+
+        // Listen for CM6 content changes via updateListener
+        // We store the original listener to avoid duplicates
+        if (this._cmUpdateListener) return;
+
+        this._cmUpdateListener = view.dom.addEventListener('input', () => {
+            if (!this.isUpdating && this._cmView) {
+                const content = this._cmView.state.doc.toString();
+                this.parsePropertiesFromContent(content);
             }
         });
     }
@@ -290,17 +316,17 @@ export class PropertiesPanel {
     }
 
     async updateContentFromProperties() {
-        if (!this.textarea || this.isUpdating) return;
+        if ((!this.textarea && !this._cmView) || this.isUpdating) return;
         
         this.isUpdating = true;
         
-        const content = this.textarea.value;
+        const content = this._cmView ? this._cmView.state.doc.toString() : this.textarea.value;
         const count = Object.keys(this.properties).length;
         
         if (count === 0) {
             // Remove frontmatter
             const withoutFrontmatter = content.replace(/^---\n[\s\S]*?\n---\n?/, '');
-            this.textarea.value = withoutFrontmatter;
+            this._setEditorContent(withoutFrontmatter);
         } else {
             let newFrontmatter;
             try {
@@ -323,17 +349,30 @@ export class PropertiesPanel {
             // Replace or add frontmatter
             const existingMatch = content.match(/^---\n[\s\S]*?\n---\n?/);
             if (existingMatch) {
-                this.textarea.value = content.replace(existingMatch[0], newFrontmatter);
+                this._setEditorContent(content.replace(existingMatch[0], newFrontmatter));
             } else {
-                this.textarea.value = newFrontmatter + content;
+                this._setEditorContent(newFrontmatter + content);
             }
         }
         
         // Trigger events
-        this.textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        if (this.textarea) {
+            this.textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        }
         this.app.markDirty();
         
         this.isUpdating = false;
+    }
+
+    /** @private Set content in either textarea or CodeMirror view */
+    _setEditorContent(newContent) {
+        if (this._cmView) {
+            this._cmView.dispatch({
+                changes: { from: 0, to: this._cmView.state.doc.length, insert: newContent }
+            });
+        } else if (this.textarea) {
+            this.textarea.value = newContent;
+        }
     }
 
     escapeHtml(text) {

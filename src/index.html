@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/obsidian-features.css">
     <link rel="stylesheet" href="css/remember.css">
+    <link rel="stylesheet" href="css/components-polish.css">
 </head>
 <body>
     <div id="app">
@@ -35,6 +36,9 @@
                     </button>
                     <button class="ribbon-btn" data-panel="outline" title="Outline">
                         <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="6" y1="12" x2="21" y2="12"/><line x1="6" y1="18" x2="21" y2="18"/><circle cx="3" cy="12" r="1" fill="currentColor"/><circle cx="3" cy="18" r="1" fill="currentColor"/></svg>
+                    </button>
+                    <button class="ribbon-btn" data-panel="outgoing-links" title="Outgoing Links">
+                        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
                     </button>
                     <button class="ribbon-btn" data-panel="recent" title="Recent Files">
                         <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
@@ -138,6 +142,12 @@
                         </div>
                     </div>
                     <div id="recent-list" class="empty-panel-message">No recent files</div>
+                </div>
+                <div id="panel-outgoing-links" class="sidebar-panel">
+                    <div class="sidebar-panel-header">
+                        <span class="panel-title">OUTGOING LINKS</span>
+                    </div>
+                    <div class="outgoing-links-list empty-panel-message">Open a note to see outgoing links</div>
                 </div>
                 <div id="panel-settings" class="sidebar-panel">
                     <div id="settings-sidebar-container"></div>

@@ -9,12 +9,8 @@ const SETTINGS_VERSION: u32 = 2;
 
 // ─── Top-level Settings ──────────────────────────────────────────────
 
-/// The main settings struct. All sub-structs use `#[serde(default)]` so that
-/// adding new fields never breaks deserialization of older configs.
-/// This struct is sent to/from the JS frontend via Tauri commands.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Settings {
-    /// Internal version — used for migration between schema changes.
     #[serde(default = "default_version")]
     pub version: u32,
 
@@ -28,12 +24,22 @@ pub struct Settings {
     pub vault: VaultSettings,
     #[serde(default)]
     pub files: FilesSettings,
+    #[serde(default, alias = "files_links")]
+    pub files_links: FilesLinksSettings,
     #[serde(default)]
     pub plugins: PluginsSettings,
     #[serde(default)]
     pub remember: RememberSettings,
     #[serde(default)]
     pub update: UpdateSettings,
+    #[serde(default)]
+    pub hotkeys: HotkeysSettings,
+    #[serde(default)]
+    pub core_plugins: CorePluginsSettings,
+    #[serde(default)]
+    pub community_plugins: CommunityPluginsSettings,
+    #[serde(default)]
+    pub about: AboutSettings,
 }
 
 fn default_version() -> u32 {
@@ -54,6 +60,12 @@ pub struct GeneralSettings {
     pub auto_save: bool,
     #[serde(default = "default_auto_save_interval")]
     pub auto_save_interval: u32,
+    #[serde(default = "default_true")]
+    pub check_for_updates: bool,
+    #[serde(default)]
+    pub auto_update: bool,
+    #[serde(default)]
+    pub developer_mode: bool,
 }
 
 impl Default for GeneralSettings {
@@ -64,6 +76,9 @@ impl Default for GeneralSettings {
             startup_behavior: "welcome".into(),
             auto_save: true,
             auto_save_interval: 5,
+            check_for_updates: true,
+            auto_update: false,
+            developer_mode: false,
         }
     }
 }
@@ -97,10 +112,30 @@ pub struct EditorSettings {
     pub spell_check: bool,
     #[serde(default)]
     pub vim_mode: bool,
-    #[serde(default = "default_true")]
-    pub line_numbers: bool,
+    #[serde(default = "default_true", alias = "line_numbers")]
+    pub show_line_numbers: bool,
     #[serde(default = "default_true")]
     pub word_wrap: bool,
+    #[serde(default)]
+    pub readable_line_length: bool,
+    #[serde(default = "default_max_line_width")]
+    pub max_line_width: u32,
+    #[serde(default = "default_edit_mode")]
+    pub default_edit_mode: String,
+    #[serde(default)]
+    pub strict_line_breaks: bool,
+    #[serde(default = "default_true")]
+    pub smart_indent: bool,
+    #[serde(default = "default_true")]
+    pub show_frontmatter: bool,
+    #[serde(default = "default_true")]
+    pub fold_heading: bool,
+    #[serde(default = "default_true")]
+    pub fold_indent: bool,
+    #[serde(default = "default_true")]
+    pub auto_pair_brackets: bool,
+    #[serde(default = "default_true")]
+    pub auto_pair_markdown: bool,
 }
 
 impl Default for EditorSettings {
@@ -112,8 +147,18 @@ impl Default for EditorSettings {
             tab_size: 4,
             spell_check: true,
             vim_mode: false,
-            line_numbers: true,
+            show_line_numbers: true,
             word_wrap: true,
+            readable_line_length: false,
+            max_line_width: 700,
+            default_edit_mode: "source".into(),
+            strict_line_breaks: false,
+            smart_indent: true,
+            show_frontmatter: true,
+            fold_heading: true,
+            fold_indent: true,
+            auto_pair_brackets: true,
+            auto_pair_markdown: true,
         }
     }
 }
@@ -130,6 +175,12 @@ fn default_line_height() -> f64 {
 fn default_tab_size() -> u32 {
     4
 }
+fn default_max_line_width() -> u32 {
+    700
+}
+fn default_edit_mode() -> String {
+    "source".into()
+}
 
 // ─── Appearance ──────────────────────────────────────────────────────
 
@@ -145,6 +196,20 @@ pub struct AppearanceSettings {
     pub show_status_bar: bool,
     #[serde(default = "default_true")]
     pub show_line_numbers: bool,
+    #[serde(default = "default_interface_font")]
+    pub interface_font: String,
+    #[serde(default)]
+    pub translucent: bool,
+    #[serde(default = "default_true")]
+    pub native_menus: bool,
+    #[serde(default = "default_true")]
+    pub custom_css: bool,
+    #[serde(default = "default_zoom")]
+    pub zoom_level: f64,
+    #[serde(default = "default_true")]
+    pub show_inline_title: bool,
+    #[serde(default = "default_true")]
+    pub show_tab_title_bar: bool,
 }
 
 impl Default for AppearanceSettings {
@@ -155,6 +220,13 @@ impl Default for AppearanceSettings {
             interface_font_size: 13,
             show_status_bar: true,
             show_line_numbers: true,
+            interface_font: "default".into(),
+            translucent: false,
+            native_menus: true,
+            custom_css: true,
+            zoom_level: 1.0,
+            show_inline_title: true,
+            show_tab_title_bar: true,
         }
     }
 }
@@ -167,6 +239,12 @@ fn default_accent_color() -> String {
 }
 fn default_interface_font_size() -> u32 {
     13
+}
+fn default_interface_font() -> String {
+    "default".into()
+}
+fn default_zoom() -> f64 {
+    1.0
 }
 
 // ─── Vault ───────────────────────────────────────────────────────────
@@ -236,6 +314,59 @@ fn default_new_file_location() -> String {
     "root".into()
 }
 
+// ─── Files & Links (JS frontend section) ─────────────────────────────
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct FilesLinksSettings {
+    #[serde(default = "default_vault_root")]
+    pub default_note_location: String,
+    #[serde(default)]
+    pub new_note_location: String,
+    #[serde(default = "default_shortest")]
+    pub new_link_format: String,
+    #[serde(default = "default_true")]
+    pub auto_update_internal_links: bool,
+    #[serde(default = "default_true")]
+    pub detect_all_extensions: bool,
+    #[serde(default = "default_attachment_folder")]
+    pub attachment_folder: String,
+    #[serde(default = "default_true")]
+    pub always_update_links: bool,
+    #[serde(default)]
+    pub use_markdown_links: bool,
+    #[serde(default = "default_true")]
+    pub confirm_file_deletion: bool,
+    #[serde(default = "default_true")]
+    pub use_wikilinks: bool,
+    #[serde(default = "default_true")]
+    pub auto_update_links: bool,
+}
+
+impl Default for FilesLinksSettings {
+    fn default() -> Self {
+        Self {
+            default_note_location: "vault_root".into(),
+            new_note_location: String::new(),
+            new_link_format: "shortest".into(),
+            auto_update_internal_links: true,
+            detect_all_extensions: true,
+            attachment_folder: "attachments".into(),
+            always_update_links: true,
+            use_markdown_links: false,
+            confirm_file_deletion: true,
+            use_wikilinks: true,
+            auto_update_links: true,
+        }
+    }
+}
+
+fn default_vault_root() -> String {
+    "vault_root".into()
+}
+fn default_shortest() -> String {
+    "shortest".into()
+}
+
 // ─── Plugins ─────────────────────────────────────────────────────────
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -253,6 +384,140 @@ impl Default for PluginsSettings {
             plugin_settings: HashMap::new(),
         }
     }
+}
+
+// ─── Hotkeys ─────────────────────────────────────────────────────────
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct HotkeysSettings {
+    #[serde(default)]
+    pub hotkeys: HashMap<String, Vec<String>>,
+}
+
+impl Default for HotkeysSettings {
+    fn default() -> Self {
+        Self {
+            hotkeys: HashMap::new(),
+        }
+    }
+}
+
+// ─── Core Plugins ────────────────────────────────────────────────────
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CorePluginsSettings {
+    #[serde(default = "default_true")]
+    pub file_explorer: bool,
+    #[serde(default = "default_true")]
+    pub search: bool,
+    #[serde(default = "default_true")]
+    pub quick_switcher: bool,
+    #[serde(default = "default_true")]
+    pub graph_view: bool,
+    #[serde(default = "default_true")]
+    pub backlinks: bool,
+    #[serde(default = "default_true")]
+    pub outgoing_links: bool,
+    #[serde(default = "default_true")]
+    pub tag_pane: bool,
+    #[serde(default = "default_true")]
+    pub page_preview: bool,
+    #[serde(default = "default_true")]
+    pub starred: bool,
+    #[serde(default)]
+    pub templates: bool,
+    #[serde(default)]
+    pub note_composer: bool,
+    #[serde(default = "default_true")]
+    pub command_palette: bool,
+    #[serde(default)]
+    pub markdown_importer: bool,
+    #[serde(default = "default_true")]
+    pub word_count: bool,
+    #[serde(default = "default_true")]
+    pub open_with_default_app: bool,
+    #[serde(default = "default_true")]
+    pub file_recovery: bool,
+}
+
+impl Default for CorePluginsSettings {
+    fn default() -> Self {
+        Self {
+            file_explorer: true,
+            search: true,
+            quick_switcher: true,
+            graph_view: true,
+            backlinks: true,
+            outgoing_links: true,
+            tag_pane: true,
+            page_preview: true,
+            starred: true,
+            templates: false,
+            note_composer: false,
+            command_palette: true,
+            markdown_importer: false,
+            word_count: true,
+            open_with_default_app: true,
+            file_recovery: true,
+        }
+    }
+}
+
+// ─── Community Plugins ───────────────────────────────────────────────
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CommunityPluginsSettings {
+    #[serde(default)]
+    pub safe_mode: bool,
+    #[serde(default = "default_true")]
+    pub plugin_updates: bool,
+    #[serde(default)]
+    pub enabled_plugins: Vec<String>,
+    #[serde(default = "default_true")]
+    pub browse_plugins: bool,
+}
+
+impl Default for CommunityPluginsSettings {
+    fn default() -> Self {
+        Self {
+            safe_mode: false,
+            plugin_updates: true,
+            enabled_plugins: vec![],
+            browse_plugins: true,
+        }
+    }
+}
+
+// ─── About ───────────────────────────────────────────────────────────
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct AboutSettings {
+    #[serde(default = "default_about_version")]
+    pub version: String,
+    #[serde(default = "default_license")]
+    pub license: String,
+    #[serde(default = "default_credits")]
+    pub credits: String,
+}
+
+impl Default for AboutSettings {
+    fn default() -> Self {
+        Self {
+            version: "2.5.2".into(),
+            license: "MIT".into(),
+            credits: "Built with Tauri & Rust".into(),
+        }
+    }
+}
+
+fn default_about_version() -> String {
+    "2.5.2".into()
+}
+fn default_license() -> String {
+    "MIT".into()
+}
+fn default_credits() -> String {
+    "Built with Tauri & Rust".into()
 }
 
 // ─── Remember (spaced repetition) ────────────────────────────────────
@@ -324,20 +589,23 @@ impl Default for Settings {
             appearance: AppearanceSettings::default(),
             vault: VaultSettings::default(),
             files: FilesSettings::default(),
+            files_links: FilesLinksSettings::default(),
             plugins: PluginsSettings::default(),
             remember: RememberSettings::default(),
             update: UpdateSettings::default(),
+            hotkeys: HotkeysSettings::default(),
+            core_plugins: CorePluginsSettings::default(),
+            community_plugins: CommunityPluginsSettings::default(),
+            about: AboutSettings::default(),
         }
     }
 }
 
 impl Settings {
-    /// Sensible defaults (alias for Default).
     pub fn get_default() -> Self {
         Self::default()
     }
 
-    /// Validate constraints. Returns a list of issues (empty = valid).
     pub fn validate(&self) -> Vec<String> {
         let mut issues = Vec::new();
 
@@ -384,8 +652,6 @@ impl Settings {
         issues
     }
 
-    /// Merge a partial JSON update into the current settings.
-    /// Only overwrites fields present in `partial`.
     pub fn merge(&mut self, partial: &serde_json::Value) {
         if let Ok(base_val) = serde_json::to_value(&*self) {
             if let Some(merged) = merge_json(&base_val, partial) {
@@ -396,10 +662,7 @@ impl Settings {
         }
     }
 
-    /// Migrate from older versions to current.
     pub fn migrate(&mut self) {
-        // v1 → v2: added files, remember, update sections (handled by #[serde(default)])
-        // Just bump the version number.
         if self.version < SETTINGS_VERSION {
             self.version = SETTINGS_VERSION;
         }
@@ -552,7 +815,6 @@ mod tests {
         s.merge(&patch);
         assert_eq!(s.editor.font_size, 20);
         assert_eq!(s.appearance.theme, "nord");
-        // Untouched fields remain default
         assert_eq!(s.editor.tab_size, 4);
         assert_eq!(s.general.language, "en");
     }
@@ -567,7 +829,6 @@ mod tests {
 
     #[test]
     fn test_deserialize_old_format_with_missing_fields() {
-        // Simulates loading a v1 config that lacks new sections
         let json = r##"{
             "general": { "vault_path": "/tmp/test", "language": "en", "startup_behavior": "welcome" },
             "editor": { "font_family": "mono", "font_size": 14, "line_height": 1.5, "tab_size": 2, "spell_check": false, "vim_mode": true },
@@ -577,15 +838,17 @@ mod tests {
         }"##;
 
         let s: Settings = serde_json::from_str(json).unwrap();
-        // New fields get defaults
         assert_eq!(s.files.deleted_files_behavior, "trash");
         assert_eq!(s.remember.cards_per_session, 20);
         assert!(s.update.auto_check);
-        // Old fields preserved
         assert_eq!(s.editor.font_size, 14);
         assert!(s.editor.vim_mode);
         assert!(s.vault.auto_backup);
         assert_eq!(s.plugins.enabled_plugins, vec!["abc"]);
+        // New fields get defaults
+        assert!(s.general.check_for_updates);
+        assert!(s.core_plugins.file_explorer);
+        assert_eq!(s.about.version, "2.5.2");
     }
 
     #[test]

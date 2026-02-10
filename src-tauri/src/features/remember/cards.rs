@@ -69,7 +69,28 @@ impl Card {
 
     /// Parse a Card from markdown content + file path.
     pub fn from_markdown(path: &str, content: &str) -> Result<Self, RememberError> {
-        let (meta, body) = parse_frontmatter(content);
+        let (fm_opt, body) = crate::engine::frontmatter::parse_frontmatter(content)
+            .map_err(|e| RememberError::InvalidCard(format!("{}: frontmatter parse error: {}", path, e)))?;
+
+        // Convert engine Frontmatter to HashMap for compatibility
+        let meta: HashMap<String, String> = if let Some(fm) = fm_opt {
+            let mut m = HashMap::new();
+            if let Some(ref t) = fm.title { m.insert("title".to_string(), t.clone()); }
+            for (k, v) in &fm.extra {
+                m.insert(k.clone(), match v {
+                    serde_json::Value::String(s) => s.clone(),
+                    serde_json::Value::Null => "null".to_string(),
+                    other => other.to_string().trim_matches('"').to_string(),
+                });
+            }
+            // Also handle tags specially
+            if !fm.tags.is_empty() {
+                m.insert("tags".to_string(), format!("[{}]", fm.tags.join(", ")));
+            }
+            m
+        } else {
+            HashMap::new()
+        };
 
         if meta.get("type").map(|s| s.as_str()) != Some("card") {
             return Err(RememberError::InvalidCard(format!(
@@ -77,7 +98,7 @@ impl Card {
             )));
         }
 
-        let (front, back) = parse_card_body(&body);
+        let (front, back) = parse_card_body(body);
         let tags = parse_tags(meta.get("tags").map(|s| s.as_str()).unwrap_or(""));
         let source = meta.get("source").map(|s| s.trim_matches('"').to_string()).unwrap_or_default();
 

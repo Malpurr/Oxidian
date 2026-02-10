@@ -34,11 +34,18 @@ export class ContextMenu {
 
         // Position, keep within viewport
         this.el.classList.remove('hidden');
+        // Set transform-origin to cursor position for scale-in animation
+        this.el.style.setProperty('--ctx-origin-x', '0px');
+        this.el.style.setProperty('--ctx-origin-y', '0px');
         const rect = this.el.getBoundingClientRect();
         const maxX = window.innerWidth - rect.width - 4;
         const maxY = window.innerHeight - rect.height - 4;
         this.el.style.left = Math.min(x, maxX) + 'px';
         this.el.style.top = Math.min(y, maxY) + 'px';
+        // Re-trigger animation
+        this.el.style.animation = 'none';
+        this.el.offsetHeight; // force reflow
+        this.el.style.animation = '';
     }
 
     hide() {

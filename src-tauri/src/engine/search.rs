@@ -70,6 +70,18 @@ impl SearchIndex {
         Ok(())
     }
 
+    /// Remove a single document by its path from the index.
+    pub fn delete_path(&mut self, path: &str) -> Result<(), String> {
+        if self.writer.is_none() {
+            self.writer = Some(self.index.writer(15_000_000).map_err(|e| format!("Failed to re-create writer: {}", e))?);
+        }
+        let writer = self.writer.as_mut().ok_or_else(|| "Index writer not available".to_string())?;
+        let path_term = tantivy::Term::from_field_text(self.path_field, path);
+        writer.delete_term(path_term);
+        writer.commit().map_err(|e| format!("Failed to commit index: {}", e))?;
+        Ok(())
+    }
+
     pub fn index_note(&mut self, _vault_path: &str, relative_path: &str, content: &str) -> Result<(), String> {
         if self.writer.is_none() {
             self.writer = Some(self.index.writer(15_000_000).map_err(|e| format!("Failed to re-create writer: {}", e))?);

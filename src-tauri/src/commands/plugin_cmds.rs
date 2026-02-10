@@ -2,6 +2,13 @@ use crate::state::AppState;
 use serde::Serialize;
 use tauri::State;
 
+fn validate_plugin_id(id: &str) -> Result<(), String> {
+    if id.is_empty() || id.contains('/') || id.contains('\\') || id.contains("..") {
+        return Err("Invalid plugin ID".to_string());
+    }
+    Ok(())
+}
+
 #[derive(Debug, Serialize)]
 pub struct ObsidianPluginManifest {
     pub id: String,
@@ -61,6 +68,7 @@ pub fn list_obsidian_plugins(state: State<AppState>) -> Result<Vec<ObsidianPlugi
 
 #[tauri::command]
 pub fn read_plugin_main(state: State<AppState>, plugin_id: String) -> Result<String, String> {
+    validate_plugin_id(&plugin_id)?;
     let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     let main_path = std::path::Path::new(&*vault_path)
         .join(".obsidian")
@@ -74,6 +82,7 @@ pub fn read_plugin_main(state: State<AppState>, plugin_id: String) -> Result<Str
 
 #[tauri::command]
 pub fn read_plugin_styles(state: State<AppState>, plugin_id: String) -> Result<String, String> {
+    validate_plugin_id(&plugin_id)?;
     let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     let styles_path = std::path::Path::new(&*vault_path)
         .join(".obsidian")
@@ -143,6 +152,7 @@ pub fn get_enabled_plugins(state: State<AppState>) -> Result<Vec<String>, String
 
 #[tauri::command]
 pub fn get_plugin_data(state: State<AppState>, plugin_id: String) -> Result<String, String> {
+    validate_plugin_id(&plugin_id)?;
     let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     let data_path = std::path::Path::new(&*vault_path)
         .join(".obsidian")
@@ -160,6 +170,7 @@ pub fn get_plugin_data(state: State<AppState>, plugin_id: String) -> Result<Stri
 
 #[tauri::command]
 pub fn save_plugin_data(state: State<AppState>, plugin_id: String, data: String) -> Result<(), String> {
+    validate_plugin_id(&plugin_id)?;
     let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     let plugin_dir = std::path::Path::new(&*vault_path)
         .join(".obsidian")
@@ -224,6 +235,37 @@ pub fn save_plugin_settings(state: State<AppState>, plugin_id: String, settings:
 }
 
 // ===== New Plugin Commands =====
+
+#[tauri::command]
+pub fn toggle_core_plugin(state: State<AppState>, plugin: String, enabled: bool) -> Result<(), String> {
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+    let config_path = std::path::Path::new(&*vault_path)
+        .join(".obsidian")
+        .join("core-plugins.json");
+
+    let mut plugins: serde_json::Value = if config_path.exists() {
+        let content = std::fs::read_to_string(&config_path)
+            .map_err(|e| format!("Failed to read core-plugins.json: {}", e))?;
+        serde_json::from_str(&content).unwrap_or(serde_json::json!({}))
+    } else {
+        serde_json::json!({})
+    };
+
+    if let Some(obj) = plugins.as_object_mut() {
+        obj.insert(plugin, serde_json::Value::Bool(enabled));
+    }
+
+    let obsidian_dir = std::path::Path::new(&*vault_path).join(".obsidian");
+    std::fs::create_dir_all(&obsidian_dir)
+        .map_err(|e| format!("Failed to create .obsidian dir: {}", e))?;
+
+    let content = serde_json::to_string_pretty(&plugins)
+        .map_err(|e| format!("Failed to serialize: {}", e))?;
+    std::fs::write(&config_path, content)
+        .map_err(|e| format!("Failed to write core-plugins.json: {}", e))?;
+
+    Ok(())
+}
 
 #[tauri::command]
 pub fn discover_plugins(state: State<AppState>) -> Result<Vec<crate::plugin::PluginManifest>, String> {

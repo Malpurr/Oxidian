@@ -22,6 +22,7 @@ const SLASH_COMMANDS = [
     { id: 'link', label: 'Link', icon: '🔗', insert: '[text](url)', category: 'media' },
     { id: 'wikilink', label: 'Wiki Link', icon: '⟦⟧', wrap: ['[[', ']]'], category: 'media' },
     { id: 'callout', label: 'Callout', icon: '💡', insert: '> [!note]\n> ', category: 'blocks' },
+    { id: 'math', label: 'Math Block', icon: '∑', insert: '$$\n\n$$', cursorOffset: -3, category: 'blocks' },
 ];
 
 export class SlashMenu {

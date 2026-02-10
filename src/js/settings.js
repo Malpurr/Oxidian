@@ -151,7 +151,35 @@ export class SettingsPage {
                 this.availableCommands.set(cmd.id, cmd);
             });
         } catch (err) {
-            console.warn('Could not load commands:', err);
+            console.warn('Could not load commands, using defaults:', err);
+            const defaultCommands = [
+                { id: 'app:open-settings', name: 'Open Settings', category: 'App' },
+                { id: 'app:toggle-theme', name: 'Toggle Theme', category: 'App' },
+                { id: 'app:reload-app', name: 'Reload App', category: 'App' },
+                { id: 'file:new-note', name: 'Create New Note', category: 'File' },
+                { id: 'file:open-file', name: 'Open File', category: 'File' },
+                { id: 'file:save', name: 'Save Current File', category: 'File' },
+                { id: 'file:save-as', name: 'Save As...', category: 'File' },
+                { id: 'file:delete', name: 'Delete File', category: 'File' },
+                { id: 'editor:toggle-preview', name: 'Toggle Preview', category: 'Editor' },
+                { id: 'editor:toggle-source', name: 'Toggle Source Mode', category: 'Editor' },
+                { id: 'editor:bold', name: 'Bold', category: 'Editor' },
+                { id: 'editor:italic', name: 'Italic', category: 'Editor' },
+                { id: 'editor:strikethrough', name: 'Strikethrough', category: 'Editor' },
+                { id: 'editor:code', name: 'Inline Code', category: 'Editor' },
+                { id: 'editor:codeblock', name: 'Code Block', category: 'Editor' },
+                { id: 'search:global-search', name: 'Search in All Files', category: 'Search' },
+                { id: 'search:current-file', name: 'Search in Current File', category: 'Search' },
+                { id: 'navigation:quick-switcher', name: 'Quick Switcher', category: 'Navigation' },
+                { id: 'navigation:go-back', name: 'Navigate Back', category: 'Navigation' },
+                { id: 'navigation:go-forward', name: 'Navigate Forward', category: 'Navigation' },
+                { id: 'view:toggle-sidebar', name: 'Toggle Sidebar', category: 'View' },
+                { id: 'view:toggle-reading-mode', name: 'Toggle Reading Mode', category: 'View' }
+            ];
+            this.availableCommands = new Map();
+            defaultCommands.forEach(cmd => {
+                this.availableCommands.set(cmd.id, cmd);
+            });
         }
     }
 
@@ -166,6 +194,7 @@ export class SettingsPage {
         container.appendChild(wrapper);
 
         this.bindEvents(wrapper);
+        this._renderPluginSettingTabs(wrapper);
         this.switchToSection(this.activeSection, wrapper);
         this.initializeSection(this.activeSection);
     }
@@ -608,9 +637,9 @@ export class SettingsPage {
                         </div>
                         <div class="setting-item-control">
                             <select id="files-default-location">
-                                <option value="vault_root" ${s.default_note_location || s.new_file_location || 'vault_root' === 'vault_root' ? 'selected' : ''}>Vault folder</option>
-                                <option value="current_folder" ${s.default_note_location || s.new_file_location || 'vault_root' === 'current_folder' ? 'selected' : ''}>Same folder as current file</option>
-                                <option value="specified_folder" ${s.default_note_location || s.new_file_location || 'vault_root' === 'specified_folder' ? 'selected' : ''}>In the folder specified below</option>
+                                <option value="vault_root" ${(s.default_note_location || s.new_file_location || 'vault_root') === 'vault_root' ? 'selected' : ''}>Vault folder</option>
+                                <option value="current_folder" ${(s.default_note_location || s.new_file_location || 'vault_root') === 'current_folder' ? 'selected' : ''}>Same folder as current file</option>
+                                <option value="specified_folder" ${(s.default_note_location || s.new_file_location || 'vault_root') === 'specified_folder' ? 'selected' : ''}>In the folder specified below</option>
                             </select>
                         </div>
                     </div>
@@ -952,7 +981,14 @@ export class SettingsPage {
     }
 
     renderCorePluginsSection() {
-        const s = this.settings.core_plugins || this.settings.plugins || {};
+        // BUG-CP1 FIX: Use getCorePluginInfo() master list instead of iterating settings.plugins
+        const pluginIds = [
+            'file_explorer', 'search', 'quick_switcher', 'graph_view',
+            'backlinks', 'outgoing_links', 'tag_pane', 'page_preview',
+            'starred', 'templates', 'note_composer', 'command_palette',
+            'markdown_importer', 'word_count', 'open_with_default_app', 'file_recovery'
+        ];
+        const s = this.settings.core_plugins || {};
         return `
             <section class="settings-section" data-section="core-plugins">
                 <div class="settings-section-header">
@@ -961,7 +997,8 @@ export class SettingsPage {
                 </div>
                 
                 <div class="plugins-list">
-                    ${Object.entries(s).map(([pluginId, enabled]) => {
+                    ${pluginIds.map(pluginId => {
+                        const enabled = s[pluginId] !== undefined ? s[pluginId] : true;
                         const pluginInfo = this.getCorePluginInfo(pluginId);
                         return `
                             <div class="plugin-item ${enabled ? 'enabled' : 'disabled'}">
@@ -1056,14 +1093,8 @@ export class SettingsPage {
     }
 
     renderInstalledPlugins() {
-        // This would be populated with actual plugin data
-        return `
-            <div class="plugins-empty-state">
-                <div class="empty-state-icon">🧩</div>
-                <h3>No community plugins installed</h3>
-                <p>Browse the community plugin directory to discover new ways to extend Oxidian.</p>
-            </div>
-        `;
+        // Initial placeholder — real data loaded async via loadInstalledPlugins()
+        return `<div class="plugins-loading">Loading plugins...</div>`;
     }
 
     renderAboutSection() {
@@ -1178,14 +1209,18 @@ export class SettingsPage {
         wrapper.querySelectorAll('.settings-section').forEach(section => {
             section.classList.toggle('active', section.dataset.section === sectionName);
         });
+
+        // BUG-AB2 FIX: Always initialize section when navigating to it
+        this.initializeSection(sectionName);
     }
 
     initializeSection(sectionName) {
+        // Always load installed plugins list (async, non-blocking)
+        this.loadInstalledPlugins();
+
         // Initialize specific section functionality
         if (sectionName === 'hotkeys') {
             this.initializeHotkeys();
-        } else if (sectionName === 'community-plugins') {
-            this.loadInstalledPlugins();
         } else if (sectionName === 'about') {
             this.loadSystemInfo();
         }
@@ -1209,19 +1244,19 @@ export class SettingsPage {
     }
 
     bindEditorEvents(wrapper) {
-        // Font size slider
+        // Font size slider — BUG-E4 FIX: use sibling selector within same .slider-container
         const fontSizeSlider = wrapper.querySelector('#editor-font-size');
-        const fontSizeValue = wrapper.querySelector('#editor-font-size + .slider-container .slider-value');
+        const fontSizeValue = fontSizeSlider?.parentElement?.querySelector('.slider-value');
         fontSizeSlider?.addEventListener('input', (e) => {
-            fontSizeValue.textContent = e.target.value + 'px';
+            if (fontSizeValue) fontSizeValue.textContent = e.target.value + 'px';
             document.documentElement.style.setProperty('--font-size-editor', e.target.value + 'px');
         });
 
-        // Line height slider
+        // Line height slider — BUG-E4 FIX
         const lineHeightSlider = wrapper.querySelector('#editor-line-height');
-        const lineHeightValue = wrapper.querySelector('#editor-line-height + .slider-container .slider-value');
+        const lineHeightValue = lineHeightSlider?.parentElement?.querySelector('.slider-value');
         lineHeightSlider?.addEventListener('input', (e) => {
-            lineHeightValue.textContent = e.target.value;
+            if (lineHeightValue) lineHeightValue.textContent = e.target.value;
             document.documentElement.style.setProperty('--line-height-editor', e.target.value);
         });
 
@@ -1261,6 +1296,21 @@ export class SettingsPage {
             this.app.themeManager?.setAccentColor(e.target.value);
         });
 
+        // BUG-A1 FIX: Apply interface font CSS variable on change
+        const interfaceFontSelect = wrapper.querySelector('#appearance-interface-font');
+        interfaceFontSelect?.addEventListener('change', (e) => {
+            const fontMap = {
+                'default': '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                'system': 'system-ui, sans-serif',
+                'inter': '"Inter", sans-serif',
+                'roboto': '"Roboto", sans-serif',
+                'custom': 'inherit'
+            };
+            const fontValue = fontMap[e.target.value] || fontMap['default'];
+            document.documentElement.style.setProperty('--font-interface', fontValue);
+            this.settings.appearance.interface_font = e.target.value;
+        });
+
         // Color presets
         wrapper.querySelectorAll('.color-preset').forEach(preset => {
             preset.addEventListener('click', () => {
@@ -1271,20 +1321,20 @@ export class SettingsPage {
             });
         });
 
-        // Interface font size
-        const fontSizeSlider = wrapper.querySelector('#appearance-font-size');
-        const fontSizeValue = wrapper.querySelector('#appearance-font-size + .slider-container .slider-value');
-        fontSizeSlider?.addEventListener('input', (e) => {
-            fontSizeValue.textContent = e.target.value + 'px';
+        // Interface font size — BUG-E4 FIX
+        const ifontSizeSlider = wrapper.querySelector('#appearance-font-size');
+        const ifontSizeValue = ifontSizeSlider?.parentElement?.querySelector('.slider-value');
+        ifontSizeSlider?.addEventListener('input', (e) => {
+            if (ifontSizeValue) ifontSizeValue.textContent = e.target.value + 'px';
             document.documentElement.style.fontSize = e.target.value + 'px';
         });
 
-        // Zoom level
+        // Zoom level — BUG-E4 FIX
         const zoomSlider = wrapper.querySelector('#appearance-zoom');
-        const zoomValue = wrapper.querySelector('#appearance-zoom + .slider-container .slider-value');
+        const zoomValue = zoomSlider?.parentElement?.querySelector('.slider-value');
         zoomSlider?.addEventListener('input', (e) => {
             const zoom = parseFloat(e.target.value);
-            zoomValue.textContent = Math.round(zoom * 100) + '%';
+            if (zoomValue) zoomValue.textContent = Math.round(zoom * 100) + '%';
             document.body.style.zoom = zoom;
         });
 
@@ -1548,7 +1598,22 @@ export class SettingsPage {
     }
 
     filterHotkeys(query) {
-        // Implementation would filter the hotkeys list
+        const normalizedQuery = (query || '').toLowerCase().trim();
+        const hotkeyItems = this.paneEl?.querySelectorAll('.hotkey-item') || [];
+        const categories = this.paneEl?.querySelectorAll('.hotkey-category') || [];
+
+        hotkeyItems.forEach(item => {
+            const commandName = item.querySelector('.hotkey-command-name')?.textContent?.toLowerCase() || '';
+            const commandId = item.dataset.command || '';
+            const matches = !normalizedQuery || commandName.includes(normalizedQuery) || commandId.includes(normalizedQuery);
+            item.style.display = matches ? '' : 'none';
+        });
+
+        // Hide empty categories
+        categories.forEach(cat => {
+            const visibleItems = cat.querySelectorAll('.hotkey-item:not([style*="display: none"])');
+            cat.style.display = visibleItems.length > 0 ? '' : 'none';
+        });
     }
 
     refreshHotkeys() {
@@ -1556,23 +1621,286 @@ export class SettingsPage {
     }
 
     showCSSSnippetsManager() {
-        // Implementation would show CSS snippets manager dialog
+        const snippets = this.app.cssSnippets;
+        if (!snippets) {
+            alert('CSS Snippets module not available.');
+            return;
+        }
+
+        const list = snippets.getSnippetList();
+        const overlay = document.createElement('div');
+        overlay.className = 'dialog-overlay';
+        overlay.id = 'css-snippets-overlay';
+
+        const listHtml = list.length === 0
+            ? '<div style="padding:20px;text-align:center;color:var(--text-secondary);">No CSS snippets found.<br><small>Place <code>.css</code> files in <code>.oxidian/snippets/</code> or <code>.obsidian/snippets/</code></small></div>'
+            : list.map(s => `
+                <div class="snippet-item" style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--border-color);">
+                    <span style="font-size:13px;">${s.name}</span>
+                    <label class="toggle-switch" style="position:relative;width:36px;height:20px;display:inline-block;">
+                        <input type="checkbox" data-snippet="${s.name}" ${s.enabled ? 'checked' : ''} style="opacity:0;width:0;height:0;">
+                        <span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:${s.enabled ? 'var(--text-accent)' : 'var(--bg-tertiary)'};border-radius:10px;transition:.2s;"></span>
+                    </label>
+                </div>
+            `).join('');
+
+        overlay.innerHTML = `
+            <div class="dialog" style="max-width:400px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                    <h3 style="margin:0;">CSS Snippets</h3>
+                    <button class="icon-btn" id="btn-close-snippets" title="Close">✕</button>
+                </div>
+                <div style="max-height:300px;overflow-y:auto;">${listHtml}</div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+
+        overlay.querySelector('#btn-close-snippets').addEventListener('click', () => overlay.remove());
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+        overlay.querySelectorAll('input[data-snippet]').forEach(input => {
+            input.addEventListener('change', (e) => {
+                snippets.toggle(e.target.dataset.snippet);
+                // Update visual toggle
+                const span = e.target.nextElementSibling;
+                if (span) span.style.background = e.target.checked ? 'var(--text-accent)' : 'var(--bg-tertiary)';
+            });
+        });
     }
 
-    showPluginBrowser() {
-        // Implementation would show community plugin browser
+    async showPluginBrowser() {
+        // Show a modal/overlay with community plugins
+        const overlay = document.createElement('div');
+        overlay.className = 'dialog-overlay';
+        overlay.id = 'plugin-browser-overlay';
+        overlay.innerHTML = `
+            <div class="dialog dialog-lg" style="max-width:700px;max-height:80vh;display:flex;flex-direction:column;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                    <h3 style="margin:0;">Community Plugins</h3>
+                    <button class="icon-btn" id="btn-close-plugin-browser" title="Close">✕</button>
+                </div>
+                <input type="text" id="plugin-browser-search" placeholder="Search plugins..." style="margin-bottom:12px;" />
+                <div id="plugin-browser-results" style="flex:1;overflow-y:auto;">
+                    <div style="text-align:center;padding:20px;color:var(--text-secondary);">Loading community plugins...</div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+
+        overlay.querySelector('#btn-close-plugin-browser').addEventListener('click', () => overlay.remove());
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+
+        const resultsEl = overlay.querySelector('#plugin-browser-results');
+        const searchEl = overlay.querySelector('#plugin-browser-search');
+
+        let allPlugins = [];
+        try {
+            allPlugins = await invoke('fetch_community_plugin_list');
+        } catch (err) {
+            resultsEl.innerHTML = `<div style="text-align:center;padding:20px;color:var(--text-secondary);">
+                <p>Could not load community plugins.</p>
+                <p style="font-size:12px;opacity:0.7;">${this.esc(String(err))}</p>
+            </div>`;
+            return;
+        }
+
+        const renderList = (plugins) => {
+            if (!plugins || plugins.length === 0) {
+                resultsEl.innerHTML = `<div style="text-align:center;padding:20px;color:var(--text-secondary);">No plugins found.</div>`;
+                return;
+            }
+            resultsEl.innerHTML = plugins.slice(0, 50).map(p => `
+                <div class="plugin-item" style="padding:10px 0;border-bottom:1px solid var(--border-color);">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                        <div>
+                            <div style="font-weight:600;">${this.esc(p.name || p.id)}</div>
+                            <div style="font-size:12px;color:var(--text-secondary);">${this.esc(p.author || 'Unknown')} · v${this.esc(p.version || '?')}</div>
+                            <div style="font-size:13px;margin-top:4px;">${this.esc(p.description || '')}</div>
+                        </div>
+                        <button class="mod-cta plugin-install-btn" data-plugin-id="${this.esc(p.id)}" style="flex-shrink:0;margin-left:12px;">Install</button>
+                    </div>
+                </div>
+            `).join('');
+
+            resultsEl.querySelectorAll('.plugin-install-btn').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const pluginId = btn.dataset.pluginId;
+                    btn.disabled = true;
+                    btn.textContent = 'Installing...';
+                    try {
+                        await invoke('install_community_plugin', { pluginId });
+                        btn.textContent = 'Installed';
+                        this.loadInstalledPlugins();
+                    } catch (err) {
+                        btn.textContent = 'Failed';
+                        console.error('Failed to install plugin:', err);
+                    }
+                });
+            });
+        };
+
+        renderList(allPlugins);
+
+        searchEl.addEventListener('input', () => {
+            const q = searchEl.value.toLowerCase();
+            if (!q) { renderList(allPlugins); return; }
+            const filtered = allPlugins.filter(p =>
+                (p.name || '').toLowerCase().includes(q) ||
+                (p.id || '').toLowerCase().includes(q) ||
+                (p.description || '').toLowerCase().includes(q)
+            );
+            renderList(filtered);
+        });
     }
 
     async installPluginFromFolder() {
-        // Implementation would handle plugin installation
+        try {
+            const { open } = window.__TAURI__.dialog;
+            const selected = await open({ directory: true, multiple: false });
+            if (selected) {
+                // Try to read manifest.json from the folder
+                const manifestPath = selected + '/manifest.json';
+                try {
+                    const content = await invoke('read_file_raw', { path: manifestPath });
+                    const manifest = JSON.parse(content);
+                    await invoke('install_plugin', { sourcePath: selected, pluginId: manifest.id });
+                    this.loadInstalledPlugins();
+                } catch (err) {
+                    console.error('Failed to install plugin from folder:', err);
+                    this.app?.showErrorToast?.('Failed to install plugin: ' + err);
+                }
+            }
+        } catch (err) {
+            console.error('Failed to browse for plugin folder:', err);
+        }
     }
 
     async reloadPlugins() {
-        // Implementation would reload all plugins
+        if (this.app?.pluginLoader) {
+            this.app.pluginLoader.destroy();
+            await this.app.pluginLoader.init();
+            this.loadInstalledPlugins();
+        }
     }
 
     async loadInstalledPlugins() {
-        // Implementation would load and display installed plugins
+        const container = document.getElementById('installed-plugins-list');
+        if (!container) return;
+
+        let manifests = [];
+        let enabledSet = new Set();
+
+        try {
+            manifests = await invoke('discover_plugins');
+        } catch {
+            try {
+                manifests = await invoke('list_obsidian_plugins');
+            } catch {
+                manifests = [];
+            }
+        }
+
+        try {
+            const enabled = await invoke('get_enabled_plugins');
+            enabledSet = new Set(enabled);
+        } catch {}
+
+        if (!manifests || manifests.length === 0) {
+            container.innerHTML = `
+                <div class="plugins-empty-state">
+                    <div class="empty-state-icon">🧩</div>
+                    <h3>No community plugins installed</h3>
+                    <p>Browse the community plugin directory to discover new ways to extend Oxidian.</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = manifests.map(m => {
+            const isEnabled = enabledSet.has(m.id);
+            return `
+                <div class="plugin-item ${isEnabled ? 'enabled' : 'disabled'}">
+                    <div class="plugin-info">
+                        <div class="plugin-name">${this.esc(m.name || m.id)}</div>
+                        <div class="plugin-description">${this.esc(m.description || '')} <span style="opacity:0.6;">v${this.esc(m.version || '?')} by ${this.esc(m.author || 'Unknown')}</span></div>
+                    </div>
+                    <div class="plugin-toggle">
+                        <div class="checkbox-container">
+                            <input type="checkbox" data-plugin-id="${this.esc(m.id)}" ${isEnabled ? 'checked' : ''} />
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        // Bind toggle events
+        container.querySelectorAll('input[data-plugin-id]').forEach(toggle => {
+            toggle.addEventListener('change', async (e) => {
+                const pluginId = e.target.dataset.pluginId;
+                const enabled = e.target.checked;
+                if (this.app?.pluginLoader) {
+                    await this.app.pluginLoader.togglePlugin(pluginId, enabled);
+                } else {
+                    try {
+                        await invoke('toggle_plugin', { pluginId, enabled });
+                    } catch (err) {
+                        console.error('Failed to toggle plugin:', err);
+                    }
+                }
+            });
+        });
+    }
+
+    _renderPluginSettingTabs(wrapper) {
+        // Add plugin SettingTabs (registered via addSettingTab) as extra nav items & sections
+        const pluginLoader = this.app?.pluginLoader;
+        if (!pluginLoader?.registry?.settingTabs) return;
+
+        const navSection = wrapper.querySelector('.settings-nav-section');
+        const sectionsContainer = wrapper.querySelector('.settings-sections');
+        if (!navSection || !sectionsContainer) return;
+
+        for (const [pluginId, tab] of pluginLoader.registry.settingTabs) {
+            const manifest = pluginLoader.pluginManifests.get(pluginId);
+            const displayName = manifest?.name || pluginId;
+            const sectionId = `plugin-settings-${pluginId}`;
+
+            // Add nav button
+            const navBtn = document.createElement('button');
+            navBtn.className = 'settings-nav-item';
+            navBtn.dataset.section = sectionId;
+            navBtn.innerHTML = `
+                <svg class="settings-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 8v8m-4-4h8"/>
+                </svg>
+                <span>${this.esc(displayName)}</span>
+            `;
+            navBtn.addEventListener('click', () => {
+                this.switchToSection(sectionId, wrapper);
+                // Render plugin settings on first open
+                if (!tab._rendered) {
+                    tab._rendered = true;
+                    tab.containerEl.innerHTML = '';
+                    try { tab.display(); } catch (e) { 
+                        console.error(`[Settings] Plugin settings error for ${pluginId}:`, e);
+                        tab.containerEl.innerHTML = `<p style="color:var(--text-error);">Error loading settings: ${e.message}</p>`;
+                    }
+                }
+            });
+            navSection.appendChild(navBtn);
+
+            // Add section
+            const section = document.createElement('section');
+            section.className = 'settings-section';
+            section.dataset.section = sectionId;
+            section.innerHTML = `
+                <div class="settings-section-header">
+                    <h1>${this.esc(displayName)}</h1>
+                    <p class="settings-section-description">Settings for the ${this.esc(displayName)} plugin</p>
+                </div>
+            `;
+            section.appendChild(tab.containerEl);
+            sectionsContainer.appendChild(section);
+        }
     }
 
     async loadSystemInfo() {

@@ -450,6 +450,9 @@ export class CodeMirrorEditor {
         }
       }),
       
+      // Enable spellcheck
+      EditorView.contentAttributes.of({ spellcheck: "true" }),
+      
       // Custom styling
       EditorView.theme({
         '.cm-editor': {

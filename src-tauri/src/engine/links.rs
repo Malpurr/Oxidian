@@ -8,7 +8,8 @@ pub struct LinkTarget {
 }
 
 pub fn resolve_wikilink(_vault_path: &str, _link: &str) -> Result<Vec<LinkTarget>, String> {
-    todo!("Wave 2: Implement wikilink resolution")
+    // TODO: Wave 2 — implement wikilink resolution
+    Ok(vec![])
 }
 
 pub fn extract_outgoing_links(content: &str) -> Vec<String> {
@@ -20,10 +21,10 @@ mod tests {
     use super::*;
 
     #[test]
-    #[should_panic(expected = "Wave 2: Implement wikilink resolution")]
-    fn test_resolve_wikilink_todo() {
-        // This function is marked as TODO, so we test that it properly panics
-        let _result = resolve_wikilink("/path/to/vault", "Some Link");
+    fn test_resolve_wikilink_returns_empty() {
+        let result = resolve_wikilink("/path/to/vault", "Some Link");
+        assert!(result.is_ok());
+        assert!(result.unwrap().is_empty());
     }
 
     #[test]

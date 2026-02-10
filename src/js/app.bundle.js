@@ -1,6 +1,10 @@
 (() => {
+  var __create = Object.create;
   var __defProp = Object.defineProperty;
+  var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
   var __getOwnPropNames = Object.getOwnPropertyNames;
+  var __getProtoOf = Object.getPrototypeOf;
+  var __hasOwnProp = Object.prototype.hasOwnProperty;
   var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require : typeof Proxy !== "undefined" ? new Proxy(x, {
     get: (a, b) => (typeof require !== "undefined" ? require : a)[b]
   }) : x)(function(x) {
@@ -14,6 +18,22 @@
     for (var name in all)
       __defProp(target, name, { get: all[name], enumerable: true });
   };
+  var __copyProps = (to, from, except, desc) => {
+    if (from && typeof from === "object" || typeof from === "function") {
+      for (let key of __getOwnPropNames(from))
+        if (!__hasOwnProp.call(to, key) && key !== except)
+          __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+    }
+    return to;
+  };
+  var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+    // If the importer is in node compatibility mode or this is not an ESM
+    // file that has been converted to a CommonJS file using a Babel-
+    // compatible transform (i.e. "__esModule" has not been set), then set
+    // "default" to the CommonJS "module.exports" for node compatibility.
+    isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+    mod
+  ));
 
   // src/js/tauri-bridge.js
   var tauri_bridge_exports = {};
@@ -442,6 +462,8 @@
                 this.updateCursor();
               }
             }),
+            // Enable spellcheck
+            import_codemirror_bundle4.EditorView.contentAttributes.of({ spellcheck: "true" }),
             // Custom styling
             import_codemirror_bundle4.EditorView.theme({
               ".cm-editor": {
@@ -2373,11 +2395,16 @@
         this.el.appendChild(row);
       }
       this.el.classList.remove("hidden");
+      this.el.style.setProperty("--ctx-origin-x", "0px");
+      this.el.style.setProperty("--ctx-origin-y", "0px");
       const rect = this.el.getBoundingClientRect();
       const maxX = window.innerWidth - rect.width - 4;
       const maxY = window.innerHeight - rect.height - 4;
       this.el.style.left = Math.min(x, maxX) + "px";
       this.el.style.top = Math.min(y, maxY) + "px";
+      this.el.style.animation = "none";
+      this.el.offsetHeight;
+      this.el.style.animation = "";
     }
     hide() {
       this.el.classList.add("hidden");
@@ -2454,9 +2481,39 @@
   // src/js/graph.js
   init_tauri_bridge();
   var GraphView = class {
-    constructor(app, container) {
+    constructor(app, container, options = {}) {
       this.app = app;
       this.container = container;
+      this.mode = options.mode || "global";
+      this.localDepth = options.depth || 1;
+      this.centerNote = options.centerNote || null;
+      this._toolbar = document.createElement("div");
+      this._toolbar.style.cssText = "position:absolute;top:8px;left:8px;z-index:10;display:flex;gap:6px;align-items:center;";
+      this._toolbar.innerHTML = `
+            <button class="graph-mode-btn" data-mode="global" style="padding:4px 10px;border-radius:4px;border:1px solid var(--border-color,#45475a);background:${this.mode === "global" ? "var(--accent-color,#7f6df2)" : "var(--bg-secondary,#313244)"};color:var(--text-primary,#cdd6f4);cursor:pointer;font-size:12px;">Global</button>
+            <button class="graph-mode-btn" data-mode="local" style="padding:4px 10px;border-radius:4px;border:1px solid var(--border-color,#45475a);background:${this.mode === "local" ? "var(--accent-color,#7f6df2)" : "var(--bg-secondary,#313244)"};color:var(--text-primary,#cdd6f4);cursor:pointer;font-size:12px;">Local</button>
+            <select id="graph-depth-select" style="padding:3px 6px;border-radius:4px;border:1px solid var(--border-color,#45475a);background:var(--bg-secondary,#313244);color:var(--text-primary,#cdd6f4);font-size:12px;display:${this.mode === "local" ? "block" : "none"};">
+                <option value="1" ${this.localDepth === 1 ? "selected" : ""}>1 hop</option>
+                <option value="2" ${this.localDepth === 2 ? "selected" : ""}>2 hops</option>
+                <option value="3" ${this.localDepth === 3 ? "selected" : ""}>3 hops</option>
+            </select>
+        `;
+      this.container.style.position = "relative";
+      this.container.appendChild(this._toolbar);
+      this._toolbar.querySelectorAll(".graph-mode-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          this.mode = btn.dataset.mode;
+          this._toolbar.querySelectorAll(".graph-mode-btn").forEach((b) => {
+            b.style.background = b.dataset.mode === this.mode ? "var(--accent-color,#7f6df2)" : "var(--bg-secondary,#313244)";
+          });
+          this._toolbar.querySelector("#graph-depth-select").style.display = this.mode === "local" ? "block" : "none";
+          this.load();
+        });
+      });
+      this._toolbar.querySelector("#graph-depth-select").addEventListener("change", (e) => {
+        this.localDepth = parseInt(e.target.value) || 1;
+        this.load();
+      });
       this.canvas = document.createElement("canvas");
       this.container.appendChild(this.canvas);
       this.ctx = this.canvas.getContext("2d");
@@ -2504,13 +2561,56 @@
      */
     async load(filter) {
       try {
-        const vaultPath = this.app.vaultPath || "";
-        const data = await invoke("compute_graph", { vaultPath, filter: filter || null });
+        let data;
+        if (this.mode === "local") {
+          const centerPath = this.centerNote || this.app.currentFile;
+          if (!centerPath) {
+            console.warn("No current file for local graph");
+            return;
+          }
+          data = await invoke("get_local_graph", { path: centerPath, depth: this.localDepth });
+          this._centerNodeId = data.center_node;
+        } else {
+          const vaultPath = this.app.vaultPath || "";
+          data = await invoke("compute_graph", { vaultPath, filter: filter || null });
+          this._centerNodeId = null;
+        }
         this.setGraphData(data);
+        this._applyForceLayout();
         this.draw();
       } catch (err) {
         console.error("Failed to load graph data:", err);
       }
+    }
+    /**
+     * Simple force-directed layout for local graph (since Rust compute_graph
+     * returns layout positions but get_local_graph does not).
+     */
+    _applyForceLayout() {
+      if (this.nodes.length === 0) return;
+      const hasPositions = this.nodes.some((n) => n.x !== 0 || n.y !== 0);
+      if (hasPositions && !this._centerNodeId) return;
+      const cx = this.width / 2;
+      const cy = this.height / 2;
+      const radius = Math.min(this.width, this.height) * 0.3;
+      const centerNode = this._centerNodeId ? this.nodes.find((n) => n.id === this._centerNodeId) : null;
+      const others = centerNode ? this.nodes.filter((n) => n !== centerNode) : this.nodes;
+      if (centerNode) {
+        centerNode.x = cx;
+        centerNode.y = cy;
+        centerNode.radius = 10;
+      }
+      others.forEach((node, i) => {
+        const angle = 2 * Math.PI * i / others.length;
+        node.x = cx + radius * Math.cos(angle);
+        node.y = cy + radius * Math.sin(angle);
+      });
+      this.nodeMap = {};
+      this.nodes.forEach((n) => this.nodeMap[n.id] = n);
+      this.edges = this.edges.map((e) => ({
+        source: this.nodeMap[typeof e.source === "string" ? e.source : e.source.id],
+        target: this.nodeMap[typeof e.target === "string" ? e.target : e.target.id]
+      })).filter((e) => e.source && e.target);
     }
     /**
      * Set pre-positioned graph data from Rust. No JS layout computation.
@@ -2518,7 +2618,7 @@
     setGraphData(data) {
       this.nodes = (data.nodes || []).map((n) => ({
         id: n.id,
-        label: n.label,
+        label: n.label || n.name,
         x: n.x,
         y: n.y,
         radius: n.radius || 6,
@@ -2548,9 +2648,11 @@
       }
       for (const node of this.nodes) {
         const isHovered = node === this.hoveredNode;
+        const isCenter = this._centerNodeId && node.id === this._centerNodeId;
+        const baseColor = isCenter ? "#f5c211" : node.color;
         ctx.beginPath();
         ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
-        ctx.fillStyle = isHovered ? this._lighten(node.color) : node.color;
+        ctx.fillStyle = isHovered ? this._lighten(baseColor) : baseColor;
         ctx.fill();
         if (isHovered) {
           ctx.strokeStyle = this._lighten(node.color);
@@ -2830,7 +2932,8 @@
     { id: "image", label: "Image / Embed", icon: "\u{1F5BC}", insert: "![alt](url)", category: "media" },
     { id: "link", label: "Link", icon: "\u{1F517}", insert: "[text](url)", category: "media" },
     { id: "wikilink", label: "Wiki Link", icon: "\u27E6\u27E7", wrap: ["[[", "]]"], category: "media" },
-    { id: "callout", label: "Callout", icon: "\u{1F4A1}", insert: "> [!note]\n> ", category: "blocks" }
+    { id: "callout", label: "Callout", icon: "\u{1F4A1}", insert: "> [!note]\n> ", category: "blocks" },
+    { id: "math", label: "Math Block", icon: "\u2211", insert: "$$\n\n$$", cursorOffset: -3, category: "blocks" }
   ];
   var SlashMenu = class {
     constructor(app) {
@@ -3168,7 +3271,35 @@
           this.availableCommands.set(cmd.id, cmd);
         });
       } catch (err) {
-        console.warn("Could not load commands:", err);
+        console.warn("Could not load commands, using defaults:", err);
+        const defaultCommands = [
+          { id: "app:open-settings", name: "Open Settings", category: "App" },
+          { id: "app:toggle-theme", name: "Toggle Theme", category: "App" },
+          { id: "app:reload-app", name: "Reload App", category: "App" },
+          { id: "file:new-note", name: "Create New Note", category: "File" },
+          { id: "file:open-file", name: "Open File", category: "File" },
+          { id: "file:save", name: "Save Current File", category: "File" },
+          { id: "file:save-as", name: "Save As...", category: "File" },
+          { id: "file:delete", name: "Delete File", category: "File" },
+          { id: "editor:toggle-preview", name: "Toggle Preview", category: "Editor" },
+          { id: "editor:toggle-source", name: "Toggle Source Mode", category: "Editor" },
+          { id: "editor:bold", name: "Bold", category: "Editor" },
+          { id: "editor:italic", name: "Italic", category: "Editor" },
+          { id: "editor:strikethrough", name: "Strikethrough", category: "Editor" },
+          { id: "editor:code", name: "Inline Code", category: "Editor" },
+          { id: "editor:codeblock", name: "Code Block", category: "Editor" },
+          { id: "search:global-search", name: "Search in All Files", category: "Search" },
+          { id: "search:current-file", name: "Search in Current File", category: "Search" },
+          { id: "navigation:quick-switcher", name: "Quick Switcher", category: "Navigation" },
+          { id: "navigation:go-back", name: "Navigate Back", category: "Navigation" },
+          { id: "navigation:go-forward", name: "Navigate Forward", category: "Navigation" },
+          { id: "view:toggle-sidebar", name: "Toggle Sidebar", category: "View" },
+          { id: "view:toggle-reading-mode", name: "Toggle Reading Mode", category: "View" }
+        ];
+        this.availableCommands = /* @__PURE__ */ new Map();
+        defaultCommands.forEach((cmd) => {
+          this.availableCommands.set(cmd.id, cmd);
+        });
       }
     }
     async show(container) {
@@ -3180,6 +3311,7 @@
       wrapper.innerHTML = this.renderHTML();
       container.appendChild(wrapper);
       this.bindEvents(wrapper);
+      this._renderPluginSettingTabs(wrapper);
       this.switchToSection(this.activeSection, wrapper);
       this.initializeSection(this.activeSection);
     }
@@ -3618,9 +3750,9 @@
                         </div>
                         <div class="setting-item-control">
                             <select id="files-default-location">
-                                <option value="vault_root" ${s.default_note_location || s.new_file_location || true ? "selected" : ""}>Vault folder</option>
-                                <option value="current_folder" ${s.default_note_location || s.new_file_location || false ? "selected" : ""}>Same folder as current file</option>
-                                <option value="specified_folder" ${s.default_note_location || s.new_file_location || false ? "selected" : ""}>In the folder specified below</option>
+                                <option value="vault_root" ${(s.default_note_location || s.new_file_location || "vault_root") === "vault_root" ? "selected" : ""}>Vault folder</option>
+                                <option value="current_folder" ${(s.default_note_location || s.new_file_location || "vault_root") === "current_folder" ? "selected" : ""}>Same folder as current file</option>
+                                <option value="specified_folder" ${(s.default_note_location || s.new_file_location || "vault_root") === "specified_folder" ? "selected" : ""}>In the folder specified below</option>
                             </select>
                         </div>
                     </div>
@@ -3954,7 +4086,25 @@
       return keys.join('<span class="hotkey-plus">+</span>');
     }
     renderCorePluginsSection() {
-      const s = this.settings.core_plugins || this.settings.plugins || {};
+      const pluginIds = [
+        "file_explorer",
+        "search",
+        "quick_switcher",
+        "graph_view",
+        "backlinks",
+        "outgoing_links",
+        "tag_pane",
+        "page_preview",
+        "starred",
+        "templates",
+        "note_composer",
+        "command_palette",
+        "markdown_importer",
+        "word_count",
+        "open_with_default_app",
+        "file_recovery"
+      ];
+      const s = this.settings.core_plugins || {};
       return `
             <section class="settings-section" data-section="core-plugins">
                 <div class="settings-section-header">
@@ -3963,7 +4113,8 @@
                 </div>
                 
                 <div class="plugins-list">
-                    ${Object.entries(s).map(([pluginId, enabled]) => {
+                    ${pluginIds.map((pluginId) => {
+        const enabled = s[pluginId] !== void 0 ? s[pluginId] : true;
         const pluginInfo = this.getCorePluginInfo(pluginId);
         return `
                             <div class="plugin-item ${enabled ? "enabled" : "disabled"}">
@@ -4054,13 +4205,7 @@
         `;
     }
     renderInstalledPlugins() {
-      return `
-            <div class="plugins-empty-state">
-                <div class="empty-state-icon">\u{1F9E9}</div>
-                <h3>No community plugins installed</h3>
-                <p>Browse the community plugin directory to discover new ways to extend Oxidian.</p>
-            </div>
-        `;
+      return `<div class="plugins-loading">Loading plugins...</div>`;
     }
     renderAboutSection() {
       const s = this.settings.about || { version: "2.2.0", license: "MIT", credits: "Built with Tauri & Rust" };
@@ -4161,12 +4306,12 @@
       wrapper.querySelectorAll(".settings-section").forEach((section) => {
         section.classList.toggle("active", section.dataset.section === sectionName);
       });
+      this.initializeSection(sectionName);
     }
     initializeSection(sectionName) {
+      this.loadInstalledPlugins();
       if (sectionName === "hotkeys") {
         this.initializeHotkeys();
-      } else if (sectionName === "community-plugins") {
-        this.loadInstalledPlugins();
       } else if (sectionName === "about") {
         this.loadSystemInfo();
       }
@@ -4189,15 +4334,15 @@
     }
     bindEditorEvents(wrapper) {
       const fontSizeSlider = wrapper.querySelector("#editor-font-size");
-      const fontSizeValue = wrapper.querySelector("#editor-font-size + .slider-container .slider-value");
+      const fontSizeValue = fontSizeSlider?.parentElement?.querySelector(".slider-value");
       fontSizeSlider?.addEventListener("input", (e) => {
-        fontSizeValue.textContent = e.target.value + "px";
+        if (fontSizeValue) fontSizeValue.textContent = e.target.value + "px";
         document.documentElement.style.setProperty("--font-size-editor", e.target.value + "px");
       });
       const lineHeightSlider = wrapper.querySelector("#editor-line-height");
-      const lineHeightValue = wrapper.querySelector("#editor-line-height + .slider-container .slider-value");
+      const lineHeightValue = lineHeightSlider?.parentElement?.querySelector(".slider-value");
       lineHeightSlider?.addEventListener("input", (e) => {
-        lineHeightValue.textContent = e.target.value;
+        if (lineHeightValue) lineHeightValue.textContent = e.target.value;
         document.documentElement.style.setProperty("--line-height-editor", e.target.value);
       });
       const fontFamilyInput = wrapper.querySelector("#editor-font-family");
@@ -4226,6 +4371,19 @@
       accentInput?.addEventListener("change", (e) => {
         this.app.themeManager?.setAccentColor(e.target.value);
       });
+      const interfaceFontSelect = wrapper.querySelector("#appearance-interface-font");
+      interfaceFontSelect?.addEventListener("change", (e) => {
+        const fontMap = {
+          "default": '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+          "system": "system-ui, sans-serif",
+          "inter": '"Inter", sans-serif',
+          "roboto": '"Roboto", sans-serif',
+          "custom": "inherit"
+        };
+        const fontValue = fontMap[e.target.value] || fontMap["default"];
+        document.documentElement.style.setProperty("--font-interface", fontValue);
+        this.settings.appearance.interface_font = e.target.value;
+      });
       wrapper.querySelectorAll(".color-preset").forEach((preset) => {
         preset.addEventListener("click", () => {
           const color = preset.dataset.color;
@@ -4234,17 +4392,17 @@
           this.saveAll(wrapper);
         });
       });
-      const fontSizeSlider = wrapper.querySelector("#appearance-font-size");
-      const fontSizeValue = wrapper.querySelector("#appearance-font-size + .slider-container .slider-value");
-      fontSizeSlider?.addEventListener("input", (e) => {
-        fontSizeValue.textContent = e.target.value + "px";
+      const ifontSizeSlider = wrapper.querySelector("#appearance-font-size");
+      const ifontSizeValue = ifontSizeSlider?.parentElement?.querySelector(".slider-value");
+      ifontSizeSlider?.addEventListener("input", (e) => {
+        if (ifontSizeValue) ifontSizeValue.textContent = e.target.value + "px";
         document.documentElement.style.fontSize = e.target.value + "px";
       });
       const zoomSlider = wrapper.querySelector("#appearance-zoom");
-      const zoomValue = wrapper.querySelector("#appearance-zoom + .slider-container .slider-value");
+      const zoomValue = zoomSlider?.parentElement?.querySelector(".slider-value");
       zoomSlider?.addEventListener("input", (e) => {
         const zoom = parseFloat(e.target.value);
-        zoomValue.textContent = Math.round(zoom * 100) + "%";
+        if (zoomValue) zoomValue.textContent = Math.round(zoom * 100) + "%";
         document.body.style.zoom = zoom;
       });
       wrapper.querySelector("#btn-manage-css")?.addEventListener("click", () => {
@@ -4446,18 +4604,275 @@
       }
     }
     filterHotkeys(query) {
+      const normalizedQuery = (query || "").toLowerCase().trim();
+      const hotkeyItems = this.paneEl?.querySelectorAll(".hotkey-item") || [];
+      const categories = this.paneEl?.querySelectorAll(".hotkey-category") || [];
+      hotkeyItems.forEach((item) => {
+        const commandName = item.querySelector(".hotkey-command-name")?.textContent?.toLowerCase() || "";
+        const commandId = item.dataset.command || "";
+        const matches = !normalizedQuery || commandName.includes(normalizedQuery) || commandId.includes(normalizedQuery);
+        item.style.display = matches ? "" : "none";
+      });
+      categories.forEach((cat) => {
+        const visibleItems = cat.querySelectorAll('.hotkey-item:not([style*="display: none"])');
+        cat.style.display = visibleItems.length > 0 ? "" : "none";
+      });
     }
     refreshHotkeys() {
     }
     showCSSSnippetsManager() {
+      const snippets = this.app.cssSnippets;
+      if (!snippets) {
+        alert("CSS Snippets module not available.");
+        return;
+      }
+      const list = snippets.getSnippetList();
+      const overlay = document.createElement("div");
+      overlay.className = "dialog-overlay";
+      overlay.id = "css-snippets-overlay";
+      const listHtml = list.length === 0 ? '<div style="padding:20px;text-align:center;color:var(--text-secondary);">No CSS snippets found.<br><small>Place <code>.css</code> files in <code>.oxidian/snippets/</code> or <code>.obsidian/snippets/</code></small></div>' : list.map((s) => `
+                <div class="snippet-item" style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--border-color);">
+                    <span style="font-size:13px;">${s.name}</span>
+                    <label class="toggle-switch" style="position:relative;width:36px;height:20px;display:inline-block;">
+                        <input type="checkbox" data-snippet="${s.name}" ${s.enabled ? "checked" : ""} style="opacity:0;width:0;height:0;">
+                        <span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:${s.enabled ? "var(--text-accent)" : "var(--bg-tertiary)"};border-radius:10px;transition:.2s;"></span>
+                    </label>
+                </div>
+            `).join("");
+      overlay.innerHTML = `
+            <div class="dialog" style="max-width:400px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                    <h3 style="margin:0;">CSS Snippets</h3>
+                    <button class="icon-btn" id="btn-close-snippets" title="Close">\u2715</button>
+                </div>
+                <div style="max-height:300px;overflow-y:auto;">${listHtml}</div>
+            </div>
+        `;
+      document.body.appendChild(overlay);
+      overlay.querySelector("#btn-close-snippets").addEventListener("click", () => overlay.remove());
+      overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) overlay.remove();
+      });
+      overlay.querySelectorAll("input[data-snippet]").forEach((input) => {
+        input.addEventListener("change", (e) => {
+          snippets.toggle(e.target.dataset.snippet);
+          const span = e.target.nextElementSibling;
+          if (span) span.style.background = e.target.checked ? "var(--text-accent)" : "var(--bg-tertiary)";
+        });
+      });
     }
-    showPluginBrowser() {
+    async showPluginBrowser() {
+      const overlay = document.createElement("div");
+      overlay.className = "dialog-overlay";
+      overlay.id = "plugin-browser-overlay";
+      overlay.innerHTML = `
+            <div class="dialog dialog-lg" style="max-width:700px;max-height:80vh;display:flex;flex-direction:column;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                    <h3 style="margin:0;">Community Plugins</h3>
+                    <button class="icon-btn" id="btn-close-plugin-browser" title="Close">\u2715</button>
+                </div>
+                <input type="text" id="plugin-browser-search" placeholder="Search plugins..." style="margin-bottom:12px;" />
+                <div id="plugin-browser-results" style="flex:1;overflow-y:auto;">
+                    <div style="text-align:center;padding:20px;color:var(--text-secondary);">Loading community plugins...</div>
+                </div>
+            </div>
+        `;
+      document.body.appendChild(overlay);
+      overlay.querySelector("#btn-close-plugin-browser").addEventListener("click", () => overlay.remove());
+      overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) overlay.remove();
+      });
+      const resultsEl = overlay.querySelector("#plugin-browser-results");
+      const searchEl = overlay.querySelector("#plugin-browser-search");
+      let allPlugins = [];
+      try {
+        allPlugins = await invoke("fetch_community_plugin_list");
+      } catch (err) {
+        resultsEl.innerHTML = `<div style="text-align:center;padding:20px;color:var(--text-secondary);">
+                <p>Could not load community plugins.</p>
+                <p style="font-size:12px;opacity:0.7;">${this.esc(String(err))}</p>
+            </div>`;
+        return;
+      }
+      const renderList = (plugins) => {
+        if (!plugins || plugins.length === 0) {
+          resultsEl.innerHTML = `<div style="text-align:center;padding:20px;color:var(--text-secondary);">No plugins found.</div>`;
+          return;
+        }
+        resultsEl.innerHTML = plugins.slice(0, 50).map((p) => `
+                <div class="plugin-item" style="padding:10px 0;border-bottom:1px solid var(--border-color);">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                        <div>
+                            <div style="font-weight:600;">${this.esc(p.name || p.id)}</div>
+                            <div style="font-size:12px;color:var(--text-secondary);">${this.esc(p.author || "Unknown")} \xB7 v${this.esc(p.version || "?")}</div>
+                            <div style="font-size:13px;margin-top:4px;">${this.esc(p.description || "")}</div>
+                        </div>
+                        <button class="mod-cta plugin-install-btn" data-plugin-id="${this.esc(p.id)}" style="flex-shrink:0;margin-left:12px;">Install</button>
+                    </div>
+                </div>
+            `).join("");
+        resultsEl.querySelectorAll(".plugin-install-btn").forEach((btn) => {
+          btn.addEventListener("click", async () => {
+            const pluginId = btn.dataset.pluginId;
+            btn.disabled = true;
+            btn.textContent = "Installing...";
+            try {
+              await invoke("install_community_plugin", { pluginId });
+              btn.textContent = "Installed";
+              this.loadInstalledPlugins();
+            } catch (err) {
+              btn.textContent = "Failed";
+              console.error("Failed to install plugin:", err);
+            }
+          });
+        });
+      };
+      renderList(allPlugins);
+      searchEl.addEventListener("input", () => {
+        const q = searchEl.value.toLowerCase();
+        if (!q) {
+          renderList(allPlugins);
+          return;
+        }
+        const filtered = allPlugins.filter(
+          (p) => (p.name || "").toLowerCase().includes(q) || (p.id || "").toLowerCase().includes(q) || (p.description || "").toLowerCase().includes(q)
+        );
+        renderList(filtered);
+      });
     }
     async installPluginFromFolder() {
+      try {
+        const { open } = window.__TAURI__.dialog;
+        const selected = await open({ directory: true, multiple: false });
+        if (selected) {
+          const manifestPath = selected + "/manifest.json";
+          try {
+            const content = await invoke("read_file_raw", { path: manifestPath });
+            const manifest = JSON.parse(content);
+            await invoke("install_plugin", { sourcePath: selected, pluginId: manifest.id });
+            this.loadInstalledPlugins();
+          } catch (err) {
+            console.error("Failed to install plugin from folder:", err);
+            this.app?.showErrorToast?.("Failed to install plugin: " + err);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to browse for plugin folder:", err);
+      }
     }
     async reloadPlugins() {
+      if (this.app?.pluginLoader) {
+        this.app.pluginLoader.destroy();
+        await this.app.pluginLoader.init();
+        this.loadInstalledPlugins();
+      }
     }
     async loadInstalledPlugins() {
+      const container = document.getElementById("installed-plugins-list");
+      if (!container) return;
+      let manifests = [];
+      let enabledSet = /* @__PURE__ */ new Set();
+      try {
+        manifests = await invoke("discover_plugins");
+      } catch {
+        try {
+          manifests = await invoke("list_obsidian_plugins");
+        } catch {
+          manifests = [];
+        }
+      }
+      try {
+        const enabled = await invoke("get_enabled_plugins");
+        enabledSet = new Set(enabled);
+      } catch {
+      }
+      if (!manifests || manifests.length === 0) {
+        container.innerHTML = `
+                <div class="plugins-empty-state">
+                    <div class="empty-state-icon">\u{1F9E9}</div>
+                    <h3>No community plugins installed</h3>
+                    <p>Browse the community plugin directory to discover new ways to extend Oxidian.</p>
+                </div>
+            `;
+        return;
+      }
+      container.innerHTML = manifests.map((m) => {
+        const isEnabled = enabledSet.has(m.id);
+        return `
+                <div class="plugin-item ${isEnabled ? "enabled" : "disabled"}">
+                    <div class="plugin-info">
+                        <div class="plugin-name">${this.esc(m.name || m.id)}</div>
+                        <div class="plugin-description">${this.esc(m.description || "")} <span style="opacity:0.6;">v${this.esc(m.version || "?")} by ${this.esc(m.author || "Unknown")}</span></div>
+                    </div>
+                    <div class="plugin-toggle">
+                        <div class="checkbox-container">
+                            <input type="checkbox" data-plugin-id="${this.esc(m.id)}" ${isEnabled ? "checked" : ""} />
+                        </div>
+                    </div>
+                </div>
+            `;
+      }).join("");
+      container.querySelectorAll("input[data-plugin-id]").forEach((toggle) => {
+        toggle.addEventListener("change", async (e) => {
+          const pluginId = e.target.dataset.pluginId;
+          const enabled = e.target.checked;
+          if (this.app?.pluginLoader) {
+            await this.app.pluginLoader.togglePlugin(pluginId, enabled);
+          } else {
+            try {
+              await invoke("toggle_plugin", { pluginId, enabled });
+            } catch (err) {
+              console.error("Failed to toggle plugin:", err);
+            }
+          }
+        });
+      });
+    }
+    _renderPluginSettingTabs(wrapper) {
+      const pluginLoader = this.app?.pluginLoader;
+      if (!pluginLoader?.registry?.settingTabs) return;
+      const navSection = wrapper.querySelector(".settings-nav-section");
+      const sectionsContainer = wrapper.querySelector(".settings-sections");
+      if (!navSection || !sectionsContainer) return;
+      for (const [pluginId, tab] of pluginLoader.registry.settingTabs) {
+        const manifest = pluginLoader.pluginManifests.get(pluginId);
+        const displayName = manifest?.name || pluginId;
+        const sectionId = `plugin-settings-${pluginId}`;
+        const navBtn = document.createElement("button");
+        navBtn.className = "settings-nav-item";
+        navBtn.dataset.section = sectionId;
+        navBtn.innerHTML = `
+                <svg class="settings-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 8v8m-4-4h8"/>
+                </svg>
+                <span>${this.esc(displayName)}</span>
+            `;
+        navBtn.addEventListener("click", () => {
+          this.switchToSection(sectionId, wrapper);
+          if (!tab._rendered) {
+            tab._rendered = true;
+            tab.containerEl.innerHTML = "";
+            try {
+              tab.display();
+            } catch (e) {
+              console.error(`[Settings] Plugin settings error for ${pluginId}:`, e);
+              tab.containerEl.innerHTML = `<p style="color:var(--text-error);">Error loading settings: ${e.message}</p>`;
+            }
+          }
+        });
+        navSection.appendChild(navBtn);
+        const section = document.createElement("section");
+        section.className = "settings-section";
+        section.dataset.section = sectionId;
+        section.innerHTML = `
+                <div class="settings-section-header">
+                    <h1>${this.esc(displayName)}</h1>
+                    <p class="settings-section-description">Settings for the ${this.esc(displayName)} plugin</p>
+                </div>
+            `;
+        section.appendChild(tab.containerEl);
+        sectionsContainer.appendChild(section);
+      }
     }
     async loadSystemInfo() {
       try {
@@ -8774,6 +9189,18 @@ ${newFm}---${body}`;
       window.activeWindow = window;
       if (!window.setIcon) window.setIcon = setIcon;
       if (!window.getIconIds) window.getIconIds = getIconIds;
+      const ribbon = document.getElementById("ribbon");
+      if (ribbon && !ribbon.querySelector(".ribbon-top")) {
+        const ribbonTop = document.createElement("div");
+        ribbonTop.className = "ribbon-top";
+        ribbon.prepend(ribbonTop);
+      }
+      const statusbar = document.getElementById("statusbar");
+      if (statusbar && !statusbar.querySelector(".status-right")) {
+        const statusRight = document.createElement("div");
+        statusRight.className = "status-right";
+        statusbar.appendChild(statusRight);
+      }
       this.obsidianApp = new App();
       await this.obsidianApp.vault._refreshFileCache();
       this._wireAppEvents();
@@ -8789,8 +9216,39 @@ ${newFm}---${body}`;
       this.oxidianApp.openFile = async function(path) {
         await origOpenFile(path);
         const file = new TFile(path);
-        self.obsidianApp.workspace.setActiveFile(file);
+        self._updateActiveLeaf(file);
       };
+      const origOnTabActivated = this.oxidianApp.onTabActivated.bind(this.oxidianApp);
+      this.oxidianApp.onTabActivated = function(tab) {
+        origOnTabActivated(tab);
+        if (tab.type === "note" && tab.path) {
+          const file = new TFile(tab.path);
+          self._updateActiveLeaf(file);
+        }
+      };
+    }
+    /**
+     * Update workspace.activeLeaf and workspace.activeEditor so plugins
+     * that rely on them (e.g. editorCallback commands) work correctly.
+     */
+    _updateActiveLeaf(file) {
+      const workspace = this.obsidianApp.workspace;
+      let leaf = workspace.activeLeaf;
+      if (!leaf) {
+        leaf = workspace.getLeaf();
+      }
+      const view = new MarkdownView(leaf);
+      view.file = file;
+      if (this.oxidianApp.editor) {
+        const content = this.oxidianApp.editor.getContent?.() || "";
+        view.editor.setValue(content);
+      }
+      leaf.view = view;
+      workspace.activeLeaf = leaf;
+      workspace.activeEditor = { editor: view.editor, file };
+      workspace._activeFile = file;
+      workspace.trigger("file-open", file);
+      workspace.trigger("active-leaf-change", leaf);
     }
     _registerBuiltinCommands() {
       const app = this.oxidianApp;
@@ -9542,7 +10000,17 @@ ${mainJs}
     { label: "Table", icon: "\u25A6", description: "Insert a table", keywords: ["table", "grid"], markdown: "| Header 1 | Header 2 | Header 3 |\n|----------|----------|----------|\n| Cell 1   | Cell 2   | Cell 3   |" },
     { label: "Divider", icon: "\u2014", description: "Horizontal rule", keywords: ["divider", "hr", "horizontal", "rule", "separator"], markdown: "---" },
     { label: "Callout", icon: "\u{1F4A1}", description: "Callout box", keywords: ["callout", "note", "warning", "tip", "admonition"], markdown: "> [!note]\n> " },
-    { label: "Math Block", icon: "\u2211", description: "LaTeX math block", keywords: ["math", "latex", "equation", "formula"], markdown: "$$\n\n$$", cursorOffset: 3 }
+    { label: "Math Block", icon: "\u2211", description: "LaTeX math block", keywords: ["math", "latex", "equation", "formula"], markdown: "$$\n\n$$", cursorOffset: 3 },
+    { label: "Heading 4", icon: "H4", description: "Heading level 4", keywords: ["h4", "heading"], markdown: "#### " },
+    { label: "Heading 5", icon: "H5", description: "Heading level 5", keywords: ["h5", "heading"], markdown: "##### " },
+    { label: "Heading 6", icon: "H6", description: "Heading level 6", keywords: ["h6", "heading"], markdown: "###### " },
+    { label: "Bold", icon: "B", description: "Bold text", keywords: ["bold", "strong"], markdown: "**bold text**", cursorOffset: -2 },
+    { label: "Italic", icon: "I", description: "Italic text", keywords: ["italic", "emphasis", "em"], markdown: "*italic text*", cursorOffset: -1 },
+    { label: "Strikethrough", icon: "S", description: "Strikethrough text", keywords: ["strikethrough", "strike", "del"], markdown: "~~text~~", cursorOffset: -2 },
+    { label: "Inline Code", icon: "`", description: "Inline code", keywords: ["inline", "code", "mono"], markdown: "`code`", cursorOffset: -1 },
+    { label: "Image", icon: "\u{1F5BC}", description: "Insert image", keywords: ["image", "img", "picture", "embed"], markdown: "![alt](url)" },
+    { label: "Link", icon: "\u{1F517}", description: "Insert link", keywords: ["link", "href", "url"], markdown: "[text](url)" },
+    { label: "Wikilink", icon: "\u27E6\u27E7", description: "Wiki-style link", keywords: ["wikilink", "wiki", "internal"], markdown: "[[]]", cursorOffset: -2 }
   ];
   var SlashCommandMenu = class {
     constructor(container, commands = DEFAULT_SLASH_COMMANDS) {
@@ -10234,12 +10702,85 @@ body.hm-dragging { cursor: grabbing !important; user-select: none; }
           this._blurBlock();
           return;
         }
+        const lastNewline = contentBefore.lastIndexOf("\n");
+        const currentLine = contentBefore.substring(lastNewline + 1);
+        const leadingWhitespace = currentLine.match(/^(\s*)/)[1] || "";
+        if (leadingWhitespace) {
+          textarea.value = contentBefore + "\n" + leadingWhitespace + contentAfter;
+          const newPos = cursorPos + 1 + leadingWhitespace.length;
+          textarea.selectionStart = textarea.selectionEnd = newPos;
+          textarea.dispatchEvent(new Event("input", { bubbles: true }));
+          textarea.focus();
+          textarea.style.height = "0";
+          textarea.style.height = Math.max(textarea.scrollHeight, 24) + "px";
+          return;
+        }
         this._splitBlockAtCursor(block, contentBefore, contentAfter);
         return;
       }
       if (e.key === "Escape") {
         e.preventDefault();
         this._blurBlock();
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey) {
+        if (e.key === "b") {
+          e.preventDefault();
+          const start = textarea.selectionStart, end = textarea.selectionEnd;
+          const selected = textarea.value.substring(start, end) || "bold text";
+          textarea.value = textarea.value.substring(0, start) + "**" + selected + "**" + textarea.value.substring(end);
+          textarea.selectionStart = start + 2;
+          textarea.selectionEnd = start + 2 + selected.length;
+          textarea.dispatchEvent(new Event("input", { bubbles: true }));
+          textarea.focus();
+          return;
+        }
+        if (e.key === "i") {
+          e.preventDefault();
+          const start = textarea.selectionStart, end = textarea.selectionEnd;
+          const selected = textarea.value.substring(start, end) || "italic text";
+          textarea.value = textarea.value.substring(0, start) + "*" + selected + "*" + textarea.value.substring(end);
+          textarea.selectionStart = start + 1;
+          textarea.selectionEnd = start + 1 + selected.length;
+          textarea.dispatchEvent(new Event("input", { bubbles: true }));
+          textarea.focus();
+          return;
+        }
+        if (e.key === "k") {
+          e.preventDefault();
+          const start = textarea.selectionStart, end = textarea.selectionEnd;
+          const selected = textarea.value.substring(start, end);
+          if (selected) {
+            const linkText = "[" + selected + "](url)";
+            textarea.value = textarea.value.substring(0, start) + linkText + textarea.value.substring(end);
+            textarea.selectionStart = start + selected.length + 3;
+            textarea.selectionEnd = start + selected.length + 6;
+          } else {
+            const linkText = "[link text](url)";
+            textarea.value = textarea.value.substring(0, start) + linkText + textarea.value.substring(end);
+            textarea.selectionStart = start + 1;
+            textarea.selectionEnd = start + 10;
+          }
+          textarea.dispatchEvent(new Event("input", { bubbles: true }));
+          textarea.focus();
+          return;
+        }
+      }
+      const autoPairs = { "(": ")", "[": "]", "{": "}", '"': '"', "`": "`" };
+      if (autoPairs[e.key] && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        const start = textarea.selectionStart, end = textarea.selectionEnd;
+        const selected = textarea.value.substring(start, end);
+        const open = e.key, close = autoPairs[e.key];
+        textarea.value = textarea.value.substring(0, start) + open + selected + close + textarea.value.substring(end);
+        if (selected) {
+          textarea.selectionStart = start + 1;
+          textarea.selectionEnd = start + 1 + selected.length;
+        } else {
+          textarea.selectionStart = textarea.selectionEnd = start + 1;
+        }
+        textarea.dispatchEvent(new Event("input", { bubbles: true }));
+        textarea.focus();
         return;
       }
       if (e.key === "Tab") {
@@ -11937,6 +12478,20 @@ body.hm-dragging { cursor: grabbing !important; user-select: none; }
       if (embedDepth >= this.maxEmbedDepth) {
         return content;
       }
+      const pdfRegex = /!\[\[([^\]]+?\.pdf)(?:#([^\]]+?))?\]\]/gi;
+      const blockRefRegex = /!\[\[([^\]]*?)#(\^[^\]]+?)\]\]/g;
+      let pdfMatch;
+      while ((pdfMatch = pdfRegex.exec(content)) !== null) {
+        const embed = { notePath: pdfMatch[1].trim(), heading: pdfMatch[2]?.trim(), fullMatch: pdfMatch[0] };
+        const pdfHtml = this.renderPdfEmbed(embed);
+        content = content.replace(pdfMatch[0], pdfHtml);
+      }
+      let blockMatch;
+      while ((blockMatch = blockRefRegex.exec(content)) !== null) {
+        const embed = { notePath: blockMatch[1].trim(), heading: blockMatch[2].trim(), fullMatch: blockMatch[0] };
+        const blockHtml = await this.renderBlockEmbed(embed, embedDepth);
+        content = content.replace(blockMatch[0], blockHtml);
+      }
       try {
         const result = await invoke("resolve_embeds", {
           content,
@@ -11990,6 +12545,89 @@ body.hm-dragging { cursor: grabbing !important; user-select: none; }
       return processedContent;
     }
     /**
+     * Check if an embed target is a PDF file
+     */
+    _isPdf(notePath) {
+      return notePath.toLowerCase().endsWith(".pdf");
+    }
+    /**
+     * Render a PDF embed with iframe/embed element.
+     * Supports page numbers via #page=N syntax.
+     */
+    renderPdfEmbed(embed) {
+      const pdfPath = embed.notePath;
+      let pageNum = null;
+      if (embed.heading && embed.heading.startsWith("page=")) {
+        pageNum = parseInt(embed.heading.replace("page=", ""), 10);
+      }
+      let src;
+      if (window.__TAURI_INTERNALS__ || window.__TAURI__) {
+        try {
+          if (window.__TAURI_INTERNALS__?.convertFileSrc) {
+            src = window.__TAURI_INTERNALS__.convertFileSrc(pdfPath);
+          } else {
+            src = `asset://localhost/${encodeURIComponent(pdfPath)}`;
+          }
+        } catch {
+          src = pdfPath;
+        }
+      } else {
+        src = pdfPath;
+      }
+      if (pageNum) {
+        src += `#page=${pageNum}`;
+      }
+      const pageInfo = pageNum ? ` (page ${pageNum})` : "";
+      const sourceInfo = `${pdfPath}${pageInfo}`;
+      return `
+<div class="embedded-content embed-pdf" data-source="${this.escapeHtml(sourceInfo)}">
+    <div class="embed-header">
+        <span class="embed-source">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+                <polyline points="10 9 9 9 8 9"/>
+            </svg>
+            ${this.escapeHtml(sourceInfo)}
+        </span>
+    </div>
+    <div class="embed-pdf-container">
+        <iframe src="${this.escapeHtml(src)}" class="embed-pdf-frame" frameborder="0"
+            onerror="this.parentElement.innerHTML='<div class=\\'embed-pdf-fallback\\'><a href=\\'${this.escapeHtml(src)}\\'>Download ${this.escapeHtml(pdfPath)}</a></div>'">
+        </iframe>
+        <noscript>
+            <a href="${this.escapeHtml(src)}">Download ${this.escapeHtml(pdfPath)}</a>
+        </noscript>
+    </div>
+</div>`;
+    }
+    /**
+     * Render a block reference embed (![[note#^block-id]])
+     */
+    async renderBlockEmbed(embed, embedDepth) {
+      const blockId = embed.heading.substring(1);
+      try {
+        let content;
+        if (embed.notePath) {
+          let notePath = embed.notePath;
+          if (!notePath.endsWith(".md")) notePath += ".md";
+          content = await invoke("get_block_content", { notePath, blockId });
+        } else {
+          const result = await invoke("find_block", { blockId });
+          if (!result) throw new Error(`Block ^${blockId} not found`);
+          content = result.content;
+        }
+        return this.wrapEmbedContent(content, {
+          notePath: embed.notePath || "(vault)",
+          heading: `^${blockId}`
+        }, embedDepth);
+      } catch (err) {
+        return this.renderEmbedError(embed, err.message || String(err));
+      }
+    }
+    /**
      * Fallback: JS-side embed processing if Rust is unavailable.
      * @private
      */
@@ -12008,6 +12646,16 @@ body.hm-dragging { cursor: grabbing !important; user-select: none; }
       }
       for (const embed of embeds.reverse()) {
         try {
+          if (this._isPdf(embed.notePath)) {
+            const pdfHtml = this.renderPdfEmbed(embed);
+            processedContent = processedContent.substring(0, embed.index) + pdfHtml + processedContent.substring(embed.index + embed.fullMatch.length);
+            continue;
+          }
+          if (embed.heading && embed.heading.startsWith("^")) {
+            const blockHtml = await this.renderBlockEmbed(embed, embedDepth);
+            processedContent = processedContent.substring(0, embed.index) + blockHtml + processedContent.substring(embed.index + embed.fullMatch.length);
+            continue;
+          }
           let fullPath = embed.notePath;
           if (!fullPath.endsWith(".md")) fullPath += ".md";
           const noteContent = await invoke("read_note", { path: fullPath });
@@ -12059,6 +12707,31 @@ body.hm-dragging { cursor: grabbing !important; user-select: none; }
      * Wrap embedded content with visual styling.
      */
     wrapEmbedContent(content, embed, embedDepth) {
+      const notePath = embed.notePath || "";
+      const imageExts = /\.(png|jpg|jpeg|gif|svg|webp|bmp|ico)$/i;
+      const audioExts = /\.(mp3|wav|ogg|m4a|flac)$/i;
+      const videoExts = /\.(mp4|webm|mov|mkv|avi)$/i;
+      const pipeIdx = notePath.indexOf("|");
+      const cleanPath = pipeIdx >= 0 ? notePath.substring(0, pipeIdx).trim() : notePath;
+      const sizePart = pipeIdx >= 0 ? notePath.substring(pipeIdx + 1).trim() : "";
+      if (imageExts.test(cleanPath)) {
+        let style = "";
+        if (sizePart) {
+          if (sizePart.includes("x")) {
+            const [w, h] = sizePart.split("x");
+            style = `width:${w}px;height:${h}px;`;
+          } else if (/^\d+$/.test(sizePart)) {
+            style = `width:${sizePart}px;`;
+          }
+        }
+        return `<img src="${this.escapeHtml(cleanPath)}" alt="${this.escapeHtml(cleanPath)}" style="${style}max-width:100%;">`;
+      }
+      if (audioExts.test(cleanPath)) {
+        return `<audio controls src="${this.escapeHtml(cleanPath)}" style="width:100%;max-width:500px;margin:8px 0;"></audio>`;
+      }
+      if (videoExts.test(cleanPath)) {
+        return `<video controls src="${this.escapeHtml(cleanPath)}" style="width:100%;max-width:700px;margin:8px 0;"></video>`;
+      }
       if (!content || content.trim() === "") {
         return this.renderEmbedError(embed, "No content found");
       }
@@ -13062,6 +13735,7 @@ body.hm-dragging { cursor: grabbing !important; user-select: none; }
       const text = textarea.value;
       if (text.substring(pos - 2, pos) === "[[") {
         this.triggerPos = pos - 2;
+        this._subMode = null;
         await this.showWikilinkPopup(textarea);
         return;
       }
@@ -13070,9 +13744,65 @@ body.hm-dragging { cursor: grabbing !important; user-select: none; }
         if (query === null) {
           this.hidePopup();
         } else {
-          await this.updateFilter(query);
+          const hashIdx = query.indexOf("#");
+          if (hashIdx >= 0) {
+            const noteName = query.substring(0, hashIdx);
+            const sub = query.substring(hashIdx + 1);
+            await this.updateSubFilter(noteName, sub, textarea);
+          } else {
+            this._subMode = null;
+            await this.updateFilter(query);
+          }
         }
       }
+    }
+    /**
+     * Filter headings and block IDs within a specific note after #
+     */
+    async updateSubFilter(noteName, subQuery, textarea) {
+      if (this._subMode !== noteName) {
+        this._subMode = noteName;
+        this._subItems = [];
+        try {
+          const note = this.allNotes.find((n) => n.name.toLowerCase() === noteName.toLowerCase());
+          if (note) {
+            const content = await invoke("read_note", { path: note.path });
+            const headings = [];
+            for (const line of content.split("\n")) {
+              const hm = line.match(/^(#{1,6})\s+(.+)/);
+              if (hm) headings.push({ name: hm[2].trim(), type: "heading", display: hm[2].trim() });
+            }
+            try {
+              const blocks = await invoke("list_block_ids", { notePath: note.path });
+              for (const b of blocks || []) {
+                this._subItems.push({ name: `^${b.block_id}`, type: "block", display: `^${b.block_id} \u2014 ${b.content.substring(0, 60)}` });
+              }
+            } catch {
+            }
+            this._subItems = [...headings, ...this._subItems];
+          }
+        } catch (err) {
+          console.warn("[Wikilinks] Failed to load sub-items:", err);
+        }
+      }
+      if (!subQuery) {
+        this.filteredNotes = this._subItems.map((item) => ({
+          name: `${noteName}#${item.name}`,
+          path: item.name,
+          fullPath: item.display || item.name,
+          _isSubItem: true
+        }));
+      } else {
+        const lq = subQuery.toLowerCase();
+        this.filteredNotes = this._subItems.filter((item) => item.name.toLowerCase().includes(lq) || item.display && item.display.toLowerCase().includes(lq)).map((item) => ({
+          name: `${noteName}#${item.name}`,
+          path: item.name,
+          fullPath: item.display || item.name,
+          _isSubItem: true
+        }));
+      }
+      this.selectedIndex = 0;
+      this.updatePopupContent();
     }
     onKeyDown(e) {
       if (!this.isActive) return;
@@ -14072,10 +14802,28 @@ body.hm-dragging { cursor: grabbing !important; user-select: none; }
     attachTo(textarea) {
       if (!textarea) return;
       this.textarea = textarea;
+      this._cmView = null;
       this.parsePropertiesFromContent(textarea.value);
       textarea.addEventListener("input", () => {
         if (!this.isUpdating) {
           this.parsePropertiesFromContent(textarea.value);
+        }
+      });
+    }
+    /**
+     * Attach to a CodeMirror 6 EditorView to sync properties
+     */
+    attachToCodeMirror(view) {
+      if (!view) return;
+      this._cmView = view;
+      this.textarea = null;
+      const content = view.state.doc.toString();
+      this.parsePropertiesFromContent(content);
+      if (this._cmUpdateListener) return;
+      this._cmUpdateListener = view.dom.addEventListener("input", () => {
+        if (!this.isUpdating && this._cmView) {
+          const content2 = this._cmView.state.doc.toString();
+          this.parsePropertiesFromContent(content2);
         }
       });
     }
@@ -14221,13 +14969,13 @@ body.hm-dragging { cursor: grabbing !important; user-select: none; }
       }, 50);
     }
     async updateContentFromProperties() {
-      if (!this.textarea || this.isUpdating) return;
+      if (!this.textarea && !this._cmView || this.isUpdating) return;
       this.isUpdating = true;
-      const content = this.textarea.value;
+      const content = this._cmView ? this._cmView.state.doc.toString() : this.textarea.value;
       const count = Object.keys(this.properties).length;
       if (count === 0) {
         const withoutFrontmatter = content.replace(/^---\n[\s\S]*?\n---\n?/, "");
-        this.textarea.value = withoutFrontmatter;
+        this._setEditorContent(withoutFrontmatter);
       } else {
         let newFrontmatter;
         try {
@@ -14246,14 +14994,26 @@ body.hm-dragging { cursor: grabbing !important; user-select: none; }
         }
         const existingMatch = content.match(/^---\n[\s\S]*?\n---\n?/);
         if (existingMatch) {
-          this.textarea.value = content.replace(existingMatch[0], newFrontmatter);
+          this._setEditorContent(content.replace(existingMatch[0], newFrontmatter));
         } else {
-          this.textarea.value = newFrontmatter + content;
+          this._setEditorContent(newFrontmatter + content);
         }
       }
-      this.textarea.dispatchEvent(new Event("input", { bubbles: true }));
+      if (this.textarea) {
+        this.textarea.dispatchEvent(new Event("input", { bubbles: true }));
+      }
       this.app.markDirty();
       this.isUpdating = false;
+    }
+    /** @private Set content in either textarea or CodeMirror view */
+    _setEditorContent(newContent) {
+      if (this._cmView) {
+        this._cmView.dispatch({
+          changes: { from: 0, to: this._cmView.state.doc.length, insert: newContent }
+        });
+      } else if (this.textarea) {
+        this.textarea.value = newContent;
+      }
     }
     escapeHtml(text) {
       const div = document.createElement("div");
@@ -15290,13 +16050,39 @@ body.hm-dragging { cursor: grabbing !important; user-select: none; }
         { name: "Switch to HyperMark Editor", cat: "View", action: () => app.setEditorMode("hypermark") },
         // New Features
         { name: "Open Random Note", cat: "Navigate", action: () => app.openRandomNote() },
-        { name: "Extract Selection to New Note", cat: "Editor", action: () => app.extractSelectionToNote() },
+        { name: "Create unique note", cat: "File", action: () => app.createUniqueNote() },
+        { name: "Extract Selection to New Note", shortcut: "Ctrl+Shift+E", cat: "Editor", action: () => app.noteComposer ? app.noteComposer.extractSelectionToNote() : app.extractSelectionToNote() },
+        { name: "Merge Notes", cat: "Editor", action: () => app.noteComposer?.mergeNotes() },
+        { name: "Show File Recovery", cat: "Navigate", action: () => app.fileRecovery?.show() },
+        { name: "Open Local Graph", cat: "Navigate", action: () => app.openLocalGraph() },
         { name: "Record Audio", cat: "Editor", action: () => app.startAudioRecording() },
         { name: "Stop Audio Recording", cat: "Editor", action: () => app.stopAudioRecording() },
         // Organisation
         { name: "Toggle Bookmark", cat: "Organize", action: () => app.toggleBookmark() },
         { name: "Open Settings", shortcut: "Ctrl+,", cat: "Settings", action: () => app.openSettingsTab() },
-        { name: "Refresh File Explorer", cat: "Navigate", action: () => app.sidebar?.refresh() }
+        { name: "Refresh File Explorer", cat: "Navigate", action: () => app.sidebar?.refresh() },
+        // Vault management
+        { name: "Switch Vault", cat: "Vault", action: () => app.vaultPicker?.show() },
+        { name: "Open Vault Picker", cat: "Vault", action: () => app.vaultPicker?.show() },
+        // Workspaces
+        { name: "Save Workspace", cat: "Workspace", action: () => app.workspaces?.save() },
+        { name: "Load Workspace", cat: "Workspace", action: () => app.workspaces?.showManager() },
+        { name: "Manage Workspaces", cat: "Workspace", action: () => app.workspaces?.showManager() },
+        // Additional shortcuts
+        { name: "Open Graph View", shortcut: "Ctrl+G", cat: "Navigate", action: () => app.openGraphView() },
+        { name: "New Tab", shortcut: "Ctrl+T", cat: "File", action: () => app.showNewNoteDialog() },
+        { name: "Close Tab", shortcut: "Ctrl+W", cat: "File", action: () => {
+          const t = app.tabManager?.getActiveTab();
+          if (t) app.tabManager.closeTab(t.id);
+        } },
+        { name: "Open Daily Note", shortcut: "Ctrl+Shift+D", cat: "File", action: () => app.openDailyNote() },
+        { name: "Insert Link", shortcut: "Ctrl+K", cat: "Editor", action: () => app.insertLink() },
+        { name: "Toggle Checkbox", shortcut: "Ctrl+Enter", cat: "Editor", action: () => app.toggleCheckbox() },
+        { name: "Follow Link Under Cursor", shortcut: "Alt+Enter", cat: "Editor", action: () => app.followLinkUnderCursor() },
+        { name: "Indent", shortcut: "Ctrl+]", cat: "Editor", action: () => app.indentSelection() },
+        { name: "Outdent", shortcut: "Ctrl+[", cat: "Editor", action: () => app.outdentSelection() },
+        // Audio Recorder
+        { name: "Start/Stop audio recording", cat: "Audio", action: () => app.audioRecorder?.toggle() }
       ];
     }
     /**
@@ -15373,7 +16159,8 @@ body.hm-dragging { cursor: grabbing !important; user-select: none; }
           item.className = "command-palette-item" + (i === this.selectedIndex ? " selected" : "");
           const catHtml = cmd.cat ? `<span class="command-palette-cat">${cmd.cat}</span>` : "";
           const shortcutHtml = cmd.shortcut ? `<span class="command-palette-shortcut">${cmd.shortcut}</span>` : "";
-          item.innerHTML = `${catHtml}<span class="command-palette-name">${this._escapeHtml(cmd.name)}</span>${shortcutHtml}`;
+          const nameHtml = input.value.trim() ? this._highlightMatch(cmd.name, input.value.trim()) : this._escapeHtml(cmd.name);
+          item.innerHTML = `${catHtml}<span class="command-palette-name">${nameHtml}</span>${shortcutHtml}`;
           item.addEventListener("mousedown", (e) => {
             e.preventDefault();
             this.hide();
@@ -15431,6 +16218,310 @@ body.hm-dragging { cursor: grabbing !important; user-select: none; }
       if (this.overlay) {
         this.overlay.remove();
         this.overlay = null;
+      }
+    }
+    _escapeHtml(text) {
+      const div = document.createElement("div");
+      div.textContent = text;
+      return div.innerHTML;
+    }
+    /**
+     * Highlight fuzzy matched characters in bold.
+     */
+    _highlightMatch(text, query) {
+      const q = query.toLowerCase();
+      const t = text.toLowerCase();
+      const idx = t.indexOf(q);
+      if (idx !== -1) {
+        const before = this._escapeHtml(text.slice(0, idx));
+        const match = this._escapeHtml(text.slice(idx, idx + q.length));
+        const after = this._escapeHtml(text.slice(idx + q.length));
+        return `${before}<mark>${match}</mark>${after}`;
+      }
+      let result = "";
+      let qi = 0;
+      for (let i = 0; i < text.length; i++) {
+        if (qi < q.length && text[i].toLowerCase() === q[qi]) {
+          result += `<mark>${this._escapeHtml(text[i])}</mark>`;
+          qi++;
+        } else {
+          result += this._escapeHtml(text[i]);
+        }
+      }
+      return result;
+    }
+  };
+
+  // src/js/note-composer.js
+  init_tauri_bridge();
+  var NoteComposer = class {
+    constructor(app) {
+      this.app = app;
+    }
+    /**
+     * Extract selected text to a new note, replacing selection with [[link]]
+     */
+    async extractSelectionToNote() {
+      const selection = this.app.editor?.getSelection?.();
+      if (!selection || selection.trim().length === 0) {
+        this.app.showErrorToast("No text selected. Select text first to extract.");
+        return;
+      }
+      const noteName = prompt("New note name for extracted text:");
+      if (!noteName || noteName.trim().length === 0) return;
+      const sanitized = noteName.trim().replace(/\.md$/, "");
+      const newPath = sanitized + ".md";
+      try {
+        try {
+          await invoke("read_note", { path: newPath });
+          if (!confirm(`Note "${sanitized}" already exists. Overwrite?`)) return;
+        } catch {
+        }
+        await invoke("save_note", { path: newPath, content: `# ${sanitized}
+
+${selection}` });
+        this.app.editor.replaceSelection(`[[${sanitized}]]`);
+        this.app.isDirty = true;
+        await this.app.saveCurrentFile();
+        this.app.sidebar?.refresh();
+        this.app.invalidateFileTreeCache();
+      } catch (err) {
+        console.error("[NoteComposer] Extract failed:", err);
+        this.app.showErrorToast("Failed to extract selection: " + (err.message || err));
+      }
+    }
+    /**
+     * Show merge note picker — select a note to merge into the current note
+     */
+    async mergeNotes() {
+      if (!this.app.currentFile) {
+        this.app.showErrorToast("No file open. Open a note first.");
+        return;
+      }
+      const overlay = document.createElement("div");
+      overlay.className = "modal-overlay";
+      overlay.style.cssText = "position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;";
+      const modal = document.createElement("div");
+      modal.style.cssText = "background:var(--bg-primary,#1e1e2e);border-radius:12px;padding:24px;width:450px;max-height:70vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,0.5);";
+      modal.innerHTML = `
+            <h3 style="margin:0 0 12px;color:var(--text-primary,#cdd6f4);">Merge Note Into Current</h3>
+            <input type="text" placeholder="Search notes..." style="width:100%;padding:8px 12px;border:1px solid var(--border-color,#45475a);border-radius:6px;background:var(--bg-secondary,#313244);color:var(--text-primary,#cdd6f4);margin-bottom:8px;box-sizing:border-box;" id="merge-search">
+            <div style="display:flex;gap:8px;margin-bottom:12px;">
+                <label style="color:var(--text-secondary,#a6adc8);font-size:13px;display:flex;align-items:center;gap:4px;">
+                    <input type="radio" name="merge-pos" value="append" checked> Append
+                </label>
+                <label style="color:var(--text-secondary,#a6adc8);font-size:13px;display:flex;align-items:center;gap:4px;">
+                    <input type="radio" name="merge-pos" value="prepend"> Prepend
+                </label>
+            </div>
+            <div id="merge-results" style="overflow-y:auto;flex:1;max-height:300px;"></div>
+        `;
+      overlay.appendChild(modal);
+      document.body.appendChild(overlay);
+      const searchInput = modal.querySelector("#merge-search");
+      const resultsDiv = modal.querySelector("#merge-results");
+      const close = () => overlay.remove();
+      overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) close();
+      });
+      document.addEventListener("keydown", function esc(e) {
+        if (e.key === "Escape") {
+          close();
+          document.removeEventListener("keydown", esc);
+        }
+      });
+      let files = [];
+      try {
+        const tree = await this.app.getFileTree();
+        files = this._flattenTree(tree).filter((f) => f.endsWith(".md") && f !== this.app.currentFile);
+      } catch {
+        files = [];
+      }
+      const renderResults2 = (query) => {
+        const q = query.toLowerCase();
+        const filtered = q ? files.filter((f) => f.toLowerCase().includes(q)) : files;
+        resultsDiv.innerHTML = "";
+        for (const file of filtered.slice(0, 50)) {
+          const item = document.createElement("div");
+          item.style.cssText = "padding:8px 12px;cursor:pointer;border-radius:4px;color:var(--text-primary,#cdd6f4);font-size:14px;";
+          item.textContent = file.replace(".md", "");
+          item.addEventListener("mouseenter", () => item.style.background = "var(--bg-hover,#45475a)");
+          item.addEventListener("mouseleave", () => item.style.background = "");
+          item.addEventListener("click", () => this._doMerge(file, modal.querySelector('input[name="merge-pos"]:checked').value, close));
+          resultsDiv.appendChild(item);
+        }
+      };
+      searchInput.addEventListener("input", () => renderResults2(searchInput.value));
+      searchInput.focus();
+      renderResults2("");
+    }
+    async _doMerge(sourcePath, position, closeFn) {
+      try {
+        const sourceContent = await invoke("read_note", { path: sourcePath });
+        const currentContent = this.app.editor.getContent();
+        const merged = position === "prepend" ? sourceContent + "\n\n" + currentContent : currentContent + "\n\n" + sourceContent;
+        this.app.editor.setContent(merged);
+        this.app.isDirty = true;
+        await this.app.saveCurrentFile();
+        closeFn();
+      } catch (err) {
+        console.error("[NoteComposer] Merge failed:", err);
+        this.app.showErrorToast("Failed to merge: " + (err.message || err));
+      }
+    }
+    _flattenTree(tree) {
+      const result = [];
+      const walk = (nodes) => {
+        if (!Array.isArray(nodes)) return;
+        for (const node of nodes) {
+          if (node.is_dir) {
+            walk(node.children || []);
+          } else {
+            result.push(node.path);
+          }
+        }
+      };
+      walk(Array.isArray(tree) ? tree : [tree]);
+      return result;
+    }
+  };
+
+  // src/js/file-recovery.js
+  init_tauri_bridge();
+  var FileRecovery = class {
+    constructor(app) {
+      this.app = app;
+      this.overlay = null;
+    }
+    async show() {
+      if (this.overlay) this.overlay.remove();
+      const overlay = document.createElement("div");
+      overlay.className = "file-recovery-overlay";
+      overlay.style.cssText = "position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;";
+      const modal = document.createElement("div");
+      modal.style.cssText = "background:var(--bg-primary,#1e1e2e);border-radius:12px;padding:24px;width:700px;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,0.5);";
+      modal.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                <h3 style="margin:0;color:var(--text-primary,#cdd6f4);">\u{1F4C2} File Recovery</h3>
+                <button id="fr-close" style="background:none;border:none;color:var(--text-secondary,#a6adc8);font-size:20px;cursor:pointer;">\u2715</button>
+            </div>
+            <div style="display:flex;flex:1;overflow:hidden;gap:16px;min-height:0;">
+                <div id="fr-file-list" style="width:200px;overflow-y:auto;border-right:1px solid var(--border-color,#45475a);padding-right:12px;"></div>
+                <div id="fr-timeline" style="width:180px;overflow-y:auto;border-right:1px solid var(--border-color,#45475a);padding-right:12px;display:none;"></div>
+                <div id="fr-preview" style="flex:1;overflow-y:auto;display:none;flex-direction:column;"></div>
+            </div>
+        `;
+      overlay.appendChild(modal);
+      document.body.appendChild(overlay);
+      this.overlay = overlay;
+      overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) this.hide();
+      });
+      modal.querySelector("#fr-close").addEventListener("click", () => this.hide());
+      document.addEventListener("keydown", this._escHandler = (e) => {
+        if (e.key === "Escape") this.hide();
+      });
+      await this._loadFileList(modal);
+    }
+    hide() {
+      if (this.overlay) {
+        this.overlay.remove();
+        this.overlay = null;
+      }
+      if (this._escHandler) {
+        document.removeEventListener("keydown", this._escHandler);
+        this._escHandler = null;
+      }
+    }
+    async _loadFileList(modal) {
+      const listDiv = modal.querySelector("#fr-file-list");
+      try {
+        const files = await invoke("list_all_snapshot_files");
+        if (files.length === 0) {
+          listDiv.innerHTML = '<div style="color:var(--text-secondary,#a6adc8);font-size:13px;padding:8px;">No snapshots yet. Snapshots are created automatically on each save.</div>';
+          return;
+        }
+        for (const file of files) {
+          const item = document.createElement("div");
+          item.style.cssText = "padding:6px 8px;cursor:pointer;border-radius:4px;color:var(--text-primary,#cdd6f4);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
+          item.textContent = file.replace(".md", "");
+          item.title = file;
+          item.addEventListener("mouseenter", () => item.style.background = "var(--bg-hover,#45475a)");
+          item.addEventListener("mouseleave", () => item.style.background = "");
+          item.addEventListener("click", () => this._loadTimeline(modal, file));
+          listDiv.appendChild(item);
+        }
+      } catch (err) {
+        listDiv.innerHTML = `<div style="color:var(--text-error,#f38ba8);font-size:13px;padding:8px;">Error: ${err}</div>`;
+      }
+    }
+    async _loadTimeline(modal, filePath) {
+      const timelineDiv = modal.querySelector("#fr-timeline");
+      const previewDiv = modal.querySelector("#fr-preview");
+      timelineDiv.style.display = "block";
+      previewDiv.style.display = "none";
+      timelineDiv.innerHTML = '<div style="color:var(--text-secondary);padding:8px;font-size:12px;">Loading...</div>';
+      try {
+        const snapshots = await invoke("list_file_snapshots", { path: filePath });
+        timelineDiv.innerHTML = `<div style="font-size:11px;color:var(--text-secondary,#a6adc8);margin-bottom:8px;font-weight:600;">${filePath}</div>`;
+        if (snapshots.length === 0) {
+          timelineDiv.innerHTML += '<div style="color:var(--text-secondary);font-size:12px;">No snapshots.</div>';
+          return;
+        }
+        for (const snap of snapshots) {
+          const item = document.createElement("div");
+          item.style.cssText = "padding:5px 8px;cursor:pointer;border-radius:4px;color:var(--text-primary,#cdd6f4);font-size:12px;";
+          item.textContent = this._formatTimestamp(snap.timestamp);
+          item.title = `${snap.size_bytes} bytes`;
+          item.addEventListener("mouseenter", () => item.style.background = "var(--bg-hover,#45475a)");
+          item.addEventListener("mouseleave", () => item.style.background = "");
+          item.addEventListener("click", () => this._showPreview(modal, filePath, snap.timestamp));
+          timelineDiv.appendChild(item);
+        }
+      } catch (err) {
+        timelineDiv.innerHTML = `<div style="color:var(--text-error,#f38ba8);font-size:12px;padding:8px;">Error: ${err}</div>`;
+      }
+    }
+    async _showPreview(modal, filePath, timestamp) {
+      const previewDiv = modal.querySelector("#fr-preview");
+      previewDiv.style.display = "flex";
+      previewDiv.innerHTML = '<div style="color:var(--text-secondary);padding:8px;font-size:12px;">Loading...</div>';
+      try {
+        const content = await invoke("get_snapshot_content", { path: filePath, timestamp });
+        previewDiv.innerHTML = `
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                    <span style="font-size:12px;color:var(--text-secondary,#a6adc8);">${this._formatTimestamp(timestamp)}</span>
+                    <button id="fr-restore-btn" style="padding:4px 12px;background:var(--accent-color,#7f6df2);color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;">Restore</button>
+                </div>
+                <pre style="flex:1;overflow:auto;background:var(--bg-secondary,#313244);padding:12px;border-radius:6px;color:var(--text-primary,#cdd6f4);font-size:12px;line-height:1.5;white-space:pre-wrap;word-break:break-word;margin:0;">${this._escapeHtml(content)}</pre>
+            `;
+        previewDiv.querySelector("#fr-restore-btn").addEventListener("click", async () => {
+          if (!confirm(`Restore "${filePath}" to version from ${this._formatTimestamp(timestamp)}?
+A snapshot of the current version will be created first.`)) return;
+          try {
+            await invoke("restore_file_snapshot", { path: filePath, timestamp });
+            if (this.app.currentFile === filePath) {
+              const newContent = await invoke("read_note", { path: filePath });
+              this.app.editor.setContent(newContent);
+              this.app.isDirty = false;
+              this.app.tabManager?.markClean(filePath);
+            }
+            this.hide();
+          } catch (err) {
+            this.app.showErrorToast("Restore failed: " + (err.message || err));
+          }
+        });
+      } catch (err) {
+        previewDiv.innerHTML = `<div style="color:var(--text-error,#f38ba8);font-size:12px;padding:8px;">Error: ${err}</div>`;
+      }
+    }
+    _formatTimestamp(ts) {
+      try {
+        const date = ts.substring(0, 8);
+        const time = ts.substring(9, 15);
+        return `${date.substring(0, 4)}-${date.substring(4, 6)}-${date.substring(6, 8)} ${time.substring(0, 2)}:${time.substring(2, 4)}:${time.substring(4, 6)}`;
+      } catch {
+        return ts;
       }
     }
     _escapeHtml(text) {
@@ -17195,6 +18286,757 @@ body.hm-dragging { cursor: grabbing !important; user-select: none; }
     };
   })();
 
+  // src/js/vault-picker.js
+  init_tauri_bridge();
+  var VaultPicker = class {
+    constructor(app) {
+      this.app = app;
+      this.overlay = null;
+    }
+    async show() {
+      if (this.overlay) {
+        this.hide();
+        return;
+      }
+      let vaults = [];
+      try {
+        vaults = await invoke("list_vaults");
+      } catch (e) {
+        console.error("[VaultPicker] Failed to list vaults:", e);
+      }
+      this.overlay = document.createElement("div");
+      this.overlay.className = "command-palette-overlay";
+      this.overlay.id = "vault-picker-overlay";
+      const modal = document.createElement("div");
+      modal.className = "command-palette";
+      modal.style.maxWidth = "500px";
+      modal.innerHTML = `
+            <div style="padding:16px 20px;border-bottom:1px solid var(--border-color);">
+                <h3 style="margin:0 0 4px;color:var(--text-primary);font-size:16px;">\u{1F5C4}\uFE0F Vault Picker</h3>
+                <p style="margin:0;color:var(--text-secondary);font-size:12px;">Switch between vaults or add a new one</p>
+            </div>
+            <div class="vault-picker-list" style="max-height:300px;overflow-y:auto;padding:8px;"></div>
+            <div style="padding:12px 16px;border-top:1px solid var(--border-color);display:flex;gap:8px;">
+                <button class="vault-picker-btn vault-add-btn" style="flex:1;">\u{1F4C1} Add Existing Vault</button>
+                <button class="vault-picker-btn vault-create-btn" style="flex:1;">\u2728 Create New Vault</button>
+            </div>
+        `;
+      this.overlay.appendChild(modal);
+      document.body.appendChild(this.overlay);
+      const list = modal.querySelector(".vault-picker-list");
+      this._renderVaults(list, vaults);
+      modal.querySelector(".vault-add-btn").addEventListener("click", async () => {
+        try {
+          const { open } = await import("@tauri-apps/plugin-dialog");
+          const selected = await open({ directory: true, title: "Select vault folder" });
+          if (selected) {
+            const name = selected.split(/[\\/]/).pop() || "Vault";
+            await invoke("add_vault", { name, path: selected });
+            const updated = await invoke("list_vaults");
+            this._renderVaults(list, updated);
+          }
+        } catch (e) {
+          const path = prompt("Enter vault folder path:");
+          if (path) {
+            const name = path.split(/[\\/]/).pop() || "Vault";
+            try {
+              await invoke("add_vault", { name, path });
+              const updated = await invoke("list_vaults");
+              this._renderVaults(list, updated);
+            } catch (err) {
+              this.app.showErrorToast?.("Failed to add vault: " + err);
+            }
+          }
+        }
+      });
+      modal.querySelector(".vault-create-btn").addEventListener("click", async () => {
+        const name = prompt("New vault name:");
+        if (!name) return;
+        try {
+          const { open } = await import("@tauri-apps/plugin-dialog");
+          const dir = await open({ directory: true, title: "Select parent folder for new vault" });
+          if (dir) {
+            const vaultPath = dir + "/" + name;
+            await invoke("add_vault", { name, path: vaultPath });
+            await invoke("switch_vault", { path: vaultPath });
+            this.hide();
+            this.app.sidebar?.refresh();
+          }
+        } catch (e) {
+          const path = prompt("Enter parent folder path:");
+          if (path) {
+            const vaultPath = path + "/" + name;
+            try {
+              await invoke("add_vault", { name, path: vaultPath });
+              await invoke("switch_vault", { path: vaultPath });
+              this.hide();
+              this.app.sidebar?.refresh();
+            } catch (err) {
+              this.app.showErrorToast?.("Failed to create vault: " + err);
+            }
+          }
+        }
+      });
+      this.overlay.addEventListener("mousedown", (e) => {
+        if (e.target === this.overlay) this.hide();
+      });
+      const keyHandler = (e) => {
+        if (e.key === "Escape") {
+          this.hide();
+          document.removeEventListener("keydown", keyHandler);
+        }
+      };
+      document.addEventListener("keydown", keyHandler);
+    }
+    _renderVaults(container, vaults) {
+      if (vaults.length === 0) {
+        container.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-secondary);">No vaults configured yet. Add or create one below.</div>';
+        return;
+      }
+      container.innerHTML = "";
+      vaults.forEach((vault) => {
+        const item = document.createElement("div");
+        item.style.cssText = "display:flex;align-items:center;padding:10px 12px;border-radius:6px;cursor:pointer;gap:12px;";
+        item.className = "command-palette-item";
+        item.innerHTML = `
+                <div style="flex:1;min-width:0;">
+                    <div style="font-weight:500;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${this._esc(vault.name)}</div>
+                    <div style="font-size:11px;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${this._esc(vault.path)}</div>
+                </div>
+                <button class="vault-open-btn" style="padding:4px 12px;border-radius:4px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--text-primary);cursor:pointer;font-size:12px;">Open</button>
+                <button class="vault-remove-btn" style="padding:4px 8px;border-radius:4px;border:1px solid var(--border-color);background:transparent;color:var(--text-secondary);cursor:pointer;font-size:12px;" title="Remove">\xD7</button>
+            `;
+        item.querySelector(".vault-open-btn").addEventListener("click", async (e) => {
+          e.stopPropagation();
+          try {
+            await invoke("switch_vault", { path: vault.path });
+            this.hide();
+            this.app.invalidateFileTreeCache?.();
+            this.app.sidebar?.refresh();
+            this.app.loadTags?.();
+          } catch (err) {
+            this.app.showErrorToast?.("Failed to switch vault: " + err);
+          }
+        });
+        item.querySelector(".vault-remove-btn").addEventListener("click", async (e) => {
+          e.stopPropagation();
+          try {
+            await invoke("remove_vault", { name: vault.name });
+            const updated = await invoke("list_vaults");
+            this._renderVaults(container, updated);
+          } catch (err) {
+            this.app.showErrorToast?.("Failed to remove vault: " + err);
+          }
+        });
+        container.appendChild(item);
+      });
+    }
+    hide() {
+      if (this.overlay) {
+        this.overlay.remove();
+        this.overlay = null;
+      }
+    }
+    _esc(text) {
+      const div = document.createElement("div");
+      div.textContent = text || "";
+      return div.innerHTML;
+    }
+  };
+
+  // src/js/workspaces.js
+  init_tauri_bridge();
+  var Workspaces = class {
+    constructor(app) {
+      this.app = app;
+    }
+    /**
+     * Capture the current layout state
+     */
+    _captureState() {
+      const app = this.app;
+      const tabs = (app.tabManager?.tabs || []).map((t) => ({
+        path: t.path,
+        title: t.title,
+        type: t.type,
+        pane: t.pane || 0,
+        viewMode: t.viewMode || "live-preview",
+        active: t === app.tabManager?.getActiveTab()
+      }));
+      const sidebar = document.getElementById("sidebar");
+      const activePanel = document.querySelector(".sidebar-panel.active");
+      const sidebarState = {
+        visible: sidebar ? !sidebar.classList.contains("hidden") : true,
+        width: sidebar?.style.width || "",
+        activePanel: activePanel?.id?.replace("panel-", "") || "files"
+      };
+      return {
+        tabs,
+        sidebar: sidebarState,
+        viewMode: app.viewMode || "live-preview",
+        editorMode: app.editorMode || "classic",
+        splitActive: app.tabManager?.splitActive || false,
+        focusMode: app.focusMode || false,
+        currentFile: app.currentFile || null
+      };
+    }
+    /**
+     * Save current layout as a named workspace
+     */
+    async save(name) {
+      if (!name) {
+        name = prompt("Workspace name:");
+        if (!name) return;
+      }
+      const state = this._captureState();
+      const data = JSON.stringify(state, null, 2);
+      try {
+        await invoke("save_workspace", { name, data });
+        console.log(`[Workspaces] Saved workspace "${name}"`);
+      } catch (e) {
+        console.error("[Workspaces] Save failed:", e);
+        this.app.showErrorToast?.("Failed to save workspace: " + e);
+      }
+    }
+    /**
+     * Load and restore a named workspace
+     */
+    async load(name) {
+      try {
+        const data = await invoke("load_workspace", { name });
+        const state = JSON.parse(data);
+        await this._restoreState(state);
+        console.log(`[Workspaces] Loaded workspace "${name}"`);
+      } catch (e) {
+        console.error("[Workspaces] Load failed:", e);
+        this.app.showErrorToast?.("Failed to load workspace: " + e);
+      }
+    }
+    /**
+     * Restore layout from state object
+     */
+    async _restoreState(state) {
+      const app = this.app;
+      if (app.tabManager) {
+        const tabIds = app.tabManager.tabs.map((t) => t.id);
+        tabIds.forEach((id) => app.tabManager.closeTab(id));
+      }
+      if (state.sidebar) {
+        const sidebar = document.getElementById("sidebar");
+        if (sidebar) {
+          if (state.sidebar.visible === false) {
+            sidebar.classList.add("hidden");
+          } else {
+            sidebar.classList.remove("hidden");
+          }
+          if (state.sidebar.width) sidebar.style.width = state.sidebar.width;
+        }
+        if (state.sidebar.activePanel) {
+          app.switchSidebarPanel?.(state.sidebar.activePanel);
+        }
+      }
+      if (state.editorMode) app.editorMode = state.editorMode;
+      if (state.viewMode) app.viewMode = state.viewMode;
+      if (state.focusMode && !app.focusMode) app.toggleFocusMode?.();
+      if (!state.focusMode && app.focusMode) app.toggleFocusMode?.();
+      if (state.splitActive && !app.tabManager?.splitActive) {
+        app.tabManager?.split?.();
+      }
+      let activeTab = null;
+      for (const tab of state.tabs || []) {
+        if (tab.type === "note" && tab.path) {
+          try {
+            if (tab.active) {
+              await app.openFile(tab.path);
+              activeTab = tab;
+            } else {
+              app.tabManager?.openTab(tab.path, tab.title, "note", tab.pane || 0);
+            }
+          } catch (e) {
+            console.warn(`[Workspaces] Failed to restore tab ${tab.path}:`, e);
+          }
+        } else if (tab.type === "graph") {
+          app.openGraphView?.();
+        } else if (tab.type === "settings") {
+          app.openSettingsPage?.();
+        }
+      }
+      if (activeTab) {
+        await app.openFile(activeTab.path);
+      } else if (state.currentFile) {
+        await app.openFile(state.currentFile);
+      }
+    }
+    /**
+     * List all saved workspaces
+     */
+    async list() {
+      try {
+        return await invoke("list_workspaces");
+      } catch (e) {
+        console.error("[Workspaces] List failed:", e);
+        return [];
+      }
+    }
+    /**
+     * Delete a workspace
+     */
+    async delete(name) {
+      try {
+        await invoke("delete_workspace", { name });
+      } catch (e) {
+        console.error("[Workspaces] Delete failed:", e);
+        this.app.showErrorToast?.("Failed to delete workspace: " + e);
+      }
+    }
+    /**
+     * Show workspace manager modal
+     */
+    async showManager() {
+      const names = await this.list();
+      const overlay = document.createElement("div");
+      overlay.className = "command-palette-overlay";
+      overlay.id = "workspace-manager-overlay";
+      const modal = document.createElement("div");
+      modal.className = "command-palette";
+      modal.style.maxWidth = "450px";
+      const renderList = async () => {
+        const updatedNames = await this.list();
+        let listHtml = "";
+        if (updatedNames.length === 0) {
+          listHtml = '<div style="padding:20px;text-align:center;color:var(--text-secondary);">No saved workspaces</div>';
+        } else {
+          listHtml = updatedNames.map((n) => `
+                    <div class="command-palette-item workspace-item" data-name="${this._esc(n)}" style="display:flex;align-items:center;padding:10px 12px;gap:8px;">
+                        <span style="flex:1;color:var(--text-primary);">\u{1F4D0} ${this._esc(n)}</span>
+                        <button class="ws-load-btn" data-name="${this._esc(n)}" style="padding:3px 10px;border-radius:4px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--text-primary);cursor:pointer;font-size:12px;">Load</button>
+                        <button class="ws-delete-btn" data-name="${this._esc(n)}" style="padding:3px 8px;border-radius:4px;border:1px solid var(--border-color);background:transparent;color:var(--text-secondary);cursor:pointer;font-size:12px;">\xD7</button>
+                    </div>
+                `).join("");
+        }
+        modal.innerHTML = `
+                <div style="padding:16px 20px;border-bottom:1px solid var(--border-color);">
+                    <h3 style="margin:0;color:var(--text-primary);font-size:16px;">\u{1F4D0} Workspaces</h3>
+                </div>
+                <div class="ws-list" style="max-height:300px;overflow-y:auto;padding:8px;">${listHtml}</div>
+                <div style="padding:12px 16px;border-top:1px solid var(--border-color);">
+                    <button class="ws-save-btn" style="width:100%;padding:8px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--text-primary);cursor:pointer;">\u{1F4BE} Save Current Layout</button>
+                </div>
+            `;
+        modal.querySelectorAll(".ws-load-btn").forEach((btn) => {
+          btn.addEventListener("click", async (e) => {
+            e.stopPropagation();
+            overlay.remove();
+            await this.load(btn.dataset.name);
+          });
+        });
+        modal.querySelectorAll(".ws-delete-btn").forEach((btn) => {
+          btn.addEventListener("click", async (e) => {
+            e.stopPropagation();
+            await this.delete(btn.dataset.name);
+            await renderList();
+          });
+        });
+        modal.querySelector(".ws-save-btn").addEventListener("click", async () => {
+          const name = prompt("Workspace name:");
+          if (name) {
+            await this.save(name);
+            await renderList();
+          }
+        });
+      };
+      overlay.appendChild(modal);
+      document.body.appendChild(overlay);
+      await renderList();
+      overlay.addEventListener("mousedown", (e) => {
+        if (e.target === overlay) overlay.remove();
+      });
+      const keyHandler = (e) => {
+        if (e.key === "Escape") {
+          overlay.remove();
+          document.removeEventListener("keydown", keyHandler);
+        }
+      };
+      document.addEventListener("keydown", keyHandler);
+    }
+    _esc(text) {
+      const div = document.createElement("div");
+      div.textContent = text || "";
+      return div.innerHTML;
+    }
+  };
+
+  // src/js/outgoing-links.js
+  var OutgoingLinks = class {
+    constructor(app) {
+      this.app = app;
+    }
+    /**
+     * Update the outgoing links panel with links from the given content.
+     */
+    update(content) {
+      const panel = document.getElementById("panel-outgoing-links");
+      if (!panel) return;
+      const list = panel.querySelector(".outgoing-links-list");
+      if (!list) return;
+      if (!content || !content.trim()) {
+        list.innerHTML = '<div class="empty-panel-message">No note open</div>';
+        return;
+      }
+      const links = this._extractLinks(content);
+      if (links.length === 0) {
+        list.innerHTML = '<div class="empty-panel-message">No outgoing links</div>';
+        return;
+      }
+      list.innerHTML = "";
+      for (const link of links) {
+        const item = document.createElement("div");
+        item.className = "outgoing-link-item";
+        item.innerHTML = `
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;opacity:0.5;">
+                    ${link.type === "wiki" ? '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>' : '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15,3 21,3 21,9"/><line x1="10" y1="14" x2="21" y2="3"/>'}
+                </svg>
+                <span class="outgoing-link-text">${this._escapeHtml(link.display)}</span>
+            `;
+        item.style.cssText = "display:flex;align-items:center;gap:8px;padding:4px 8px;cursor:pointer;border-radius:4px;font-size:13px;";
+        item.addEventListener("mouseenter", () => item.style.background = "var(--bg-hover)");
+        item.addEventListener("mouseleave", () => item.style.background = "");
+        item.addEventListener("click", () => {
+          if (link.type === "wiki") {
+            this.app.navigateToNote(link.target);
+          } else {
+            window.open(link.target, "_blank");
+          }
+        });
+        list.appendChild(item);
+      }
+    }
+    /**
+     * Extract all links from markdown content.
+     */
+    _extractLinks(content) {
+      const links = [];
+      const seen = /* @__PURE__ */ new Set();
+      const wikiRegex = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g;
+      let m;
+      while ((m = wikiRegex.exec(content)) !== null) {
+        if (m.index > 0 && content[m.index - 1] === "!") continue;
+        const target = m[1].trim();
+        const display = m[2]?.trim() || target;
+        const key = `wiki:${target}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          links.push({ type: "wiki", target, display });
+        }
+      }
+      const mdRegex = /(?<!!)\[([^\]]+)\]\(([^)]+)\)/g;
+      while ((m = mdRegex.exec(content)) !== null) {
+        const display = m[1].trim();
+        const target = m[2].trim();
+        const key = `md:${target}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          links.push({ type: "md", target, display });
+        }
+      }
+      return links;
+    }
+    _escapeHtml(text) {
+      const div = document.createElement("div");
+      div.textContent = text;
+      return div.innerHTML;
+    }
+  };
+
+  // src/js/css-snippets.js
+  init_tauri_bridge();
+  var CSSSnippets = class {
+    constructor(app) {
+      this.app = app;
+      this.snippets = [];
+      this.styleElements = /* @__PURE__ */ new Map();
+      this.settingsKey = "oxidian-css-snippets-enabled";
+    }
+    /**
+     * Load snippets from vault and apply enabled ones.
+     */
+    async init() {
+      const enabledSet = this._getEnabledSet();
+      let files = [];
+      for (const dir of [".oxidian/snippets", ".obsidian/snippets"]) {
+        try {
+          const tree = await invoke("list_files_in_dir", { path: dir });
+          if (tree && tree.length > 0) {
+            files = tree;
+            break;
+          }
+        } catch {
+        }
+      }
+      if (files.length === 0) {
+        try {
+          const fullTree = await this.app.getFileTree();
+          const findSnippetsDir = (nodes, path) => {
+            for (const n of nodes || []) {
+              const nodePath = n.path || n.name;
+              if (n.children && (nodePath.endsWith("snippets") || nodePath.includes("snippets"))) {
+                return n.children.filter((c) => c.name?.endsWith(".css"));
+              }
+              if (n.children) {
+                const found = findSnippetsDir(n.children, nodePath);
+                if (found) return found;
+              }
+            }
+            return null;
+          };
+          files = findSnippetsDir(fullTree.children || fullTree, "") || [];
+        } catch {
+        }
+      }
+      this.snippets = [];
+      for (const f of files) {
+        const name = f.name || f.path?.split("/").pop();
+        if (!name?.endsWith(".css")) continue;
+        const path = f.path || f.name;
+        try {
+          const content = await invoke("read_note", { path });
+          const enabled = enabledSet.has(name);
+          this.snippets.push({ name, path, content, enabled });
+          if (enabled) this._applySnippet(name, content);
+        } catch (err) {
+          console.warn(`[CSSSnippets] Failed to load ${name}:`, err);
+        }
+      }
+    }
+    /**
+     * Toggle a snippet on/off.
+     */
+    toggle(name) {
+      const snippet = this.snippets.find((s) => s.name === name);
+      if (!snippet) return;
+      snippet.enabled = !snippet.enabled;
+      if (snippet.enabled) {
+        this._applySnippet(name, snippet.content);
+      } else {
+        this._removeSnippet(name);
+      }
+      this._saveEnabledSet();
+    }
+    _applySnippet(name, content) {
+      this._removeSnippet(name);
+      const style = document.createElement("style");
+      style.dataset.snippet = name;
+      style.textContent = content;
+      document.head.appendChild(style);
+      this.styleElements.set(name, style);
+    }
+    _removeSnippet(name) {
+      const existing = this.styleElements.get(name);
+      if (existing) {
+        existing.remove();
+        this.styleElements.delete(name);
+      }
+    }
+    _getEnabledSet() {
+      try {
+        const stored = localStorage.getItem(this.settingsKey);
+        return new Set(stored ? JSON.parse(stored) : []);
+      } catch {
+        return /* @__PURE__ */ new Set();
+      }
+    }
+    _saveEnabledSet() {
+      const enabled = this.snippets.filter((s) => s.enabled).map((s) => s.name);
+      localStorage.setItem(this.settingsKey, JSON.stringify(enabled));
+    }
+    /**
+     * Get list of snippets for UI.
+     */
+    getSnippetList() {
+      return this.snippets.map((s) => ({ name: s.name, enabled: s.enabled }));
+    }
+  };
+
+  // src/js/audio-recorder.js
+  init_tauri_bridge();
+  var AudioRecorder = class {
+    constructor(app) {
+      this.app = app;
+      this.mediaRecorder = null;
+      this.chunks = [];
+      this.recording = false;
+      this.startTime = null;
+      this.timerInterval = null;
+      this.ribbonBtn = null;
+      this.statusIndicator = null;
+      this.timerEl = null;
+      this._createRibbonButton();
+      this._createStatusIndicator();
+    }
+    _createRibbonButton() {
+      const ribbonBottom = document.querySelector(".ribbon-bottom");
+      if (!ribbonBottom) return;
+      const btn = document.createElement("button");
+      btn.className = "ribbon-btn";
+      btn.dataset.action = "audio-record";
+      btn.title = "Start/Stop Audio Recording";
+      btn.innerHTML = `<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/>
+            <path d="M19 10v2a7 7 0 01-14 0v-2"/>
+            <line x1="12" y1="19" x2="12" y2="23"/>
+            <line x1="8" y1="23" x2="16" y2="23"/>
+        </svg>`;
+      btn.addEventListener("click", () => this.toggle());
+      const settingsBtn = ribbonBottom.querySelector('[data-action="settings"]');
+      if (settingsBtn) {
+        ribbonBottom.insertBefore(btn, settingsBtn);
+      } else {
+        ribbonBottom.appendChild(btn);
+      }
+      this.ribbonBtn = btn;
+    }
+    _createStatusIndicator() {
+      const statusbar = document.getElementById("statusbar");
+      if (!statusbar) return;
+      const indicator = document.createElement("div");
+      indicator.className = "audio-recorder-status";
+      indicator.style.display = "none";
+      indicator.innerHTML = `
+            <span class="audio-recorder-dot"></span>
+            <span class="audio-recorder-timer">00:00</span>
+        `;
+      statusbar.prepend(indicator);
+      this.statusIndicator = indicator;
+      this.timerEl = indicator.querySelector(".audio-recorder-timer");
+    }
+    async toggle() {
+      if (this.recording) {
+        await this.stop();
+      } else {
+        await this.start();
+      }
+    }
+    async start() {
+      if (this.recording) return;
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "audio/ogg";
+        this.mediaRecorder = new MediaRecorder(stream, { mimeType });
+        this.chunks = [];
+        this.mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) this.chunks.push(e.data);
+        };
+        this.mediaRecorder.onstop = async () => {
+          stream.getTracks().forEach((t) => t.stop());
+          await this._saveRecording(mimeType);
+        };
+        this.mediaRecorder.start(1e3);
+        this.recording = true;
+        this.startTime = Date.now();
+        this.ribbonBtn?.classList.add("audio-recording");
+        if (this.statusIndicator) this.statusIndicator.style.display = "flex";
+        this._startTimer();
+      } catch (err) {
+        console.error("Audio recording failed:", err);
+        if (this.app.showNotice) {
+          this.app.showNotice("Failed to access microphone: " + err.message, "error");
+        }
+      }
+    }
+    async stop() {
+      if (!this.recording || !this.mediaRecorder) return;
+      this.recording = false;
+      this.mediaRecorder.stop();
+      this.ribbonBtn?.classList.remove("audio-recording");
+      if (this.statusIndicator) this.statusIndicator.style.display = "none";
+      this._stopTimer();
+    }
+    _startTimer() {
+      this._updateTimer();
+      this.timerInterval = setInterval(() => this._updateTimer(), 1e3);
+    }
+    _stopTimer() {
+      if (this.timerInterval) {
+        clearInterval(this.timerInterval);
+        this.timerInterval = null;
+      }
+    }
+    _updateTimer() {
+      if (!this.startTime || !this.timerEl) return;
+      const elapsed = Math.floor((Date.now() - this.startTime) / 1e3);
+      const mins = String(Math.floor(elapsed / 60)).padStart(2, "0");
+      const secs = String(elapsed % 60).padStart(2, "0");
+      this.timerEl.textContent = `${mins}:${secs}`;
+    }
+    async _saveRecording(mimeType) {
+      const blob = new Blob(this.chunks, { type: mimeType });
+      const ext = mimeType.includes("webm") ? "webm" : mimeType.includes("ogg") ? "ogg" : "wav";
+      const now = /* @__PURE__ */ new Date();
+      const pad = (n) => String(n).padStart(2, "0");
+      const filename = `Recording ${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}.${ext}`;
+      let attachmentFolder = "attachments";
+      try {
+        const settings = await invoke("get_settings");
+        if (settings?.files?.attachment_folder) {
+          attachmentFolder = settings.files.attachment_folder;
+        }
+      } catch (e) {
+        console.warn("Could not load settings for attachment folder, using default");
+      }
+      const relativePath = `${attachmentFolder}/${filename}`;
+      const arrayBuffer = await blob.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuffer);
+      let binary = "";
+      for (let i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      const base64 = btoa(binary);
+      try {
+        await invoke("save_binary_file", {
+          relativePath,
+          base64Data: base64
+        });
+        this._insertEmbed(filename);
+        if (this.app.showNotice) {
+          this.app.showNotice(`Recording saved: ${filename}`);
+        }
+      } catch (err) {
+        console.error("Failed to save recording:", err);
+        if (this.app.showNotice) {
+          this.app.showNotice("Failed to save recording: " + err, "error");
+        }
+      }
+    }
+    _insertEmbed(filename) {
+      const embed = `![[${filename}]]`;
+      try {
+        if (this.app.hypermarkEditor?.view) {
+          const view = this.app.hypermarkEditor.view;
+          const pos = view.state.selection.main.head;
+          view.dispatch({
+            changes: { from: pos, insert: embed + "\n" }
+          });
+        } else if (this.app.editor?.cm) {
+          const cm = this.app.editor.cm;
+          const pos = cm.state.selection.main.head;
+          cm.dispatch({
+            changes: { from: pos, insert: embed + "\n" }
+          });
+        }
+      } catch (e) {
+        console.warn("Could not auto-insert recording embed:", e);
+      }
+    }
+    isRecording() {
+      return this.recording;
+    }
+    destroy() {
+      this.stop();
+      this.ribbonBtn?.remove();
+      this.statusIndicator?.remove();
+    }
+  };
+
   // src/js/app.js
   window._moduleLoaded = true;
   var OxidianApp = class {
@@ -17238,6 +19080,9 @@ body.hm-dragging { cursor: grabbing !important; user-select: none; }
       this.commandPalette = null;
       this.bookmarksManagerModule = null;
       this.dailyNotes = null;
+      this.outgoingLinks = null;
+      this.cssSnippets = null;
+      this.audioRecorder = null;
       this.focusMode = false;
       this.bookmarks = JSON.parse(localStorage.getItem("oxidian-bookmarks") || "[]");
       this.recentFiles = JSON.parse(localStorage.getItem("oxidian-recent") || "[]");
@@ -17300,8 +19145,15 @@ body.hm-dragging { cursor: grabbing !important; user-select: none; }
       this.canvas = safeInitModule("Canvas", () => new Canvas(this));
       this.navHistory = safeInitModule("NavHistory", () => new NavHistory(this));
       this.commandPalette = safeInitModule("CommandPalette", () => new CommandPalette(this));
+      this.noteComposer = safeInitModule("NoteComposer", () => new NoteComposer(this));
+      this.fileRecovery = safeInitModule("FileRecovery", () => new FileRecovery(this));
       this.bookmarksManagerModule = safeInitModule("BookmarksManager", () => new BookmarksManager(this));
+      this.outgoingLinks = safeInitModule("OutgoingLinks", () => new OutgoingLinks(this));
+      this.cssSnippets = safeInitModule("CSSSnippets", () => new CSSSnippets(this));
+      this.audioRecorder = safeInitModule("AudioRecorder", () => new AudioRecorder(this));
       this.dailyNotes = safeInitModule("DailyNotes", () => new DailyNotes(this));
+      this.vaultPicker = safeInitModule("VaultPicker", () => new VaultPicker(this));
+      this.workspaces = safeInitModule("Workspaces", () => new Workspaces(this));
       this.remember = null;
       this.rememberDashboard = null;
       this.rememberExtract = null;
@@ -17323,6 +19175,11 @@ body.hm-dragging { cursor: grabbing !important; user-select: none; }
         await this.applySettings();
       } catch (e) {
         console.error("[Oxidian] applySettings failed:", e);
+      }
+      try {
+        await this.cssSnippets?.init();
+      } catch (e) {
+        console.error("[Oxidian] cssSnippets.init failed:", e);
       }
       window.navigateToNote = (target) => this.navigateToNote(target);
       window.searchByTag = (tag) => this.searchByTag(tag);
@@ -17407,6 +19264,18 @@ body.hm-dragging { cursor: grabbing !important; user-select: none; }
         if (e.key === "Escape") this.hideNewFolderDialog();
       });
       document.addEventListener("keydown", (e) => this.handleKeyboard(e));
+      document.addEventListener("click", (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.target.closest("a[href], .internal-link, .wiki-link")) {
+          e.preventDefault();
+          const link = e.target.closest("a[href], .internal-link, .wiki-link");
+          const href = link.getAttribute("href") || link.dataset.href || link.textContent;
+          if (href && !href.startsWith("http")) {
+            this.openFileInSplit(href.endsWith(".md") ? href : href + ".md");
+          } else if (href) {
+            window.open(href, "_blank");
+          }
+        }
+      });
       try {
         this.initSidebarResize();
       } catch (e) {
@@ -18004,6 +19873,25 @@ body.hm-dragging { cursor: grabbing !important; user-select: none; }
     openGraphView() {
       this.tabManager.openTab("__graph__", "Graph View", "graph");
     }
+    openLocalGraph() {
+      if (!this.currentFile) {
+        this.showErrorToast("No file open. Open a note first to see its local graph.");
+        return;
+      }
+      this.tabManager.openTab("__graph_local__", "Local Graph", "graph");
+      setTimeout(() => {
+        if (this.graphView) {
+          this.graphView.mode = "local";
+          this.graphView.centerNote = this.currentFile;
+          this.graphView._toolbar?.querySelectorAll(".graph-mode-btn").forEach((b) => {
+            b.style.background = b.dataset.mode === "local" ? "var(--accent-color,#7f6df2)" : "var(--bg-secondary,#313244)";
+          });
+          const depthSelect = this.graphView._toolbar?.querySelector("#graph-depth-select");
+          if (depthSelect) depthSelect.style.display = "block";
+          this.graphView.load();
+        }
+      }, 100);
+    }
     showGraphPane(pane = 0) {
       if (this.isDirty && this.currentFile) {
         this.saveCurrentFile();
@@ -18405,6 +20293,8 @@ body.hm-dragging { cursor: grabbing !important; user-select: none; }
     // ===== Keyboard Shortcuts =====
     handleKeyboard(e) {
       const ctrl = e.ctrlKey || e.metaKey;
+      const shift = e.shiftKey;
+      const alt = e.altKey;
       if (this.handleNewFeatureShortcuts(e)) {
         return;
       }
@@ -18424,10 +20314,13 @@ body.hm-dragging { cursor: grabbing !important; user-select: none; }
       } else if (ctrl && e.key === "o") {
         e.preventDefault();
         this.quickSwitcher.show();
+      } else if (ctrl && e.key === "g") {
+        e.preventDefault();
+        this.openGraphView();
       } else if (ctrl && e.key === "t") {
         e.preventDefault();
-        this.templateManager.showPicker();
-      } else if (ctrl && e.key === "f" && !e.shiftKey) {
+        this.showNewNoteDialog();
+      } else if (ctrl && e.key === "f" && !shift) {
         const isInEditor = document.activeElement?.classList?.contains("editor-textarea") || document.querySelector(".hypermark-editor") || this.currentFile;
         e.preventDefault();
         if (isInEditor) {
@@ -18441,9 +20334,12 @@ body.hm-dragging { cursor: grabbing !important; user-select: none; }
         if (isInEditor) {
           this.findReplace.showFindReplace();
         }
-      } else if (ctrl && e.shiftKey && e.key === "F") {
+      } else if (ctrl && shift && e.key === "F") {
         e.preventDefault();
         this.search.show();
+      } else if (ctrl && shift && e.key === "D") {
+        e.preventDefault();
+        this.openDailyNote();
       } else if (ctrl && e.key === "d" && document.activeElement?.classList?.contains("editor-textarea")) {
         return;
       } else if (ctrl && e.key === "d") {
@@ -18459,15 +20355,24 @@ body.hm-dragging { cursor: grabbing !important; user-select: none; }
       } else if (ctrl && e.key === ",") {
         e.preventDefault();
         this.openSettingsTab();
-      } else if (ctrl && e.shiftKey && e.key === "D") {
+      } else if (ctrl && e.key === "k") {
         e.preventDefault();
-        this.toggleFocusMode();
+        this.insertLink();
       } else if (ctrl && e.key === "]") {
         e.preventDefault();
         this.indentSelection();
       } else if (ctrl && e.key === "[") {
         e.preventDefault();
         this.outdentSelection();
+      } else if (ctrl && e.key === "Enter") {
+        e.preventDefault();
+        this.toggleCheckbox();
+      } else if (alt && e.key === "Enter") {
+        e.preventDefault();
+        this.followLinkUnderCursor();
+      } else if (ctrl && e.key === "/") {
+        e.preventDefault();
+        window._showKeyboardShortcuts();
       } else if (e.key === "Escape") {
         this.hideNewNoteDialog();
         this.hideNewFolderDialog();
@@ -18475,12 +20380,96 @@ body.hm-dragging { cursor: grabbing !important; user-select: none; }
         this.contextMenu.hide();
         this.slashMenu?.hide();
         this.findReplace?.hide();
+        this.vaultPicker?.hide();
         const palette = document.getElementById("command-palette-overlay");
         if (palette) palette.remove();
         const qs = document.getElementById("quick-switcher-overlay");
         if (qs) qs.remove();
         const tp = document.getElementById("template-picker-overlay");
         if (tp) tp.remove();
+        const vp = document.getElementById("vault-picker-overlay");
+        if (vp) vp.remove();
+        const wm = document.getElementById("workspace-manager-overlay");
+        if (wm) wm.remove();
+      }
+    }
+    /**
+     * Insert a markdown link, wrapping selection if present
+     */
+    insertLink() {
+      const textarea = document.querySelector(".editor-textarea");
+      if (!textarea) {
+        if (this.hypermarkEditor?.wrapSelection) {
+          this.hypermarkEditor.wrapSelection("[", "](url)");
+        }
+        return;
+      }
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const selected = textarea.value.substring(start, end);
+      if (selected) {
+        const link = `[${selected}](url)`;
+        textarea.value = textarea.value.substring(0, start) + link + textarea.value.substring(end);
+        textarea.selectionStart = start + selected.length + 2;
+        textarea.selectionEnd = start + selected.length + 5;
+      } else {
+        const link = "[text](url)";
+        textarea.value = textarea.value.substring(0, start) + link + textarea.value.substring(end);
+        textarea.selectionStart = start + 1;
+        textarea.selectionEnd = start + 5;
+      }
+      textarea.dispatchEvent(new Event("input", { bubbles: true }));
+      textarea.focus();
+    }
+    /**
+     * Toggle checkbox on current line: no checkbox → - [ ] → - [x] → remove
+     */
+    toggleCheckbox() {
+      const textarea = document.querySelector(".editor-textarea");
+      if (!textarea) return;
+      const pos = textarea.selectionStart;
+      const content = textarea.value;
+      const lineStart = content.lastIndexOf("\n", pos - 1) + 1;
+      const lineEnd = content.indexOf("\n", pos);
+      const actualEnd = lineEnd === -1 ? content.length : lineEnd;
+      const line = content.substring(lineStart, actualEnd);
+      let newLine;
+      if (/^(\s*)- \[x\]/.test(line)) {
+        newLine = line.replace(/^(\s*)- \[x\]\s?/, "$1");
+      } else if (/^(\s*)- \[ \]/.test(line)) {
+        newLine = line.replace(/^(\s*)- \[ \]/, "$1- [x]");
+      } else {
+        newLine = line.replace(/^(\s*)(.*)/, "$1- [ ] $2");
+      }
+      textarea.value = content.substring(0, lineStart) + newLine + content.substring(actualEnd);
+      textarea.selectionStart = textarea.selectionEnd = lineStart + newLine.length;
+      textarea.dispatchEvent(new Event("input", { bubbles: true }));
+      textarea.focus();
+    }
+    /**
+     * Follow the wikilink or markdown link under the cursor
+     */
+    followLinkUnderCursor() {
+      const textarea = document.querySelector(".editor-textarea");
+      if (!textarea) return;
+      const pos = textarea.selectionStart;
+      const content = textarea.value;
+      const before = content.substring(Math.max(0, pos - 200), pos);
+      const after = content.substring(pos, Math.min(content.length, pos + 200));
+      const around = before + after;
+      const wikiMatch = around.match(/\[\[([^\]]+)\]\]/);
+      if (wikiMatch) {
+        this.navigateToNote(wikiMatch[1].split("|")[0].trim());
+        return;
+      }
+      const mdMatch = around.match(/\[([^\]]*)\]\(([^)]+)\)/);
+      if (mdMatch) {
+        const target = mdMatch[2];
+        if (target.startsWith("http")) {
+          window.open(target, "_blank");
+        } else {
+          this.navigateToNote(target);
+        }
       }
     }
     // ===== Focus Mode =====
@@ -18749,6 +20738,11 @@ body.hm-dragging { cursor: grabbing !important; user-select: none; }
       this.viewMode = newMode;
       const tab = this.tabManager.getActiveTab();
       if (tab) tab.viewMode = this.viewMode;
+      if (newMode === "source") {
+        await this.setEditorMode("classic");
+      } else if (newMode === "live-preview") {
+        await this.setEditorMode("hypermark");
+      }
       this.applyViewMode();
       this.updateViewModeButton();
     }
@@ -18887,6 +20881,8 @@ Lines: ${lines}`);
         const html = await invoke("render_markdown", { content: processedContent });
         let processed = this.calloutProcessor?.process(html) || html;
         processed = this._processFootnotes(processed, processedContent);
+        processed = this._processImageResize(processed);
+        processed = this._processMediaEmbeds(processed);
         return processed;
       } catch (err) {
         console.error("Failed to render markdown:", err);
@@ -18901,6 +20897,9 @@ Lines: ${lines}`);
     async postProcessRendered(el) {
       this.calloutProcessor.processElement(el);
       await this.mermaidRenderer.processElement(el);
+      if (this.embeddedSearch) {
+        await this.embeddedSearch.processContainer(el);
+      }
     }
     /**
      * Edit frontmatter for the current file
@@ -18949,7 +20948,11 @@ Lines: ${lines}`);
       safeAttach("PropertiesPanel", () => {
         if (this.propertiesPanel) {
           this.propertiesPanel.init(pane);
-          if (textarea) this.propertiesPanel.attachTo(textarea);
+          if (textarea) {
+            this.propertiesPanel.attachTo(textarea);
+          } else if (this.editor?.cmEditor?.view) {
+            this.propertiesPanel.attachToCodeMirror(this.editor.cmEditor.view);
+          }
         }
       });
       safeAttach("DragDrop", () => {
@@ -19041,7 +21044,11 @@ Lines: ${lines}`);
       }
       if (ctrl && shift && e.key === "E") {
         e.preventDefault();
-        this.extractToCard();
+        if (this.noteComposer) {
+          this.noteComposer.extractSelectionToNote();
+        } else {
+          this.extractSelectionToNote();
+        }
         return true;
       }
       if (ctrl && alt && e.key === "ArrowLeft") {
@@ -19077,6 +21084,46 @@ Lines: ${lines}`);
      * Process footnotes: convert [^N] references to superscript links
      * and render footnote definitions as a block at the end.
      */
+    // ===== Feature: Image Resize Syntax =====
+    // Supports: ![alt|300](url), ![alt|300x200](url), ![[img.png|300]], ![[img.png|300x200]]
+    _processImageResize(html) {
+      html = html.replace(/<img\s([^>]*?)alt="([^"]*?\|(\d+(?:x\d+)?))"([^>]*?)>/gi, (match, before, fullAlt, size, after) => {
+        const cleanAlt = fullAlt.replace(/\|[^"]*$/, "");
+        let style = "";
+        if (size.includes("x")) {
+          const [w, h] = size.split("x");
+          style = `width:${w}px;height:${h}px;`;
+        } else {
+          style = `width:${size}px;`;
+        }
+        return `<img ${before}alt="${cleanAlt}" style="${style}"${after}>`;
+      });
+      return html;
+    }
+    // ===== Feature: Audio/Video Embeds =====
+    _processMediaEmbeds(html) {
+      const audioExts = /\.(mp3|wav|ogg|m4a|flac|webm)$/i;
+      const videoExts = /\.(mp4|webm|mov|mkv|avi)$/i;
+      html = html.replace(/!\[\[([^\]]+?)\]\]/g, (match, inner) => {
+        const name = inner.split("|")[0].trim();
+        if (audioExts.test(name)) {
+          return `<audio controls src="${this.escapeHtml(name)}" style="width:100%;max-width:500px;margin:8px 0;"></audio>`;
+        }
+        if (videoExts.test(name)) {
+          return `<video controls src="${this.escapeHtml(name)}" style="width:100%;max-width:700px;margin:8px 0;"></video>`;
+        }
+        return match;
+      });
+      html = html.replace(
+        /<div class="embedded-content[^"]*"[^>]*data-source="([^"]*\.(mp3|wav|ogg|m4a|flac))"[^>]*>[\s\S]*?<\/div>\s*<\/div>\s*<\/div>/gi,
+        (match, src) => `<audio controls src="${this.escapeHtml(src)}" style="width:100%;max-width:500px;margin:8px 0;"></audio>`
+      );
+      html = html.replace(
+        /<div class="embedded-content[^"]*"[^>]*data-source="([^"]*\.(mp4|webm|mov|mkv))"[^>]*>[\s\S]*?<\/div>\s*<\/div>\s*<\/div>/gi,
+        (match, src) => `<video controls src="${this.escapeHtml(src)}" style="width:100%;max-width:700px;margin:8px 0;"></video>`
+      );
+      return html;
+    }
     _processFootnotes(html, rawMarkdown) {
       if (!rawMarkdown || !rawMarkdown.includes("[^")) return html;
       const defRegex = /^\[\^(\w+)\]:\s*(.+)$/gm;
@@ -19126,6 +21173,21 @@ ${footnoteItems}
       } catch (err) {
         console.error("[Oxidian] Random note failed:", err);
         this.showErrorToast("Failed to open random note: " + (err.message || err));
+      }
+    }
+    // ===== Feature: Unique Note Creator =====
+    async createUniqueNote() {
+      try {
+        const now = /* @__PURE__ */ new Date();
+        const pad = (n, len = 2) => String(n).padStart(len, "0");
+        const filename = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}.md`;
+        await invoke("save_note", { path: filename, content: "" });
+        this.invalidateFileTreeCache();
+        this.sidebar?.refresh();
+        await this.openFile(filename);
+      } catch (err) {
+        console.error("[Oxidian] Create unique note failed:", err);
+        this.showErrorToast("Failed to create unique note: " + (err.message || err));
       }
     }
     // ===== Feature: Note Composer (Extract Selection) =====
@@ -19211,6 +21273,101 @@ ${footnoteItems}
       }
     }
   };
+  function trapFocus(container) {
+    const focusable = container.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    function handler(e) {
+      if (e.key !== "Tab") return;
+      if (focusable.length === 0) {
+        e.preventDefault();
+        return;
+      }
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault();
+          last?.focus();
+        }
+      } else {
+        if (document.activeElement === last) {
+          e.preventDefault();
+          first?.focus();
+        }
+      }
+    }
+    container.addEventListener("keydown", handler);
+    requestAnimationFrame(() => first?.focus());
+    return () => container.removeEventListener("keydown", handler);
+  }
+  function showKeyboardShortcuts() {
+    document.getElementById("keyboard-shortcuts-overlay")?.remove();
+    const overlay = document.createElement("div");
+    overlay.id = "keyboard-shortcuts-overlay";
+    overlay.className = "keyboard-shortcuts-overlay";
+    const shortcuts = [
+      { group: "General", items: [
+        ["Ctrl+S", "Save file"],
+        ["Ctrl+N", "New note"],
+        ["Ctrl+P", "Command palette"],
+        ["Ctrl+O", "Quick switcher"],
+        ["Ctrl+,", "Settings"],
+        ["Ctrl+/", "Keyboard shortcuts"],
+        ["Escape", "Close dialog/menu"]
+      ] },
+      { group: "Editor", items: [
+        ["Ctrl+E", "Cycle view mode"],
+        ["Ctrl+F", "Find in file"],
+        ["Ctrl+H", "Find & replace"],
+        ["Ctrl+K", "Insert link"],
+        ["Ctrl+Enter", "Toggle checkbox"],
+        ["Alt+Enter", "Follow link"],
+        ["Ctrl+D", "Duplicate line"],
+        ["Ctrl+]", "Indent"],
+        ["Ctrl+[", "Outdent"]
+      ] },
+      { group: "Navigation", items: [
+        ["Ctrl+G", "Graph view"],
+        ["Ctrl+Shift+D", "Daily note"],
+        ["Ctrl+W", "Close tab"],
+        ["Ctrl+Alt+\u2190", "Go back"],
+        ["Ctrl+Alt+\u2192", "Go forward"],
+        ["Ctrl+Shift+F", "Search vault"]
+      ] }
+    ];
+    overlay.innerHTML = `
+        <div class="keyboard-shortcuts-panel">
+            <h2>\u2328\uFE0F Keyboard Shortcuts</h2>
+            ${shortcuts.map((g) => `
+                <div class="shortcut-group">
+                    <h3>${g.group}</h3>
+                    ${g.items.map(([key, desc]) => `
+                        <div class="shortcut-row">
+                            <span>${desc}</span>
+                            <kbd>${key}</kbd>
+                        </div>
+                    `).join("")}
+                </div>
+            `).join("")}
+        </div>
+    `;
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) overlay.remove();
+    });
+    overlay.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") overlay.remove();
+    });
+    document.body.appendChild(overlay);
+    const cleanup = trapFocus(overlay.querySelector(".keyboard-shortcuts-panel"));
+    const origRemove = overlay.remove.bind(overlay);
+    overlay.remove = () => {
+      cleanup();
+      origRemove();
+    };
+  }
+  window._showKeyboardShortcuts = showKeyboardShortcuts;
+  window._trapFocus = trapFocus;
   document.addEventListener("DOMContentLoaded", async () => {
     try {
       window.oxidianApp = new OxidianApp();

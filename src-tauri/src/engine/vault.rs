@@ -117,8 +117,17 @@ fn trash_dir(vault_path: &str) -> PathBuf {
 // ─── Extraction helpers ──────────────────────────────────────────────
 
 pub fn extract_tags(content: &str) -> Vec<String> {
+    // Strip frontmatter and code blocks before extracting tags
+    static CODE_BLOCK_RE: LazyLock<regex::Regex> = LazyLock::new(|| {
+        regex::Regex::new(r"(?s)```.*?```|`[^`\n]+`").unwrap()
+    });
+    static FRONTMATTER_RE: LazyLock<regex::Regex> = LazyLock::new(|| {
+        regex::Regex::new(r"(?s)\A---\n.*?\n---\n?").unwrap()
+    });
+    let stripped = FRONTMATTER_RE.replace(content, "");
+    let stripped = CODE_BLOCK_RE.replace_all(&stripped, "");
     let mut tags: Vec<String> = TAG_RE
-        .captures_iter(content)
+        .captures_iter(&stripped)
         .map(|c| c[1].to_string())
         .collect();
     tags.sort();

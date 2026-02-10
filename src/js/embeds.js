@@ -26,6 +26,26 @@ export class EmbedProcessor {
             return content;
         }
 
+        // Pre-process: handle PDF embeds and block reference embeds before Rust
+        const pdfRegex = /!\[\[([^\]]+?\.pdf)(?:#([^\]]+?))?\]\]/gi;
+        const blockRefRegex = /!\[\[([^\]]*?)#(\^[^\]]+?)\]\]/g;
+        
+        // Handle PDF embeds inline
+        let pdfMatch;
+        while ((pdfMatch = pdfRegex.exec(content)) !== null) {
+            const embed = { notePath: pdfMatch[1].trim(), heading: pdfMatch[2]?.trim(), fullMatch: pdfMatch[0] };
+            const pdfHtml = this.renderPdfEmbed(embed);
+            content = content.replace(pdfMatch[0], pdfHtml);
+        }
+
+        // Handle block reference embeds
+        let blockMatch;
+        while ((blockMatch = blockRefRegex.exec(content)) !== null) {
+            const embed = { notePath: blockMatch[1].trim(), heading: blockMatch[2].trim(), fullMatch: blockMatch[0] };
+            const blockHtml = await this.renderBlockEmbed(embed, embedDepth);
+            content = content.replace(blockMatch[0], blockHtml);
+        }
+
         try {
             // Rust resolves all embeds: finds ![[...]] patterns, reads files,
             // extracts sections, strips frontmatter, handles recursion.
@@ -99,6 +119,102 @@ export class EmbedProcessor {
     }
 
     /**
+     * Check if an embed target is a PDF file
+     */
+    _isPdf(notePath) {
+        return notePath.toLowerCase().endsWith('.pdf');
+    }
+
+    /**
+     * Render a PDF embed with iframe/embed element.
+     * Supports page numbers via #page=N syntax.
+     */
+    renderPdfEmbed(embed) {
+        const pdfPath = embed.notePath;
+        let pageNum = null;
+        
+        // Parse page number from heading field (e.g., "page=5")
+        if (embed.heading && embed.heading.startsWith('page=')) {
+            pageNum = parseInt(embed.heading.replace('page=', ''), 10);
+        }
+
+        // Build source URL — use Tauri asset protocol for local files
+        let src;
+        if (window.__TAURI_INTERNALS__ || window.__TAURI__) {
+            // Tauri v2: use convertFileSrc or asset protocol
+            try {
+                if (window.__TAURI_INTERNALS__?.convertFileSrc) {
+                    src = window.__TAURI_INTERNALS__.convertFileSrc(pdfPath);
+                } else {
+                    // Fallback: asset protocol
+                    src = `asset://localhost/${encodeURIComponent(pdfPath)}`;
+                }
+            } catch {
+                src = pdfPath;
+            }
+        } else {
+            src = pdfPath;
+        }
+
+        if (pageNum) {
+            src += `#page=${pageNum}`;
+        }
+
+        const pageInfo = pageNum ? ` (page ${pageNum})` : '';
+        const sourceInfo = `${pdfPath}${pageInfo}`;
+
+        return `
+<div class="embedded-content embed-pdf" data-source="${this.escapeHtml(sourceInfo)}">
+    <div class="embed-header">
+        <span class="embed-source">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+                <polyline points="10 9 9 9 8 9"/>
+            </svg>
+            ${this.escapeHtml(sourceInfo)}
+        </span>
+    </div>
+    <div class="embed-pdf-container">
+        <iframe src="${this.escapeHtml(src)}" class="embed-pdf-frame" frameborder="0"
+            onerror="this.parentElement.innerHTML='<div class=\\'embed-pdf-fallback\\'><a href=\\'${this.escapeHtml(src)}\\'>Download ${this.escapeHtml(pdfPath)}</a></div>'">
+        </iframe>
+        <noscript>
+            <a href="${this.escapeHtml(src)}">Download ${this.escapeHtml(pdfPath)}</a>
+        </noscript>
+    </div>
+</div>`;
+    }
+
+    /**
+     * Render a block reference embed (![[note#^block-id]])
+     */
+    async renderBlockEmbed(embed, embedDepth) {
+        const blockId = embed.heading.substring(1); // Remove the ^ prefix
+        try {
+            let content;
+            if (embed.notePath) {
+                let notePath = embed.notePath;
+                if (!notePath.endsWith('.md')) notePath += '.md';
+                content = await invoke('get_block_content', { notePath, blockId });
+            } else {
+                // No note specified — search entire vault
+                const result = await invoke('find_block', { blockId });
+                if (!result) throw new Error(`Block ^${blockId} not found`);
+                content = result.content;
+            }
+            return this.wrapEmbedContent(content, { 
+                notePath: embed.notePath || '(vault)', 
+                heading: `^${blockId}` 
+            }, embedDepth);
+        } catch (err) {
+            return this.renderEmbedError(embed, err.message || String(err));
+        }
+    }
+
+    /**
      * Fallback: JS-side embed processing if Rust is unavailable.
      * @private
      */
@@ -119,6 +235,24 @@ export class EmbedProcessor {
 
         for (const embed of embeds.reverse()) {
             try {
+                // Handle PDF embeds
+                if (this._isPdf(embed.notePath)) {
+                    const pdfHtml = this.renderPdfEmbed(embed);
+                    processedContent = processedContent.substring(0, embed.index) +
+                        pdfHtml +
+                        processedContent.substring(embed.index + embed.fullMatch.length);
+                    continue;
+                }
+
+                // Handle block reference embeds (![[note#^block-id]])
+                if (embed.heading && embed.heading.startsWith('^')) {
+                    const blockHtml = await this.renderBlockEmbed(embed, embedDepth);
+                    processedContent = processedContent.substring(0, embed.index) +
+                        blockHtml +
+                        processedContent.substring(embed.index + embed.fullMatch.length);
+                    continue;
+                }
+
                 let fullPath = embed.notePath;
                 if (!fullPath.endsWith('.md')) fullPath += '.md';
 
@@ -182,6 +316,38 @@ export class EmbedProcessor {
      * Wrap embedded content with visual styling.
      */
     wrapEmbedContent(content, embed, embedDepth) {
+        // Check if this is an image embed with size: ![[image.png|300]] or ![[image.png|300x200]]
+        const notePath = embed.notePath || '';
+        const imageExts = /\.(png|jpg|jpeg|gif|svg|webp|bmp|ico)$/i;
+        const audioExts = /\.(mp3|wav|ogg|m4a|flac)$/i;
+        const videoExts = /\.(mp4|webm|mov|mkv|avi)$/i;
+        
+        // Parse size from notePath (e.g., "image.png|300" or "image.png|300x200")
+        const pipeIdx = notePath.indexOf('|');
+        const cleanPath = pipeIdx >= 0 ? notePath.substring(0, pipeIdx).trim() : notePath;
+        const sizePart = pipeIdx >= 0 ? notePath.substring(pipeIdx + 1).trim() : '';
+
+        if (imageExts.test(cleanPath)) {
+            let style = '';
+            if (sizePart) {
+                if (sizePart.includes('x')) {
+                    const [w, h] = sizePart.split('x');
+                    style = `width:${w}px;height:${h}px;`;
+                } else if (/^\d+$/.test(sizePart)) {
+                    style = `width:${sizePart}px;`;
+                }
+            }
+            return `<img src="${this.escapeHtml(cleanPath)}" alt="${this.escapeHtml(cleanPath)}" style="${style}max-width:100%;">`;
+        }
+
+        if (audioExts.test(cleanPath)) {
+            return `<audio controls src="${this.escapeHtml(cleanPath)}" style="width:100%;max-width:500px;margin:8px 0;"></audio>`;
+        }
+
+        if (videoExts.test(cleanPath)) {
+            return `<video controls src="${this.escapeHtml(cleanPath)}" style="width:100%;max-width:700px;margin:8px 0;"></video>`;
+        }
+
         if (!content || content.trim() === '') {
             return this.renderEmbedError(embed, 'No content found');
         }
@@ -315,4 +481,9 @@ export const EMBED_CSS = `
 .embed-create-btn { background: var(--text-accent); color: white; border: none; padding: 4px 8px; border-radius: var(--radius-sm); font-size: 12px; cursor: pointer; transition: background var(--transition); }
 .embed-create-btn:hover { background: var(--text-accent-hover); }
 .embedded-content .embedded-content { margin: 8px 0; border-width: 1px; }
+.embed-pdf { border-left: 3px solid var(--text-red, #e64553); }
+.embed-pdf-container { width: 100%; min-height: 500px; }
+.embed-pdf-frame { width: 100%; height: 600px; border: none; }
+.embed-pdf-fallback { padding: 12px; text-align: center; }
+.embed-pdf-fallback a { color: var(--text-accent); text-decoration: underline; }
 `;

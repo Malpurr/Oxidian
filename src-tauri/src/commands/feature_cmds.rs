@@ -1,6 +1,13 @@
 use crate::state::AppState;
 use crate::features::graph;
 use crate::features::canvas::Canvas;
+
+fn validate_canvas_path(path: &str) -> Result<(), String> {
+    if path.contains("..") || path.starts_with('/') || path.starts_with('\\') {
+        return Err("Invalid canvas path".to_string());
+    }
+    Ok(())
+}
 use crate::features::bookmarks::Bookmark;
 use crate::features::daily_notes::{DailyNotes, DailyNotesConfig};
 use crate::features::templates::{TemplateManager, TemplateInfo};
@@ -76,6 +83,9 @@ pub fn list_custom_themes(state: State<AppState>) -> Result<Vec<String>, String>
 
 #[tauri::command]
 pub fn load_custom_theme(state: State<AppState>, name: String) -> Result<String, String> {
+    if name.contains('/') || name.contains('\\') || name.contains("..") || name.is_empty() {
+        return Err("Invalid theme name".to_string());
+    }
     let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     let theme_path = std::path::Path::new(&*vault_path)
         .join(".oxidian")
@@ -90,6 +100,7 @@ pub fn load_custom_theme(state: State<AppState>, name: String) -> Result<String,
 
 #[tauri::command]
 pub fn load_canvas(state: State<AppState>, path: String) -> Result<Canvas, String> {
+    validate_canvas_path(&path)?;
     let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     let full_path = std::path::Path::new(&*vault_path).join(&path);
     Canvas::load(&full_path)
@@ -97,6 +108,7 @@ pub fn load_canvas(state: State<AppState>, path: String) -> Result<Canvas, Strin
 
 #[tauri::command]
 pub fn save_canvas(state: State<AppState>, path: String, canvas: Canvas) -> Result<(), String> {
+    validate_canvas_path(&path)?;
     let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     let full_path = std::path::Path::new(&*vault_path).join(&path);
     canvas.save(&full_path)
@@ -113,6 +125,7 @@ pub fn canvas_add_node(
     url: Option<String>,
     label: Option<String>,
 ) -> Result<String, String> {
+    validate_canvas_path(&path)?;
     let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     let full_path = std::path::Path::new(&*vault_path).join(&path);
     let mut canvas = if full_path.exists() { Canvas::load(&full_path)? } else { Canvas::new() };
@@ -131,6 +144,7 @@ pub fn canvas_add_node(
 
 #[tauri::command]
 pub fn canvas_move_node(state: State<AppState>, path: String, node_id: String, x: f64, y: f64) -> Result<bool, String> {
+    validate_canvas_path(&path)?;
     let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     let full_path = std::path::Path::new(&*vault_path).join(&path);
     let mut canvas = Canvas::load(&full_path)?;
@@ -141,6 +155,7 @@ pub fn canvas_move_node(state: State<AppState>, path: String, node_id: String, x
 
 #[tauri::command]
 pub fn canvas_delete_node(state: State<AppState>, path: String, node_id: String) -> Result<bool, String> {
+    validate_canvas_path(&path)?;
     let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     let full_path = std::path::Path::new(&*vault_path).join(&path);
     let mut canvas = Canvas::load(&full_path)?;
@@ -222,6 +237,114 @@ pub fn get_all_tags(state: State<AppState>) -> Result<Vec<TagEntry>, String> {
 pub fn search_tags(state: State<AppState>, query: String) -> Result<Vec<String>, String> {
     let idx = state.tag_index.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     Ok(idx.search(&query))
+}
+
+// ===== File Recovery =====
+
+use crate::features::file_recovery;
+
+#[derive(Debug, Serialize)]
+pub struct SnapshotInfo {
+    pub timestamp: String,
+    pub size_bytes: u64,
+}
+
+#[tauri::command]
+pub fn create_file_snapshot(state: State<AppState>, path: String) -> Result<(), String> {
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+    file_recovery::create_snapshot(&vault_path, &path)
+}
+
+#[tauri::command]
+pub fn list_file_snapshots(state: State<AppState>, path: String) -> Result<Vec<SnapshotInfo>, String> {
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+    let snapshots = file_recovery::list_snapshots(&vault_path, &path)?;
+    Ok(snapshots.into_iter().map(|s| SnapshotInfo {
+        timestamp: s.timestamp,
+        size_bytes: s.size_bytes,
+    }).collect())
+}
+
+#[tauri::command]
+pub fn get_snapshot_content(state: State<AppState>, path: String, timestamp: String) -> Result<String, String> {
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+    file_recovery::get_snapshot_content(&vault_path, &path, &timestamp)
+}
+
+#[tauri::command]
+pub fn restore_file_snapshot(state: State<AppState>, path: String, timestamp: String) -> Result<(), String> {
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+    file_recovery::restore_snapshot(&vault_path, &path, &timestamp)
+}
+
+#[tauri::command]
+pub fn list_all_snapshot_files(state: State<AppState>) -> Result<Vec<String>, String> {
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+    file_recovery::list_all_snapshot_files(&vault_path)
+}
+
+// ===== Local Graph =====
+
+#[derive(Debug, Serialize)]
+pub struct LocalGraphData {
+    pub nodes: Vec<GraphNode>,
+    pub edges: Vec<GraphEdge>,
+    pub center_node: String,
+}
+
+#[tauri::command]
+pub fn get_local_graph(state: State<AppState>, path: String, depth: Option<usize>) -> Result<LocalGraphData, String> {
+    let mut cache = state.meta_cache.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+    if cache.is_stale(30) {
+        let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+        cache.rebuild(&vault_path);
+    }
+
+    let max_depth = depth.unwrap_or(1).min(3);
+    let full_graph = graph::compute_graph(&cache);
+
+    // BFS from the center node to collect nodes within depth
+    let mut visited = std::collections::HashSet::new();
+    let mut queue = std::collections::VecDeque::new();
+    visited.insert(path.clone());
+    queue.push_back((path.clone(), 0usize));
+
+    // Build adjacency from full graph edges (bidirectional)
+    let mut adj: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
+    for edge in &full_graph.edges {
+        adj.entry(edge.source.clone()).or_default().push(edge.target.clone());
+        adj.entry(edge.target.clone()).or_default().push(edge.source.clone());
+    }
+
+    while let Some((node, d)) = queue.pop_front() {
+        if d >= max_depth {
+            continue;
+        }
+        if let Some(neighbors) = adj.get(&node) {
+            for neighbor in neighbors {
+                if visited.insert(neighbor.clone()) {
+                    queue.push_back((neighbor.clone(), d + 1));
+                }
+            }
+        }
+    }
+
+    let nodes: Vec<GraphNode> = full_graph.nodes.into_iter()
+        .filter(|n| visited.contains(&n.id))
+        .map(|n| GraphNode { id: n.id, name: n.name })
+        .collect();
+
+    let node_ids: std::collections::HashSet<&String> = nodes.iter().map(|n| &n.id).collect();
+    let edges: Vec<GraphEdge> = full_graph.edges.into_iter()
+        .filter(|e| node_ids.contains(&e.source) && node_ids.contains(&e.target))
+        .map(|e| GraphEdge { source: e.source, target: e.target })
+        .collect();
+
+    Ok(LocalGraphData {
+        nodes,
+        edges,
+        center_node: path,
+    })
 }
 
 // ===== Navigation History =====

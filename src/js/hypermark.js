@@ -574,6 +574,16 @@ const DEFAULT_SLASH_COMMANDS = [
   { label: 'Divider', icon: '—', description: 'Horizontal rule', keywords: ['divider', 'hr', 'horizontal', 'rule', 'separator'], markdown: '---' },
   { label: 'Callout', icon: '💡', description: 'Callout box', keywords: ['callout', 'note', 'warning', 'tip', 'admonition'], markdown: '> [!note]\n> ' },
   { label: 'Math Block', icon: '∑', description: 'LaTeX math block', keywords: ['math', 'latex', 'equation', 'formula'], markdown: '$$\n\n$$', cursorOffset: 3 },
+  { label: 'Heading 4', icon: 'H4', description: 'Heading level 4', keywords: ['h4', 'heading'], markdown: '#### ' },
+  { label: 'Heading 5', icon: 'H5', description: 'Heading level 5', keywords: ['h5', 'heading'], markdown: '##### ' },
+  { label: 'Heading 6', icon: 'H6', description: 'Heading level 6', keywords: ['h6', 'heading'], markdown: '###### ' },
+  { label: 'Bold', icon: 'B', description: 'Bold text', keywords: ['bold', 'strong'], markdown: '**bold text**', cursorOffset: -2 },
+  { label: 'Italic', icon: 'I', description: 'Italic text', keywords: ['italic', 'emphasis', 'em'], markdown: '*italic text*', cursorOffset: -1 },
+  { label: 'Strikethrough', icon: 'S', description: 'Strikethrough text', keywords: ['strikethrough', 'strike', 'del'], markdown: '~~text~~', cursorOffset: -2 },
+  { label: 'Inline Code', icon: '`', description: 'Inline code', keywords: ['inline', 'code', 'mono'], markdown: '`code`', cursorOffset: -1 },
+  { label: 'Image', icon: '🖼', description: 'Insert image', keywords: ['image', 'img', 'picture', 'embed'], markdown: '![alt](url)' },
+  { label: 'Link', icon: '🔗', description: 'Insert link', keywords: ['link', 'href', 'url'], markdown: '[text](url)' },
+  { label: 'Wikilink', icon: '⟦⟧', description: 'Wiki-style link', keywords: ['wikilink', 'wiki', 'internal'], markdown: '[[]]', cursorOffset: -2 },
 ];
 
 class SlashCommandMenu {
@@ -1343,11 +1353,93 @@ class HyperMarkEditor {
       const contentBefore = textarea.value.substring(0, cursorPos);
       const contentAfter = textarea.value.substring(cursorPos);
       if (textarea.value.trim() === '' && contentBefore.trim() === '') { this._blurBlock(); return; }
+
+      // Auto-indent: preserve leading whitespace from current line
+      const lastNewline = contentBefore.lastIndexOf('\n');
+      const currentLine = contentBefore.substring(lastNewline + 1);
+      const leadingWhitespace = currentLine.match(/^(\s*)/)[1] || '';
+      if (leadingWhitespace) {
+        // Insert newline + indent directly instead of splitting block
+        textarea.value = contentBefore + '\n' + leadingWhitespace + contentAfter;
+        const newPos = cursorPos + 1 + leadingWhitespace.length;
+        textarea.selectionStart = textarea.selectionEnd = newPos;
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        textarea.focus();
+        // Auto-resize
+        textarea.style.height = '0';
+        textarea.style.height = Math.max(textarea.scrollHeight, 24) + 'px';
+        return;
+      }
+
       this._splitBlockAtCursor(block, contentBefore, contentAfter);
       return;
     }
 
     if (e.key === 'Escape') { e.preventDefault(); this._blurBlock(); return; }
+
+    // --- Keyboard shortcuts: Ctrl+B (bold), Ctrl+I (italic), Ctrl+K (link) ---
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey) {
+      if (e.key === 'b') {
+        e.preventDefault();
+        const start = textarea.selectionStart, end = textarea.selectionEnd;
+        const selected = textarea.value.substring(start, end) || 'bold text';
+        textarea.value = textarea.value.substring(0, start) + '**' + selected + '**' + textarea.value.substring(end);
+        textarea.selectionStart = start + 2;
+        textarea.selectionEnd = start + 2 + selected.length;
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        textarea.focus();
+        return;
+      }
+      if (e.key === 'i') {
+        e.preventDefault();
+        const start = textarea.selectionStart, end = textarea.selectionEnd;
+        const selected = textarea.value.substring(start, end) || 'italic text';
+        textarea.value = textarea.value.substring(0, start) + '*' + selected + '*' + textarea.value.substring(end);
+        textarea.selectionStart = start + 1;
+        textarea.selectionEnd = start + 1 + selected.length;
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        textarea.focus();
+        return;
+      }
+      if (e.key === 'k') {
+        e.preventDefault();
+        const start = textarea.selectionStart, end = textarea.selectionEnd;
+        const selected = textarea.value.substring(start, end);
+        if (selected) {
+          const linkText = '[' + selected + '](url)';
+          textarea.value = textarea.value.substring(0, start) + linkText + textarea.value.substring(end);
+          textarea.selectionStart = start + selected.length + 3;
+          textarea.selectionEnd = start + selected.length + 6;
+        } else {
+          const linkText = '[link text](url)';
+          textarea.value = textarea.value.substring(0, start) + linkText + textarea.value.substring(end);
+          textarea.selectionStart = start + 1;
+          textarea.selectionEnd = start + 10;
+        }
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        textarea.focus();
+        return;
+      }
+    }
+
+    // --- Auto-pair brackets: ( [ { " ` ---
+    const autoPairs = { '(': ')', '[': ']', '{': '}', '"': '"', '`': '`' };
+    if (autoPairs[e.key] && !e.ctrlKey && !e.metaKey) {
+      e.preventDefault();
+      const start = textarea.selectionStart, end = textarea.selectionEnd;
+      const selected = textarea.value.substring(start, end);
+      const open = e.key, close = autoPairs[e.key];
+      textarea.value = textarea.value.substring(0, start) + open + selected + close + textarea.value.substring(end);
+      if (selected) {
+        textarea.selectionStart = start + 1;
+        textarea.selectionEnd = start + 1 + selected.length;
+      } else {
+        textarea.selectionStart = textarea.selectionEnd = start + 1;
+      }
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+      textarea.focus();
+      return;
+    }
 
     if (e.key === 'Tab') {
       e.preventDefault();

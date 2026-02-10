@@ -55,7 +55,11 @@ export class CommandPalette {
 
             // New Features
             { name: 'Open Random Note', cat: 'Navigate', action: () => app.openRandomNote() },
-            { name: 'Extract Selection to New Note', cat: 'Editor', action: () => app.extractSelectionToNote() },
+            { name: 'Create unique note', cat: 'File', action: () => app.createUniqueNote() },
+            { name: 'Extract Selection to New Note', shortcut: 'Ctrl+Shift+E', cat: 'Editor', action: () => app.noteComposer ? app.noteComposer.extractSelectionToNote() : app.extractSelectionToNote() },
+            { name: 'Merge Notes', cat: 'Editor', action: () => app.noteComposer?.mergeNotes() },
+            { name: 'Show File Recovery', cat: 'Navigate', action: () => app.fileRecovery?.show() },
+            { name: 'Open Local Graph', cat: 'Navigate', action: () => app.openLocalGraph() },
             { name: 'Record Audio', cat: 'Editor', action: () => app.startAudioRecording() },
             { name: 'Stop Audio Recording', cat: 'Editor', action: () => app.stopAudioRecording() },
 
@@ -63,6 +67,29 @@ export class CommandPalette {
             { name: 'Toggle Bookmark', cat: 'Organize', action: () => app.toggleBookmark() },
             { name: 'Open Settings', shortcut: 'Ctrl+,', cat: 'Settings', action: () => app.openSettingsTab() },
             { name: 'Refresh File Explorer', cat: 'Navigate', action: () => app.sidebar?.refresh() },
+
+            // Vault management
+            { name: 'Switch Vault', cat: 'Vault', action: () => app.vaultPicker?.show() },
+            { name: 'Open Vault Picker', cat: 'Vault', action: () => app.vaultPicker?.show() },
+
+            // Workspaces
+            { name: 'Save Workspace', cat: 'Workspace', action: () => app.workspaces?.save() },
+            { name: 'Load Workspace', cat: 'Workspace', action: () => app.workspaces?.showManager() },
+            { name: 'Manage Workspaces', cat: 'Workspace', action: () => app.workspaces?.showManager() },
+
+            // Additional shortcuts
+            { name: 'Open Graph View', shortcut: 'Ctrl+G', cat: 'Navigate', action: () => app.openGraphView() },
+            { name: 'New Tab', shortcut: 'Ctrl+T', cat: 'File', action: () => app.showNewNoteDialog() },
+            { name: 'Close Tab', shortcut: 'Ctrl+W', cat: 'File', action: () => { const t = app.tabManager?.getActiveTab(); if (t) app.tabManager.closeTab(t.id); } },
+            { name: 'Open Daily Note', shortcut: 'Ctrl+Shift+D', cat: 'File', action: () => app.openDailyNote() },
+            { name: 'Insert Link', shortcut: 'Ctrl+K', cat: 'Editor', action: () => app.insertLink() },
+            { name: 'Toggle Checkbox', shortcut: 'Ctrl+Enter', cat: 'Editor', action: () => app.toggleCheckbox() },
+            { name: 'Follow Link Under Cursor', shortcut: 'Alt+Enter', cat: 'Editor', action: () => app.followLinkUnderCursor() },
+            { name: 'Indent', shortcut: 'Ctrl+]', cat: 'Editor', action: () => app.indentSelection() },
+            { name: 'Outdent', shortcut: 'Ctrl+[', cat: 'Editor', action: () => app.outdentSelection() },
+
+            // Audio Recorder
+            { name: 'Start/Stop audio recording', cat: 'Audio', action: () => app.audioRecorder?.toggle() },
         ];
     }
 
@@ -154,7 +181,10 @@ export class CommandPalette {
                 item.className = 'command-palette-item' + (i === this.selectedIndex ? ' selected' : '');
                 const catHtml = cmd.cat ? `<span class="command-palette-cat">${cmd.cat}</span>` : '';
                 const shortcutHtml = cmd.shortcut ? `<span class="command-palette-shortcut">${cmd.shortcut}</span>` : '';
-                item.innerHTML = `${catHtml}<span class="command-palette-name">${this._escapeHtml(cmd.name)}</span>${shortcutHtml}`;
+                const nameHtml = input.value.trim()
+                    ? this._highlightMatch(cmd.name, input.value.trim())
+                    : this._escapeHtml(cmd.name);
+                item.innerHTML = `${catHtml}<span class="command-palette-name">${nameHtml}</span>${shortcutHtml}`;
                 item.addEventListener('mousedown', (e) => {
                     e.preventDefault();
                     this.hide();
@@ -229,5 +259,35 @@ export class CommandPalette {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    /**
+     * Highlight fuzzy matched characters in bold.
+     */
+    _highlightMatch(text, query) {
+        const q = query.toLowerCase();
+        const t = text.toLowerCase();
+        
+        // Substring match — highlight the substring
+        const idx = t.indexOf(q);
+        if (idx !== -1) {
+            const before = this._escapeHtml(text.slice(0, idx));
+            const match = this._escapeHtml(text.slice(idx, idx + q.length));
+            const after = this._escapeHtml(text.slice(idx + q.length));
+            return `${before}<mark>${match}</mark>${after}`;
+        }
+        
+        // Character-by-character fuzzy highlight
+        let result = '';
+        let qi = 0;
+        for (let i = 0; i < text.length; i++) {
+            if (qi < q.length && text[i].toLowerCase() === q[qi]) {
+                result += `<mark>${this._escapeHtml(text[i])}</mark>`;
+                qi++;
+            } else {
+                result += this._escapeHtml(text[i]);
+            }
+        }
+        return result;
     }
 }

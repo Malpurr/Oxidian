@@ -1,5 +1,13 @@
 use pulldown_cmark::{html, Options, Parser};
 use regex::Regex;
+use std::sync::LazyLock;
+
+static WIKI_LINK_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"\[\[([^\]|]+)(?:\|([^\]]+))?\]\]").unwrap()
+});
+static TAG_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?:^|\s)#([a-zA-Z][a-zA-Z0-9_/-]*)").unwrap()
+});
 
 pub fn render_markdown(input: &str) -> String {
     let processed = preprocess_wiki_links(input);
@@ -17,8 +25,7 @@ pub fn render_markdown(input: &str) -> String {
 }
 
 fn preprocess_wiki_links(input: &str) -> String {
-    let re = Regex::new(r"\[\[([^\]|]+)(?:\|([^\]]+))?\]\]").unwrap();
-    re.replace_all(input, |caps: &regex::Captures| {
+    WIKI_LINK_RE.replace_all(input, |caps: &regex::Captures| {
         let target = &caps[1];
         let display = caps.get(2).map(|m| m.as_str()).unwrap_or(target);
         let te = target.replace('&', "&amp;").replace('"', "&quot;").replace('<', "&lt;").replace('>', "&gt;").replace('\'', "\\'").replace('\\', "\\\\");
@@ -28,8 +35,7 @@ fn preprocess_wiki_links(input: &str) -> String {
 }
 
 fn preprocess_tags(input: &str) -> String {
-    let re = Regex::new(r"(?:^|\s)#([a-zA-Z][a-zA-Z0-9_/-]*)").unwrap();
-    re.replace_all(input, |caps: &regex::Captures| {
+    TAG_RE.replace_all(input, |caps: &regex::Captures| {
         let full_match = &caps[0];
         let tag = &caps[1];
         let prefix = if full_match.starts_with(char::is_whitespace) { &full_match[..1] } else { "" };

@@ -1,4 +1,5 @@
 pub mod bookmarks;
+pub mod file_recovery;
 pub mod canvas;
 pub mod daily_notes;
 pub mod graph;

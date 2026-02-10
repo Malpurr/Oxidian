@@ -2,9 +2,44 @@
 import { invoke } from './tauri-bridge.js';
 
 export class GraphView {
-    constructor(app, container) {
+    constructor(app, container, options = {}) {
         this.app = app;
         this.container = container;
+        this.mode = options.mode || 'global'; // 'global' | 'local'
+        this.localDepth = options.depth || 1;
+        this.centerNote = options.centerNote || null;
+
+        // Add toolbar
+        this._toolbar = document.createElement('div');
+        this._toolbar.style.cssText = 'position:absolute;top:8px;left:8px;z-index:10;display:flex;gap:6px;align-items:center;';
+        this._toolbar.innerHTML = `
+            <button class="graph-mode-btn" data-mode="global" style="padding:4px 10px;border-radius:4px;border:1px solid var(--border-color,#45475a);background:${this.mode === 'global' ? 'var(--accent-color,#7f6df2)' : 'var(--bg-secondary,#313244)'};color:var(--text-primary,#cdd6f4);cursor:pointer;font-size:12px;">Global</button>
+            <button class="graph-mode-btn" data-mode="local" style="padding:4px 10px;border-radius:4px;border:1px solid var(--border-color,#45475a);background:${this.mode === 'local' ? 'var(--accent-color,#7f6df2)' : 'var(--bg-secondary,#313244)'};color:var(--text-primary,#cdd6f4);cursor:pointer;font-size:12px;">Local</button>
+            <select id="graph-depth-select" style="padding:3px 6px;border-radius:4px;border:1px solid var(--border-color,#45475a);background:var(--bg-secondary,#313244);color:var(--text-primary,#cdd6f4);font-size:12px;display:${this.mode === 'local' ? 'block' : 'none'};">
+                <option value="1" ${this.localDepth === 1 ? 'selected' : ''}>1 hop</option>
+                <option value="2" ${this.localDepth === 2 ? 'selected' : ''}>2 hops</option>
+                <option value="3" ${this.localDepth === 3 ? 'selected' : ''}>3 hops</option>
+            </select>
+        `;
+        this.container.style.position = 'relative';
+        this.container.appendChild(this._toolbar);
+
+        this._toolbar.querySelectorAll('.graph-mode-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.mode = btn.dataset.mode;
+                this._toolbar.querySelectorAll('.graph-mode-btn').forEach(b => {
+                    b.style.background = b.dataset.mode === this.mode ? 'var(--accent-color,#7f6df2)' : 'var(--bg-secondary,#313244)';
+                });
+                this._toolbar.querySelector('#graph-depth-select').style.display = this.mode === 'local' ? 'block' : 'none';
+                this.load();
+            });
+        });
+
+        this._toolbar.querySelector('#graph-depth-select').addEventListener('change', (e) => {
+            this.localDepth = parseInt(e.target.value) || 1;
+            this.load();
+        });
+
         this.canvas = document.createElement('canvas');
         this.container.appendChild(this.canvas);
         this.ctx = this.canvas.getContext('2d');
@@ -57,13 +92,66 @@ export class GraphView {
      */
     async load(filter) {
         try {
-            const vaultPath = this.app.vaultPath || '';
-            const data = await invoke('compute_graph', { vaultPath, filter: filter || null });
+            let data;
+            if (this.mode === 'local') {
+                const centerPath = this.centerNote || this.app.currentFile;
+                if (!centerPath) {
+                    console.warn('No current file for local graph');
+                    return;
+                }
+                data = await invoke('get_local_graph', { path: centerPath, depth: this.localDepth });
+                this._centerNodeId = data.center_node;
+            } else {
+                const vaultPath = this.app.vaultPath || '';
+                data = await invoke('compute_graph', { vaultPath, filter: filter || null });
+                this._centerNodeId = null;
+            }
             this.setGraphData(data);
+            this._applyForceLayout();
             this.draw();
         } catch (err) {
             console.error('Failed to load graph data:', err);
         }
+    }
+
+    /**
+     * Simple force-directed layout for local graph (since Rust compute_graph
+     * returns layout positions but get_local_graph does not).
+     */
+    _applyForceLayout() {
+        if (this.nodes.length === 0) return;
+
+        // If nodes already have meaningful positions (from compute_graph), skip
+        const hasPositions = this.nodes.some(n => n.x !== 0 || n.y !== 0);
+        if (hasPositions && !this._centerNodeId) return;
+
+        // Arrange in a circle with center node in the middle
+        const cx = this.width / 2;
+        const cy = this.height / 2;
+        const radius = Math.min(this.width, this.height) * 0.3;
+
+        const centerNode = this._centerNodeId ? this.nodes.find(n => n.id === this._centerNodeId) : null;
+        const others = centerNode ? this.nodes.filter(n => n !== centerNode) : this.nodes;
+
+        if (centerNode) {
+            centerNode.x = cx;
+            centerNode.y = cy;
+            centerNode.radius = 10;
+        }
+
+        others.forEach((node, i) => {
+            const angle = (2 * Math.PI * i) / others.length;
+            node.x = cx + radius * Math.cos(angle);
+            node.y = cy + radius * Math.sin(angle);
+        });
+
+        // Rebuild nodeMap for edges
+        this.nodeMap = {};
+        this.nodes.forEach(n => this.nodeMap[n.id] = n);
+        this.edges = this.edges.map(e => ({
+            source: this.nodeMap[typeof e.source === 'string' ? e.source : e.source.id],
+            target: this.nodeMap[typeof e.target === 'string' ? e.target : e.target.id],
+        })).filter(e => e.source && e.target);
     }
 
     /**
@@ -72,7 +160,7 @@ export class GraphView {
     setGraphData(data) {
         this.nodes = (data.nodes || []).map(n => ({
             id: n.id,
-            label: n.label,
+            label: n.label || n.name,
             x: n.x,
             y: n.y,
             radius: n.radius || 6,
@@ -109,9 +197,11 @@ export class GraphView {
         // Nodes
         for (const node of this.nodes) {
             const isHovered = node === this.hoveredNode;
+            const isCenter = this._centerNodeId && node.id === this._centerNodeId;
+            const baseColor = isCenter ? '#f5c211' : node.color;
             ctx.beginPath();
             ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
-            ctx.fillStyle = isHovered ? this._lighten(node.color) : node.color;
+            ctx.fillStyle = isHovered ? this._lighten(baseColor) : baseColor;
             ctx.fill();
             if (isHovered) {
                 ctx.strokeStyle = this._lighten(node.color);

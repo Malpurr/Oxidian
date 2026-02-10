@@ -1,416 +1,690 @@
 /* ===== OXIDIAN ANIMATIONS & MICRO-INTERACTIONS ===== */
-/* Micro-interactions make the difference between good and great */
-/* Based on UI Research Report findings */
+/* Interaction & Motion Design — Engineered for feel */
 
-/* ===== UNIVERSAL TRANSITION BASE ===== */
-/* Smooth transitions on all interactive elements */
-*,
-*::before,
-*::after {
-  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
-  transition-duration: var(--duration-150);
-  transition-timing-function: var(--ease-out);
+/* ===== KEYFRAME DEFINITIONS ===== */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-/* Disable transitions for elements that shouldn't have them */
-*:is(
-  .cm-editor,
-  .cm-content,
-  .CodeMirror,
-  .graph-container,
-  canvas,
-  video,
-  iframe,
-  input[type="range"],
-  .no-transition,
-  .no-transition *
-) {
-  transition: none !important;
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
 }
 
-/* ===== HOVER MICRO-INTERACTIONS ===== */
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
 
-/* Subtle lift on interactive elements */
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInDown {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideOutRight {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(16px); }
+}
+
+@keyframes slideOutLeft {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(-16px); }
+}
+
+@keyframes slideOutUp {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(-12px); }
+}
+
+@keyframes slideOutDown {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(12px); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes scaleOut {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.95); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-3px); }
+  20%, 40%, 60%, 80% { transform: translateX(3px); }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* ===== UTILITY ANIMATION CLASSES ===== */
+
+.animate-fade-in {
+  animation: fadeIn 200ms ease-out both;
+}
+
+.animate-fade-out {
+  animation: fadeOut 200ms ease-out both;
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 200ms ease-out both;
+}
+
+.animate-slide-in-left {
+  animation: slideInLeft 200ms ease-out both;
+}
+
+.animate-slide-in-up {
+  animation: slideInUp 200ms ease-out both;
+}
+
+.animate-slide-in-down {
+  animation: slideInDown 200ms ease-out both;
+}
+
+.animate-scale-in {
+  animation: scaleIn 200ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-shake {
+  animation: shake 500ms ease both;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Stagger children */
+.stagger-children > * {
+  opacity: 0;
+  animation: slideInUp 200ms ease-out both;
+}
+.stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-children > *:nth-child(2) { animation-delay: 40ms; }
+.stagger-children > *:nth-child(3) { animation-delay: 80ms; }
+.stagger-children > *:nth-child(4) { animation-delay: 120ms; }
+.stagger-children > *:nth-child(5) { animation-delay: 160ms; }
+.stagger-children > *:nth-child(6) { animation-delay: 200ms; }
+.stagger-children > *:nth-child(7) { animation-delay: 240ms; }
+.stagger-children > *:nth-child(8) { animation-delay: 280ms; }
+
+/* ===== BUTTON MICRO-INTERACTIONS ===== */
+
+/* All clickable buttons: press feedback */
 button:not(:disabled),
-.button,
-.tab-button,
-.ribbon-btn,
-.icon-btn {
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
-}
-
-button:not(:disabled):hover,
-.button:hover,
-.tab-button:hover,
-.ribbon-btn:hover,
-.icon-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+.btn-primary,
+.btn-secondary,
+.welcome-btn,
+.obsidian-button,
+.mod-cta,
+.mod-secondary,
+[role="button"] {
+  transition: transform 120ms ease-out, box-shadow 120ms ease-out, background-color 150ms ease-out, color 150ms ease-out, border-color 150ms ease-out;
 }
 
 button:not(:disabled):active,
-.button:active,
-.tab-button:active,
-.ribbon-btn:active,
-.icon-btn:active {
-  transform: translateY(0);
-  transition-duration: var(--duration-75);
+.btn-primary:active,
+.btn-secondary:active,
+.welcome-btn:active,
+.obsidian-button:active,
+.mod-cta:active,
+.mod-secondary:active,
+[role="button"]:active {
+  transform: scale(0.98);
+  transition-duration: 60ms;
 }
 
-/* ===== SIDEBAR ANIMATIONS ===== */
+/* Subtle glow on hover for primary buttons */
+.btn-primary:hover,
+.welcome-btn.primary:hover,
+.obsidian-button-cta:hover,
+.mod-cta:hover {
+  box-shadow: 0 0 16px rgba(var(--accent-rgb, 127, 109, 242), 0.25), 0 4px 14px rgba(0, 0, 0, 0.2);
+}
 
-/* Sidebar panel switching */
+/* Icon buttons: scale on hover */
+.icon-btn,
+.ribbon-btn,
+.view-toolbar-btn {
+  transition: transform 120ms ease-out, background-color 150ms ease-out, color 150ms ease-out;
+}
+
+.icon-btn:hover,
+.view-toolbar-btn:hover {
+  transform: scale(1.05);
+}
+
+.icon-btn:active,
+.view-toolbar-btn:active {
+  transform: scale(0.95);
+  transition-duration: 60ms;
+}
+
+/* ===== TOGGLE / CHECKBOX ANIMATIONS ===== */
+
+/* Toggle switch: smooth slide with spring */
+.toggle-slider {
+  transition: background-color 250ms ease;
+}
+
+.toggle-slider::before {
+  transition: transform 250ms cubic-bezier(0.34, 1.56, 0.64, 1), background-color 200ms ease, box-shadow 200ms ease;
+}
+
+.toggle input:checked + .toggle-slider::before {
+  box-shadow: 0 0 8px rgba(var(--accent-rgb, 127, 109, 242), 0.4);
+}
+
+/* Obsidian toggle: same treatment */
+.obsidian-toggle-slider {
+  transition: background-color 250ms ease;
+}
+
+.obsidian-toggle-slider::before {
+  transition: transform 250ms cubic-bezier(0.34, 1.56, 0.64, 1), background-color 200ms ease, box-shadow 200ms ease;
+}
+
+.obsidian-toggle input:checked + .obsidian-toggle-slider::before {
+  box-shadow: 0 0 8px rgba(var(--accent-rgb, 127, 109, 242), 0.4);
+}
+
+/* Checkbox: smooth check appearance */
+.checkbox-container input[type="checkbox"] {
+  transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.checkbox-container input[type="checkbox"]:checked {
+  animation: scaleIn 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ===== INPUT FOCUS ANIMATIONS ===== */
+
+input[type="text"]:focus,
+input[type="url"]:focus,
+input[type="search"]:focus,
+input[type="password"]:focus,
+input[type="email"]:focus,
+input[type="number"]:focus,
+textarea:focus,
+.command-palette-input:focus,
+.obsidian-text-input:focus,
+.obsidian-fuzzy-input:focus {
+  border-color: var(--border-focus, var(--text-accent));
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb, 127, 109, 242), 0.12), 0 0 12px rgba(var(--accent-rgb, 127, 109, 242), 0.06);
+  transition: border-color 150ms ease, box-shadow 200ms ease;
+}
+
+/* ===== TOOLTIP ANIMATION ===== */
+
+[data-tooltip] {
+  position: relative;
+}
+
+[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  background: var(--bg-surface, #2a2a3c);
+  color: var(--text-primary, #dcddde);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm, 5px);
+  font-size: 11px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 9999;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: opacity 200ms ease 150ms, transform 200ms ease 150ms;
+}
+
+[data-tooltip]:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ===== CONTEXT MENU: SCALE FROM ORIGIN ===== */
+
+.context-menu {
+  transform-origin: var(--ctx-origin-x, 0) var(--ctx-origin-y, 0);
+  animation: ctx-scale-in 120ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes ctx-scale-in {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* ===== MODAL OPEN/CLOSE ===== */
+
+/* Backdrop fade */
+.dialog-overlay {
+  animation: fadeIn 150ms ease both;
+  backdrop-filter: blur(8px);
+}
+
+.dialog-overlay.closing {
+  animation: fadeOut 150ms ease both;
+}
+
+/* Modal scale entrance */
+.dialog {
+  animation: modal-enter 250ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes modal-enter {
+  from { opacity: 0; transform: scale(0.95) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.dialog.closing {
+  animation: modal-exit 200ms ease both;
+}
+
+@keyframes modal-exit {
+  from { opacity: 1; transform: scale(1) translateY(0); }
+  to { opacity: 0; transform: scale(0.95) translateY(8px); }
+}
+
+/* ===== NOTICE / TOAST: SLIDE FROM TOP-RIGHT ===== */
+
+#obsidian-notice-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  bottom: auto;
+  z-index: 10001;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.obsidian-notice {
+  animation: notice-slide-in 300ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  transform-origin: top right;
+}
+
+@keyframes notice-slide-in {
+  from { opacity: 0; transform: translateX(100%) scale(0.95); }
+  to { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+.obsidian-notice.fade-out {
+  animation: notice-slide-out 300ms ease both;
+}
+
+@keyframes notice-slide-out {
+  from { opacity: 1; transform: translateX(0) scale(1); }
+  to { opacity: 0; transform: translateX(100%) scale(0.95); }
+}
+
+/* Error toast same treatment */
+.error-toast {
+  animation: notice-slide-in 300ms cubic-bezier(0.34, 1.56, 0.64, 1) both !important;
+}
+
+.error-toast.dismissing {
+  animation: notice-slide-out 300ms ease both !important;
+}
+
+/* ===== TAB CONTENT SWITCH: CROSSFADE ===== */
+
+/* Tab content area crossfade */
+.pane {
+  animation: tab-crossfade 150ms ease both;
+}
+
+@keyframes tab-crossfade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Tab indicator animation */
+.tab.active::after {
+  animation: tab-indicator-in 200ms ease-out both;
+}
+
+@keyframes tab-indicator-in {
+  from { transform: scaleX(0); opacity: 0; }
+  to { transform: scaleX(1); opacity: 1; }
+}
+
+/* ===== SIDEBAR PANEL SWITCH: FADE ===== */
+
 .sidebar-panel {
   opacity: 0;
-  transform: translateX(-var(--space-4));
-  transition: opacity var(--transition-normal), transform var(--transition-normal);
+  transform: translateY(4px);
+  transition: opacity 150ms ease, transform 150ms ease;
+  pointer-events: none;
 }
 
 .sidebar-panel.active {
   opacity: 1;
-  transform: translateX(0);
+  transform: translateY(0);
+  pointer-events: auto;
 }
 
-/* File tree item animations */
-.file-tree-item {
-  transition: background-color var(--transition-fast), transform var(--transition-fast);
+/* ===== SETTINGS SECTION SWITCH: DIRECTIONAL SLIDE ===== */
+
+.settings-section {
+  display: none;
 }
 
-.file-tree-item:hover {
-  background-color: var(--bg-hover);
-  transform: translateX(var(--space-1));
+.settings-section.active {
+  display: block;
+  animation: settings-slide-in 200ms ease-out both;
 }
 
-.file-tree-item.active {
-  background-color: var(--bg-active);
+.settings-section.slide-left {
+  animation: slideInLeft 200ms ease-out both;
 }
 
-/* Folder expand/collapse animation */
-.file-tree-item.folder > .file-tree-content {
-  transition: transform var(--transition-normal);
+.settings-section.slide-right {
+  animation: slideInRight 200ms ease-out both;
 }
 
-.file-tree-item.folder:not(.expanded) > .file-tree-content {
-  transform: rotate(-90deg);
+/* ===== WELCOME → EDITOR TRANSITION ===== */
+
+#welcome-screen {
+  transition: opacity 300ms ease, transform 300ms ease;
 }
 
-.file-tree-item.folder.expanded > .file-tree-content {
-  transform: rotate(0deg);
+#welcome-screen.hidden {
+  opacity: 0;
+  transform: scale(0.98);
+  pointer-events: none;
+  /* display:none applied via .hidden in style.css, but we add graceful fade */
 }
 
-.file-tree-children {
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height var(--transition-slow) var(--ease-out);
+/* ===== DRAG & DROP POLISH ===== */
+
+/* File tree: drag ghost */
+.tree-item.dragging {
+  opacity: 0.4;
+  transform: scale(0.98);
 }
 
-.file-tree-item.expanded > .file-tree-children {
-  max-height: 1000px; /* Large enough value for content */
-}
-
-/* ===== TAB BAR ANIMATIONS ===== */
-
-/* Tab switching with smooth indicator */
-.tab-button {
-  position: relative;
-  transition: color var(--transition-fast);
-}
-
-.tab-button::after {
+/* File tree: drop indicator line */
+.tree-item.drop-target-above::before {
   content: '';
   position: absolute;
-  bottom: 0;
-  left: 50%;
-  width: 0;
+  top: -1px;
+  left: 8px;
+  right: 8px;
   height: 2px;
-  background: var(--primary-500);
-  transition: width var(--transition-normal), left var(--transition-normal);
+  background: var(--text-accent);
+  border-radius: 1px;
+  z-index: 10;
+  animation: fadeIn 100ms ease both;
 }
 
-.tab-button.active::after {
-  width: 100%;
-  left: 0;
+.tree-item.drop-target-below::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 8px;
+  right: 8px;
+  height: 2px;
+  background: var(--text-accent);
+  border-radius: 1px;
+  z-index: 10;
+  animation: fadeIn 100ms ease both;
 }
 
-.tab-button:hover:not(.active) {
+.tree-item.drop-target-inside {
+  background: rgba(var(--accent-rgb, 127, 109, 242), 0.12);
+  border-color: var(--text-accent);
+}
+
+/* Tabs: drag ghost */
+.tab.dragging {
+  opacity: 0.5;
+  transform: scale(0.95);
+}
+
+.tab.drop-target {
+  box-shadow: inset 0 0 0 2px var(--text-accent);
+}
+
+/* ===== SCROLL & LOADING ===== */
+
+/* Smooth scroll on navigation targets */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Skeleton loading placeholder */
+.skeleton {
+  background: linear-gradient(90deg,
+    var(--bg-surface) 25%,
+    var(--bg-hover) 50%,
+    var(--bg-surface) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: var(--radius-sm, 5px);
+}
+
+.skeleton-line {
+  height: 14px;
+  margin-bottom: 8px;
+  border-radius: 4px;
+}
+
+.skeleton-line.short {
+  width: 60%;
+}
+
+.skeleton-line.medium {
+  width: 80%;
+}
+
+.skeleton-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+
+/* ===== FOCUS & KEYBOARD NAVIGATION ===== */
+
+/* Visible focus ring */
+:focus-visible {
+  outline: 2px solid var(--text-accent, #7f6df2);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm, 5px);
+}
+
+/* Remove pulsing ::after pseudo-element from old animations.css — it conflicts with layout */
+
+/* Skip-to-content link */
+.skip-to-content {
+  position: absolute;
+  top: -100%;
+  left: 16px;
+  z-index: 99999;
+  padding: 8px 16px;
+  background: var(--text-accent);
+  color: #fff;
+  border-radius: var(--radius-md, 7px);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: top 200ms ease;
+}
+
+.skip-to-content:focus {
+  top: 8px;
+}
+
+/* Focus trap visual indicator for modals */
+.dialog-overlay:focus-within .dialog {
+  box-shadow: var(--shadow-lg), 0 0 0 2px rgba(var(--accent-rgb, 127, 109, 242), 0.2);
+}
+
+/* ===== KEYBOARD SHORTCUTS OVERLAY ===== */
+
+.keyboard-shortcuts-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  z-index: 10100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 150ms ease both;
+}
+
+.keyboard-shortcuts-panel {
+  background: var(--bg-secondary, #1a1a24);
+  border: 1px solid var(--border-light, #353548);
+  border-radius: var(--radius-xl, 14px);
+  padding: 24px 32px;
+  max-width: 640px;
+  max-height: 70vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+  animation: modal-enter 250ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.keyboard-shortcuts-panel h2 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 16px;
   color: var(--text-primary);
 }
 
-.tab-button:hover:not(.active)::after {
-  width: 50%;
-  left: 25%;
-  opacity: 0.5;
+.shortcut-group {
+  margin-bottom: 16px;
 }
 
-/* Tab close button micro-interaction */
-.tab-close {
-  opacity: 0;
-  transform: scale(0.8);
-  transition: opacity var(--transition-fast), transform var(--transition-fast);
+.shortcut-group h3 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
 }
 
-.tab-button:hover .tab-close,
-.tab-button:focus-within .tab-close {
-  opacity: 1;
-  transform: scale(1);
+.shortcut-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+  font-size: 13px;
+  color: var(--text-secondary);
 }
 
-.tab-close:hover {
-  background-color: var(--error-500);
-  color: white;
-  transform: scale(1.1);
+.shortcut-row kbd {
+  font-size: 11px;
 }
 
-/* ===== RIBBON ANIMATIONS ===== */
+/* ===== FOLDER COLLAPSE/EXPAND ===== */
 
-/* Ribbon button active state indicator */
-.ribbon-btn {
-  position: relative;
-  transition: background-color var(--transition-fast);
+.tree-folder-children {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 200ms ease-out;
+  overflow: hidden;
 }
 
-.ribbon-btn::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  width: 3px;
-  height: 0;
-  background: var(--primary-500);
-  transform: translateY(-50%);
-  transition: height var(--transition-normal) var(--ease-spring);
+.tree-folder-children.expanded {
+  grid-template-rows: 1fr;
 }
 
-.ribbon-btn.active::before {
-  height: 60%;
+.tree-folder-children > div {
+  min-height: 0;
 }
 
-.ribbon-btn:hover:not(.active) {
-  background-color: var(--bg-hover);
+/* ===== COMMAND PALETTE ENTRANCE ===== */
+
+.command-palette-overlay {
+  animation: fadeIn 120ms ease both;
 }
 
-/* ===== DROPDOWN ANIMATIONS ===== */
+.command-palette {
+  animation: modal-enter 200ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
 
-/* Smooth dropdown appearance */
+/* ===== DROPDOWN MENU ===== */
+
 .dropdown-menu {
-  opacity: 0;
-  transform: translateY(-var(--space-2)) scale(0.95);
-  transition: opacity var(--transition-fast), transform var(--transition-fast);
-  transform-origin: top;
+  animation: ctx-scale-in 120ms cubic-bezier(0.4, 0, 0.2, 1) both;
+  transform-origin: top right;
 }
 
-.dropdown-menu:not(.hidden) {
-  opacity: 1;
-  transform: translateY(0) scale(1);
+.dropdown-menu.hidden {
+  display: none;
 }
 
-.dropdown-item {
-  transition: background-color var(--transition-fast), padding-left var(--transition-fast);
+/* ===== SEARCH RESULT STAGGER (enhanced) ===== */
+
+.search-result-item {
+  animation: slideInUp 200ms ease-out both;
 }
 
-.dropdown-item:hover {
-  background-color: var(--bg-hover);
-  padding-left: calc(var(--space-4) + var(--space-1));
+.search-result-item:nth-child(1) { animation-delay: 0ms; }
+.search-result-item:nth-child(2) { animation-delay: 30ms; }
+.search-result-item:nth-child(3) { animation-delay: 60ms; }
+.search-result-item:nth-child(4) { animation-delay: 90ms; }
+.search-result-item:nth-child(5) { animation-delay: 120ms; }
+.search-result-item:nth-child(6) { animation-delay: 150ms; }
+
+/* ===== ONBOARDING ANIMATIONS (preserve existing) ===== */
+
+@keyframes ob-icon-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
 }
 
-/* ===== MODAL ANIMATIONS ===== */
-
-/* Dialog/modal entrance */
-.dialog-overlay {
-  backdrop-filter: blur(0px);
-  transition: backdrop-filter var(--transition-slow);
-}
-
-.dialog-overlay:not(.hidden) {
-  backdrop-filter: blur(4px);
-}
-
-.dialog {
-  opacity: 0;
-  transform: translateY(-var(--space-8)) scale(0.9);
-  transition: opacity var(--transition-normal), transform var(--transition-normal);
-}
-
-.dialog-overlay:not(.hidden) .dialog {
-  opacity: 1;
-  transform: translateY(0) scale(1);
-}
-
-/* ===== SEARCH & FILTER ANIMATIONS ===== */
-
-/* Search results fade in */
-.search-result {
-  opacity: 0;
-  transform: translateY(var(--space-2));
-  transition: opacity var(--transition-normal), transform var(--transition-normal);
-}
-
-.search-result.visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-/* Search input focus expansion */
-.search-input-wrap {
-  position: relative;
-}
-
-.search-input-wrap::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: var(--primary-500);
-  transform: scaleX(0);
-  transition: transform var(--transition-normal);
-}
-
-.search-input-wrap:focus-within::after {
-  transform: scaleX(1);
-}
-
-/* ===== LOADING ANIMATIONS ===== */
-
-/* Subtle pulse for loading states */
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.6;
-  }
-}
-
-.loading {
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-/* Spinner animation */
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
+/* ===== SPINNER ===== */
 
 .spinner {
   animation: spin 1s linear infinite;
 }
 
-/* ===== STATUS INDICATOR ANIMATIONS ===== */
-
-/* Connection status pulse */
-@keyframes status-pulse {
-  0%, 100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.7;
-    transform: scale(1.05);
-  }
-}
-
-.status-indicator {
-  transition: color var(--transition-fast);
-}
+/* ===== STATUS INDICATOR ===== */
 
 .status-indicator.connecting {
-  animation: status-pulse 1s ease-in-out infinite;
+  animation: pulse 1s ease-in-out infinite;
 }
 
-/* ===== FOCUS ANIMATIONS ===== */
+/* ===== PREFERS REDUCED MOTION ===== */
 
-/* Enhanced focus rings with animation */
-*:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
-  transition: box-shadow var(--transition-fast);
-}
-
-/* Keyboard navigation feedback */
-*:focus-visible {
-  position: relative;
-}
-
-*:focus-visible::after {
-  content: '';
-  position: absolute;
-  inset: -2px;
-  border: 2px solid var(--primary-500);
-  border-radius: var(--radius-md);
-  opacity: 0.6;
-  animation: focus-pulse 1.5s ease-out infinite;
-}
-
-@keyframes focus-pulse {
-  0% {
-    opacity: 0.6;
-    transform: scale(1);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(1.05);
-  }
-}
-
-/* ===== SCROLL ANIMATIONS ===== */
-
-/* Smooth scrollbar transitions */
-::-webkit-scrollbar {
-  transition: opacity var(--transition-slow);
-}
-
-::-webkit-scrollbar:hover {
-  opacity: 1;
-}
-
-::-webkit-scrollbar-thumb {
-  transition: background-color var(--transition-normal);
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background-color: var(--scrollbar-thumb-hover);
-}
-
-/* ===== ENTRANCE ANIMATIONS ===== */
-
-/* Staggered entrance for lists */
-@keyframes fade-in-up {
-  from {
-    opacity: 0;
-    transform: translateY(var(--space-4));
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.fade-in-up {
-  animation: fade-in-up var(--duration-300) var(--ease-out) forwards;
-}
-
-/* Stagger children animations */
-.stagger-children > * {
-  opacity: 0;
-  transform: translateY(var(--space-2));
-  animation: fade-in-up var(--duration-200) var(--ease-out) forwards;
-}
-
-.stagger-children > *:nth-child(1) { animation-delay: 0ms; }
-.stagger-children > *:nth-child(2) { animation-delay: 50ms; }
-.stagger-children > *:nth-child(3) { animation-delay: 100ms; }
-.stagger-children > *:nth-child(4) { animation-delay: 150ms; }
-.stagger-children > *:nth-child(5) { animation-delay: 200ms; }
-
-/* ===== REDUCED MOTION PREFERENCES ===== */
-
-/* Respect user's motion preferences */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -420,11 +694,20 @@ button:not(:disabled):active,
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
-  
-  /* Keep essential animations but make them faster */
+
+  /* Keep essential state transitions functional but instant */
   .sidebar-panel,
+  .dialog,
   .dropdown-menu,
-  .dialog {
-    transition-duration: var(--duration-75) !important;
+  .context-menu,
+  .obsidian-notice {
+    transition-duration: 1ms !important;
+    animation-duration: 1ms !important;
+  }
+
+  /* Disable skeleton shimmer */
+  .skeleton {
+    animation: none !important;
+    background: var(--bg-surface) !important;
   }
 }

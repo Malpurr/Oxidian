@@ -43,6 +43,7 @@ export class WikilinksAutoComplete {
         
         if (text.substring(pos - 2, pos) === '[[') {
             this.triggerPos = pos - 2;
+            this._subMode = null;
             await this.showWikilinkPopup(textarea);
             return;
         }
@@ -52,9 +53,77 @@ export class WikilinksAutoComplete {
             if (query === null) {
                 this.hidePopup();
             } else {
-                await this.updateFilter(query);
+                // Check if we're in heading/block mode (after #)
+                const hashIdx = query.indexOf('#');
+                if (hashIdx >= 0) {
+                    const noteName = query.substring(0, hashIdx);
+                    const sub = query.substring(hashIdx + 1);
+                    await this.updateSubFilter(noteName, sub, textarea);
+                } else {
+                    this._subMode = null;
+                    await this.updateFilter(query);
+                }
             }
         }
+    }
+
+    /**
+     * Filter headings and block IDs within a specific note after #
+     */
+    async updateSubFilter(noteName, subQuery, textarea) {
+        if (this._subMode !== noteName) {
+            this._subMode = noteName;
+            this._subItems = [];
+            
+            try {
+                // Find the note path
+                const note = this.allNotes.find(n => n.name.toLowerCase() === noteName.toLowerCase());
+                if (note) {
+                    // Get headings from note content
+                    const content = await invoke('read_note', { path: note.path });
+                    const headings = [];
+                    for (const line of content.split('\n')) {
+                        const hm = line.match(/^(#{1,6})\s+(.+)/);
+                        if (hm) headings.push({ name: hm[2].trim(), type: 'heading', display: hm[2].trim() });
+                    }
+                    
+                    // Get block IDs
+                    try {
+                        const blocks = await invoke('list_block_ids', { notePath: note.path });
+                        for (const b of (blocks || [])) {
+                            this._subItems.push({ name: `^${b.block_id}`, type: 'block', display: `^${b.block_id} — ${b.content.substring(0, 60)}` });
+                        }
+                    } catch { /* block commands not available */ }
+                    
+                    this._subItems = [...headings, ...this._subItems];
+                }
+            } catch (err) {
+                console.warn('[Wikilinks] Failed to load sub-items:', err);
+            }
+        }
+        
+        // Filter sub items
+        if (!subQuery) {
+            this.filteredNotes = this._subItems.map(item => ({
+                name: `${noteName}#${item.name}`,
+                path: item.name,
+                fullPath: item.display || item.name,
+                _isSubItem: true,
+            }));
+        } else {
+            const lq = subQuery.toLowerCase();
+            this.filteredNotes = this._subItems
+                .filter(item => item.name.toLowerCase().includes(lq) || (item.display && item.display.toLowerCase().includes(lq)))
+                .map(item => ({
+                    name: `${noteName}#${item.name}`,
+                    path: item.name,
+                    fullPath: item.display || item.name,
+                    _isSubItem: true,
+                }));
+        }
+        
+        this.selectedIndex = 0;
+        this.updatePopupContent();
     }
 
     onKeyDown(e) {

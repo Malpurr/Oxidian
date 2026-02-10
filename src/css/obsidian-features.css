@@ -942,3 +942,34 @@
     0%, 100% { opacity: 1; }
     50% { opacity: 0.5; }
 }
+
+/* ── Audio Recorder ── */
+.ribbon-btn.audio-recording {
+    color: var(--color-red, #e03e3e) !important;
+    animation: pulse-recording 1.5s ease-in-out infinite;
+}
+.ribbon-btn.audio-recording svg {
+    stroke: var(--color-red, #e03e3e);
+}
+
+.audio-recorder-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 8px;
+    font-size: 12px;
+    color: var(--color-red, #e03e3e);
+}
+
+.audio-recorder-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--color-red, #e03e3e);
+    animation: pulse-recording 1.5s ease-in-out infinite;
+}
+
+.audio-recorder-timer {
+    font-variant-numeric: tabular-nums;
+    font-family: var(--font-monospace, monospace);
+}

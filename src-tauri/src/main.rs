@@ -93,6 +93,7 @@ fn main() {
             commands::load_settings,
             commands::validate_settings,
             commands::is_first_launch,
+            commands::get_platform_info,
             // ── Core: Encryption ──
             commands::unlock_vault,
             commands::lock_vault,
@@ -111,6 +112,12 @@ fn main() {
             commands::parse_all_links,
             commands::resolve_link,
             commands::update_links_on_rename,
+            // ── Core: Block References ──
+            commands::generate_block_id,
+            commands::find_block,
+            commands::get_block_content,
+            commands::list_block_ids,
+            commands::list_all_block_ids,
             // ── Core: Search ──
             commands::search_vault,
             commands::fuzzy_search,
@@ -148,6 +155,14 @@ fn main() {
             // ── Features: Tags ──
             commands::get_all_tags,
             commands::search_tags,
+            // ── Features: File Recovery ──
+            commands::create_file_snapshot,
+            commands::list_file_snapshots,
+            commands::get_snapshot_content,
+            commands::restore_file_snapshot,
+            commands::list_all_snapshot_files,
+            // ── Features: Local Graph ──
+            commands::get_local_graph,
             // ── Features: Nav History ──
             commands::nav_push,
             commands::nav_go_back,
@@ -156,12 +171,23 @@ fn main() {
             // ── Features: Themes ──
             commands::list_custom_themes,
             commands::load_custom_theme,
+            // ── Vault Manager ──
+            commands::list_vaults,
+            commands::add_vault,
+            commands::remove_vault,
+            commands::switch_vault,
+            // ── Workspaces ──
+            commands::save_workspace,
+            commands::load_workspace,
+            commands::list_workspaces,
+            commands::delete_workspace,
             // ── Plugins ──
             commands::list_plugins,
             commands::list_obsidian_plugins,
             commands::read_plugin_main,
             commands::read_plugin_styles,
             commands::toggle_plugin,
+            commands::toggle_core_plugin,
             commands::get_enabled_plugins,
             commands::get_plugin_data,
             commands::save_plugin_data,
@@ -190,6 +216,8 @@ fn main() {
             features::remember::remember_connection_stats,
             features::remember::remember_cross_source,
             features::remember::remember_insert_link,
+            // ── Audio Recorder ──
+            commands::save_binary_file,
         ])
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();
