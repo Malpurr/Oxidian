@@ -565,7 +565,7 @@ input[type="color"]::-webkit-color-swatch {
     padding: 8px 0;
     border-right: 1px solid var(--border-color);
     flex-shrink: 0;
-    -webkit-app-region: drag;
+    /* -webkit-app-region: drag; DISABLED — blocks clicks in Tauri */
 }
 
 .ribbon-top, .ribbon-bottom {
@@ -909,7 +909,7 @@ input[type="color"]::-webkit-color-swatch {
     align-items: flex-end;
     overflow-x: auto;
     overflow-y: hidden;
-    -webkit-app-region: drag;
+    /* -webkit-app-region: drag; DISABLED — blocks clicks in Tauri */
 }
 
 #tab-bar::-webkit-scrollbar { height: 0; }
