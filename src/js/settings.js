@@ -166,6 +166,7 @@ export class SettingsPage {
         container.appendChild(wrapper);
 
         this.bindEvents(wrapper);
+        this.switchToSection(this.activeSection, wrapper);
         this.initializeSection(this.activeSection);
     }
 

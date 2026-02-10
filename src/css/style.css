@@ -2822,6 +2822,16 @@ kbd:hover {
     background: var(--bg-hover);
 }
 
+.command-palette-cat {
+    color: var(--text-muted);
+    font-size: 11px;
+    background: var(--bg-surface);
+    padding: 2px 6px;
+    border-radius: 3px;
+    margin-right: 8px;
+    flex-shrink: 0;
+}
+
 .command-palette-name {
     color: var(--text-primary);
     font-size: 13px;
