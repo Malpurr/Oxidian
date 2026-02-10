@@ -1,0 +1,531 @@
+/* ===== OXIDIAN RESPONSIVE DESIGN SYSTEM ===== */
+/* Mobile-first approach with progressive enhancement */
+/* Breakpoints based on common device sizes and content needs */
+
+/* ===== BREAKPOINT SYSTEM ===== */
+/* 
+  xs: 0px - 639px   (Mobile phones)
+  sm: 640px+        (Large phones, small tablets)
+  md: 768px+        (Tablets)
+  lg: 1024px+       (Desktop)
+  xl: 1280px+       (Large desktop)
+  2xl: 1536px+      (Extra large desktop)
+*/
+
+/* ===== BASE MOBILE STYLES (0-639px) ===== */
+/* Already mobile-first, these are the defaults */
+
+/* Hide certain elements on very small screens */
+@media (max-width: 479px) {
+  .hide-on-mobile {
+    display: none !important;
+  }
+  
+  /* Extremely compact spacing for tiny screens */
+  :root {
+    --space-mobile-factor: 0.75;
+  }
+}
+
+/* ===== SMALL DEVICES: Large phones (640px+) ===== */
+@media (min-width: 640px) {
+  .show-sm {
+    display: block !important;
+  }
+  
+  .hide-sm {
+    display: none !important;
+  }
+  
+  /* Slightly larger touch targets */
+  .ribbon-btn,
+  .icon-btn {
+    min-height: var(--space-8);
+    min-width: var(--space-8);
+  }
+}
+
+/* ===== MEDIUM DEVICES: Tablets (768px+) ===== */
+@media (min-width: 768px) {
+  .show-md {
+    display: block !important;
+  }
+  
+  .hide-md {
+    display: none !important;
+  }
+  
+  /* Tablet-specific layout adjustments */
+  :root {
+    --sidebar-width: 280px; /* Full width on tablet */
+    --tab-height: 40px;
+  }
+  
+  /* Enable hover effects on tablet+ */
+  .enable-hover-md:hover {
+    background-color: var(--bg-hover);
+  }
+  
+  /* Two-column layouts become viable */
+  .grid-md-2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-4);
+  }
+}
+
+/* ===== LARGE DEVICES: Desktop (1024px+) ===== */
+@media (min-width: 1024px) {
+  .show-lg {
+    display: block !important;
+  }
+  
+  .hide-lg {
+    display: none !important;
+  }
+  
+  /* Desktop-first interactions */
+  :root {
+    --sidebar-width: 300px; /* Wider sidebar on desktop */
+  }
+  
+  /* Enable all hover effects */
+  .enable-hover-lg:hover {
+    background-color: var(--bg-hover);
+  }
+  
+  /* Three-column layouts */
+  .grid-lg-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-4);
+  }
+  
+  /* Sidebar can be resizable on desktop */
+  #sidebar-resize {
+    display: block;
+  }
+}
+
+/* ===== EXTRA LARGE: Large Desktop (1280px+) ===== */
+@media (min-width: 1280px) {
+  .show-xl {
+    display: block !important;
+  }
+  
+  .hide-xl {
+    display: none !important;
+  }
+  
+  /* Larger content areas */
+  :root {
+    --sidebar-width: 320px;
+  }
+  
+  /* Four-column layouts for very wide screens */
+  .grid-xl-4 {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-6);
+  }
+}
+
+/* ===== MOBILE-SPECIFIC STYLES ===== */
+@media (max-width: 767px) {
+  /* ===== MOBILE LAYOUT OVERRIDES ===== */
+  
+  body.sidebar-mobile-open {
+    overflow: hidden; /* Prevent body scroll when sidebar is open */
+  }
+  
+  /* Mobile hamburger menu */
+  .mobile-menu-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--space-8);
+    height: var(--space-8);
+    border: none;
+    background: transparent;
+    color: var(--text-primary);
+    cursor: pointer;
+    z-index: var(--z-fixed);
+    position: fixed;
+    top: var(--space-2);
+    left: var(--space-2);
+    border-radius: var(--radius-md);
+    transition: background-color var(--transition-fast);
+  }
+  
+  .mobile-menu-btn:hover {
+    background-color: var(--bg-hover);
+  }
+  
+  /* Mobile sidebar overlay */
+  .sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: calc(var(--z-modal-backdrop) - 10);
+    transition: opacity var(--transition-normal);
+  }
+  
+  body.sidebar-mobile-open .sidebar-overlay {
+    display: block;
+  }
+  
+  /* Mobile sidebar positioning */
+  #sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: 280px;
+    max-width: 80vw;
+    transform: translateX(-100%);
+    transition: transform var(--transition-normal);
+    z-index: var(--z-modal);
+    box-shadow: var(--shadow-xl);
+    background: var(--bg-secondary);
+  }
+  
+  body.sidebar-mobile-open #sidebar {
+    transform: translateX(0);
+  }
+  
+  /* Hide ribbon on mobile */
+  #ribbon {
+    display: none;
+  }
+  
+  /* Full-width content on mobile */
+  #content-area {
+    margin-left: 0;
+    padding-top: var(--space-10); /* Space for hamburger menu */
+  }
+  
+  /* Mobile tab bar adjustments */
+  #tab-bar {
+    height: var(--space-10);
+    padding: 0 var(--space-2);
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  
+  #tab-bar::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .tab-button {
+    flex-shrink: 0;
+    min-width: 120px;
+    font-size: var(--font-size-sm);
+  }
+  
+  /* Mobile breadcrumb */
+  #breadcrumb-bar {
+    padding: 0 var(--space-2);
+    height: var(--space-8);
+  }
+  
+  .breadcrumb-nav-buttons {
+    margin-right: var(--space-2);
+  }
+  
+  /* Mobile view toolbar */
+  #view-toolbar {
+    gap: var(--space-1);
+  }
+  
+  .view-toolbar-btn {
+    padding: var(--space-1);
+    min-width: auto;
+  }
+  
+  .view-mode-label {
+    display: none; /* Hide text labels on mobile */
+  }
+  
+  /* Mobile editor adjustments */
+  #editor-area {
+    padding: var(--space-2);
+  }
+  
+  /* Mobile welcome screen */
+  .welcome-content {
+    padding: var(--space-4);
+    text-align: center;
+  }
+  
+  .welcome-actions {
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+  
+  .welcome-btn {
+    width: 100%;
+  }
+  
+  .welcome-shortcuts {
+    margin-top: var(--space-6);
+    text-align: left;
+  }
+  
+  .shortcut {
+    padding: var(--space-2) 0;
+    border-bottom: 1px solid var(--border-color);
+  }
+  
+  /* Mobile dialog adjustments */
+  .dialog {
+    margin: var(--space-4);
+    width: calc(100vw - var(--space-8));
+    max-width: none;
+    max-height: calc(100vh - var(--space-8));
+    overflow-y: auto;
+  }
+  
+  /* Mobile status bar */
+  #statusbar {
+    padding: 0 var(--space-2);
+    height: var(--space-6);
+    font-size: var(--font-size-xs);
+  }
+  
+  .status-separator {
+    display: none; /* Hide separators on mobile */
+  }
+  
+  .status-right > span:not(:first-child) {
+    display: none; /* Show only first status item */
+  }
+  
+  /* Mobile context menu */
+  .context-menu {
+    min-width: 200px;
+    max-width: calc(100vw - var(--space-8));
+  }
+}
+
+/* ===== TABLET-SPECIFIC STYLES ===== */
+@media (min-width: 768px) and (max-width: 1023px) {
+  /* Tablet gets a collapsible sidebar */
+  #sidebar {
+    width: var(--sidebar-width);
+    transition: width var(--transition-normal);
+  }
+  
+  #sidebar.collapsed {
+    width: var(--sidebar-width-collapsed);
+  }
+  
+  /* Tablet ribbon adjustments */
+  #ribbon {
+    width: var(--ribbon-width);
+  }
+  
+  /* Content area adjustments for tablet */
+  #content-area {
+    margin-left: calc(var(--ribbon-width) + var(--sidebar-width));
+    transition: margin-left var(--transition-normal);
+  }
+  
+  body.sidebar-collapsed #content-area {
+    margin-left: calc(var(--ribbon-width) + var(--sidebar-width-collapsed));
+  }
+}
+
+/* ===== DESKTOP-SPECIFIC STYLES ===== */
+@media (min-width: 1024px) {
+  /* Hide mobile-only elements */
+  .mobile-menu-btn,
+  .sidebar-overlay {
+    display: none !important;
+  }
+  
+  /* Desktop layout is the default, fully responsive sidebar */
+  #sidebar {
+    position: static;
+    transform: none;
+    height: auto;
+    max-width: none;
+    box-shadow: none;
+  }
+  
+  /* Enable sidebar resizing on desktop */
+  #sidebar-resize {
+    display: block;
+    width: 4px;
+    background: transparent;
+    cursor: col-resize;
+    position: relative;
+    flex-shrink: 0;
+    border-right: 1px solid var(--border-color);
+    transition: background-color var(--transition-fast);
+  }
+  
+  #sidebar-resize:hover {
+    background-color: var(--primary-500);
+    width: 6px;
+    margin-left: -1px;
+  }
+  
+  /* Desktop content area */
+  #content-area {
+    margin-left: 0;
+    padding-top: 0;
+    flex: 1;
+    min-width: 0; /* Allows flex item to shrink below content size */
+  }
+  
+  /* Optimal reading width enforcement */
+  .editor-content {
+    max-width: var(--content-width-md);
+    margin: 0 auto;
+    padding: 0 var(--space-6);
+  }
+  
+  /* Desktop welcome screen */
+  .welcome-content {
+    max-width: var(--content-width-md);
+    margin: 0 auto;
+    padding: var(--space-12) var(--space-6);
+  }
+}
+
+/* ===== PRINT STYLES ===== */
+@media print {
+  /* Hide UI elements when printing */
+  #ribbon,
+  #sidebar,
+  #tab-bar,
+  #breadcrumb-bar,
+  #statusbar,
+  .mobile-menu-btn,
+  .sidebar-overlay,
+  #view-toolbar {
+    display: none !important;
+  }
+  
+  /* Clean print layout */
+  #content-area {
+    margin: 0;
+    padding: 0;
+    max-width: none;
+  }
+  
+  /* Print typography adjustments */
+  body {
+    font-size: 12pt;
+    line-height: 1.4;
+    color: black;
+    background: white;
+  }
+  
+  /* Ensure dark mode doesn't interfere with printing */
+  * {
+    background: white !important;
+    color: black !important;
+    box-shadow: none !important;
+  }
+  
+  /* Print-specific spacing */
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid;
+  }
+  
+  p, li {
+    orphans: 3;
+    widows: 3;
+  }
+}
+
+/* ===== HIGH-DPI DISPLAYS ===== */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  /* Crisp icons and graphics on retina displays */
+  .icon,
+  .icon-btn svg,
+  .ribbon-btn svg {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+  }
+}
+
+/* ===== ACCESSIBILITY: REDUCED MOTION ===== */
+@media (prefers-reduced-motion: reduce) {
+  /* Disable smooth scrolling */
+  html {
+    scroll-behavior: auto;
+  }
+  
+  /* Reduce sidebar animations */
+  #sidebar,
+  .sidebar-panel,
+  .dropdown-menu {
+    transition-duration: 0.1s;
+  }
+  
+  /* Keep essential transitions but make them faster */
+  .mobile-menu-btn,
+  .tab-button,
+  .ribbon-btn {
+    transition-duration: 0.1s;
+  }
+}
+
+/* ===== ACCESSIBILITY: HIGH CONTRAST ===== */
+@media (prefers-contrast: high) {
+  :root {
+    --border-color: currentColor;
+    --shadow-sm: none;
+    --shadow-md: none;
+    --shadow-lg: none;
+  }
+  
+  /* Ensure sufficient contrast */
+  button, .button {
+    border: 2px solid currentColor;
+  }
+  
+  .focus-visible,
+  *:focus-visible {
+    outline: 3px solid currentColor;
+    outline-offset: 2px;
+  }
+}
+
+/* ===== DARK MODE PREFERENCE ===== */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    /* Apply dark theme by default if no theme is set and user prefers dark */
+    --bg-primary: var(--neutral-900);
+    --bg-secondary: var(--neutral-800);
+    --text-primary: var(--neutral-50);
+    --text-secondary: var(--neutral-300);
+  }
+}
+
+/* ===== LANDSCAPE ORIENTATION ===== */
+@media (orientation: landscape) and (max-height: 500px) {
+  /* Optimize for landscape phones and short screens */
+  .welcome-shortcuts {
+    columns: 2;
+    column-gap: var(--space-4);
+  }
+  
+  #statusbar {
+    display: none; /* Hide status bar on very short screens */
+  }
+}
+
+/* ===== CONTAINER QUERIES (Future-proofing) ===== */
+/* When container queries are better supported */
+/*
+@container sidebar (max-width: 200px) {
+  .sidebar-panel-header .panel-title {
+    font-size: var(--font-size-xs);
+  }
+}
+*/

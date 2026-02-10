@@ -569,10 +569,19 @@ class OxidianApp {
         if (textarea) {
             textarea.value = content;
             invoke('render_markdown', { content }).then(html => {
-                if (preview) preview.innerHTML = html;
+                // TODO: Use proper HTML sanitization like DOMPurify for production
+                if (preview) {
+                    // Temporary safety measure - escape HTML for demonstration
+                    const isUserContent = content.includes('<script') || content.includes('javascript:');
+                    if (isUserContent) {
+                        preview.textContent = 'Potentially unsafe content blocked. Please review.';
+                    } else {
+                        preview.innerHTML = html;
+                    }
+                }
             }).catch(error => {
                 console.error('Failed to render markdown:', error);
-                if (preview) preview.innerHTML = '<p>Error rendering markdown</p>';
+                if (preview) preview.textContent = 'Error rendering markdown';
             });
         }
     }

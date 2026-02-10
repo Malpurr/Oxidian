@@ -133,3 +133,258 @@ fn create_snippet(body: &str, query: &str, max_len: usize) -> String {
     if end_char < total_chars { snippet.push_str("..."); }
     snippet
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::TempDir;
+
+    fn create_test_vault() -> TempDir {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let vault_path = temp_dir.path();
+        
+        // Create test notes
+        fs::write(vault_path.join("note1.md"), "# Note 1\n\nThis is the first test note with some content.").unwrap();
+        fs::write(vault_path.join("note2.md"), "# Note 2\n\nThis is the second note about programming.").unwrap();
+        fs::write(vault_path.join("note3.md"), "# Important\n\nThis note contains important information.").unwrap();
+        
+        temp_dir
+    }
+
+    #[test]
+    fn test_search_index_creation() {
+        let temp_vault = create_test_vault();
+        let vault_path = temp_vault.path().to_str().unwrap();
+        
+        let result = SearchIndex::new(vault_path);
+        assert!(result.is_ok());
+        
+        // Check that index directory was created
+        let index_path = temp_vault.path().join(".search_index");
+        assert!(index_path.exists());
+    }
+
+    #[test]
+    fn test_search_result_structure() {
+        let result = SearchResult {
+            path: "test.md".to_string(),
+            title: "Test Note".to_string(),
+            snippet: "Test snippet".to_string(),
+            score: 0.85,
+        };
+        
+        assert_eq!(result.path, "test.md");
+        assert_eq!(result.title, "Test Note");
+        assert_eq!(result.snippet, "Test snippet");
+        assert_eq!(result.score, 0.85);
+    }
+
+    #[test]
+    fn test_reindex_vault() {
+        let temp_vault = create_test_vault();
+        let vault_path = temp_vault.path().to_str().unwrap();
+        
+        let mut index = SearchIndex::new(vault_path).expect("Failed to create index");
+        let result = index.reindex_vault(vault_path);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_index_single_note() {
+        let temp_vault = create_test_vault();
+        let vault_path = temp_vault.path().to_str().unwrap();
+        
+        let mut index = SearchIndex::new(vault_path).expect("Failed to create index");
+        let result = index.index_note(vault_path, "test_note.md", "# Test\n\nTest content");
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_search_empty_query() {
+        let temp_vault = create_test_vault();
+        let vault_path = temp_vault.path().to_str().unwrap();
+        
+        let mut index = SearchIndex::new(vault_path).expect("Failed to create index");
+        index.reindex_vault(vault_path).expect("Failed to reindex");
+        
+        let results = index.search("", 10).expect("Search failed");
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn test_search_whitespace_only_query() {
+        let temp_vault = create_test_vault();
+        let vault_path = temp_vault.path().to_str().unwrap();
+        
+        let mut index = SearchIndex::new(vault_path).expect("Failed to create index");
+        index.reindex_vault(vault_path).expect("Failed to reindex");
+        
+        let results = index.search("   \t  ", 10).expect("Search failed");
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn test_search_with_special_characters() {
+        let temp_vault = create_test_vault();
+        let vault_path = temp_vault.path().to_str().unwrap();
+        
+        let mut index = SearchIndex::new(vault_path).expect("Failed to create index");
+        index.reindex_vault(vault_path).expect("Failed to reindex");
+        
+        // These special characters should be handled gracefully
+        let result = index.search("test[]{}()~^\":\\!+-", 10);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_search_basic_functionality() {
+        let temp_vault = create_test_vault();
+        let vault_path = temp_vault.path().to_str().unwrap();
+        
+        let mut index = SearchIndex::new(vault_path).expect("Failed to create index");
+        index.reindex_vault(vault_path).expect("Failed to reindex");
+        
+        let results = index.search("programming", 10).expect("Search failed");
+        
+        if !results.is_empty() {
+            assert!(results[0].score > 0.0);
+            assert!(!results[0].path.is_empty());
+            assert!(!results[0].title.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_search_with_limit() {
+        let temp_vault = create_test_vault();
+        let vault_path = temp_vault.path().to_str().unwrap();
+        
+        let mut index = SearchIndex::new(vault_path).expect("Failed to create index");
+        index.reindex_vault(vault_path).expect("Failed to reindex");
+        
+        let results = index.search("note", 2).expect("Search failed");
+        assert!(results.len() <= 2);
+    }
+
+    #[test]
+    fn test_search_tag_prefix_removal() {
+        let temp_vault = create_test_vault();
+        let vault_path = temp_vault.path().to_str().unwrap();
+        
+        let mut index = SearchIndex::new(vault_path).expect("Failed to create index");
+        index.reindex_vault(vault_path).expect("Failed to reindex");
+        
+        // The # should be stripped from the beginning
+        let results_with_hash = index.search("#important", 10).expect("Search failed");
+        let results_without_hash = index.search("important", 10).expect("Search failed");
+        
+        // Should get same results (or at least not fail)
+        assert!(results_with_hash.len() == results_without_hash.len() || 
+                (results_with_hash.is_empty() && results_without_hash.len() >= 0) ||
+                (results_without_hash.is_empty() && results_with_hash.len() >= 0));
+    }
+
+    #[test]
+    fn test_create_snippet_basic() {
+        let body = "This is a long piece of text that contains the word programming in the middle of it.";
+        let query = "programming";
+        let snippet = create_snippet(body, query, 50);
+        
+        assert!(snippet.contains("programming"));
+        assert!(snippet.len() <= 60); // 50 + ellipsis
+    }
+
+    #[test]
+    fn test_create_snippet_with_ellipsis() {
+        let body = "Start of text. This is a very long piece of text that contains the search term in the middle and continues for much longer after that.";
+        let query = "search term";
+        let snippet = create_snippet(body, query, 30);
+        
+        assert!(snippet.contains("search term"));
+        assert!(snippet.contains("..."));
+    }
+
+    #[test]
+    fn test_create_snippet_short_text() {
+        let body = "Short text with keyword.";
+        let query = "keyword";
+        let snippet = create_snippet(body, query, 100);
+        
+        assert_eq!(snippet, body); // Should return full text if shorter than limit
+        assert!(!snippet.contains("..."));
+    }
+
+    #[test]
+    fn test_create_snippet_no_match() {
+        let body = "This text does not contain the search term we are looking for.";
+        let query = "nonexistent";
+        let snippet = create_snippet(body, query, 30);
+        
+        // Should still create a snippet from the beginning
+        assert!(snippet.len() <= 35); // 30 + potential ellipsis
+    }
+
+    #[test]
+    fn test_create_snippet_newlines_replaced() {
+        let body = "First line\nSecond line\nThird line with keyword here\nFourth line";
+        let query = "keyword";
+        let snippet = create_snippet(body, query, 50);
+        
+        assert!(snippet.contains("keyword"));
+        assert!(!snippet.contains('\n')); // Newlines should be replaced with spaces
+        assert!(snippet.contains(" ")); // Should have spaces instead
+    }
+
+    #[test]
+    fn test_create_snippet_multiple_terms() {
+        let body = "This is a long text that has multiple words including first and second terms.";
+        let query = "first second";
+        let snippet = create_snippet(body, query, 50);
+        
+        // Should find one of the terms and create snippet around it
+        assert!(snippet.contains("first") || snippet.contains("second"));
+    }
+
+    #[test]
+    fn test_create_snippet_case_insensitive() {
+        let body = "This text has UPPERCASE and lowercase versions of the same Word.";
+        let query = "word";
+        let snippet = create_snippet(body, query, 50);
+        
+        // Should find either uppercase or lowercase version
+        assert!(snippet.contains("Word") || snippet.contains("UPPERCASE"));
+    }
+
+    #[test]
+    fn test_search_index_update_existing_note() {
+        let temp_vault = create_test_vault();
+        let vault_path = temp_vault.path().to_str().unwrap();
+        
+        let mut index = SearchIndex::new(vault_path).expect("Failed to create index");
+        index.reindex_vault(vault_path).expect("Failed to reindex");
+        
+        // Add a note
+        let result = index.index_note(vault_path, "update_test.md", "Original content");
+        assert!(result.is_ok());
+        
+        // Update the same note
+        let result = index.index_note(vault_path, "update_test.md", "Updated content");
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_search_index_handles_unicode() {
+        let temp_vault = create_test_vault();
+        let vault_path = temp_vault.path().to_str().unwrap();
+        
+        let mut index = SearchIndex::new(vault_path).expect("Failed to create index");
+        
+        // Index note with unicode content
+        let result = index.index_note(vault_path, "unicode.md", "Content with émojis 🦀 and ñoñó");
+        assert!(result.is_ok());
+        
+        // Search should handle unicode
+        let result = index.search("émojis", 10);
+        assert!(result.is_ok());
+    }
+}

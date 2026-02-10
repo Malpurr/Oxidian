@@ -1,0 +1,430 @@
+/* ===== OXIDIAN ANIMATIONS & MICRO-INTERACTIONS ===== */
+/* Micro-interactions make the difference between good and great */
+/* Based on UI Research Report findings */
+
+/* ===== UNIVERSAL TRANSITION BASE ===== */
+/* Smooth transitions on all interactive elements */
+*,
+*::before,
+*::after {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
+  transition-duration: var(--duration-150);
+  transition-timing-function: var(--ease-out);
+}
+
+/* Disable transitions for elements that shouldn't have them */
+*:is(
+  .cm-editor,
+  .cm-content,
+  .CodeMirror,
+  .graph-container,
+  canvas,
+  video,
+  iframe,
+  input[type="range"],
+  .no-transition,
+  .no-transition *
+) {
+  transition: none !important;
+}
+
+/* ===== HOVER MICRO-INTERACTIONS ===== */
+
+/* Subtle lift on interactive elements */
+button:not(:disabled),
+.button,
+.tab-button,
+.ribbon-btn,
+.icon-btn {
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+button:not(:disabled):hover,
+.button:hover,
+.tab-button:hover,
+.ribbon-btn:hover,
+.icon-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+button:not(:disabled):active,
+.button:active,
+.tab-button:active,
+.ribbon-btn:active,
+.icon-btn:active {
+  transform: translateY(0);
+  transition-duration: var(--duration-75);
+}
+
+/* ===== SIDEBAR ANIMATIONS ===== */
+
+/* Sidebar panel switching */
+.sidebar-panel {
+  opacity: 0;
+  transform: translateX(-var(--space-4));
+  transition: opacity var(--transition-normal), transform var(--transition-normal);
+}
+
+.sidebar-panel.active {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* File tree item animations */
+.file-tree-item {
+  transition: background-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.file-tree-item:hover {
+  background-color: var(--bg-hover);
+  transform: translateX(var(--space-1));
+}
+
+.file-tree-item.active {
+  background-color: var(--bg-active);
+}
+
+/* Folder expand/collapse animation */
+.file-tree-item.folder > .file-tree-content {
+  transition: transform var(--transition-normal);
+}
+
+.file-tree-item.folder:not(.expanded) > .file-tree-content {
+  transform: rotate(-90deg);
+}
+
+.file-tree-item.folder.expanded > .file-tree-content {
+  transform: rotate(0deg);
+}
+
+.file-tree-children {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height var(--transition-slow) var(--ease-out);
+}
+
+.file-tree-item.expanded > .file-tree-children {
+  max-height: 1000px; /* Large enough value for content */
+}
+
+/* ===== TAB BAR ANIMATIONS ===== */
+
+/* Tab switching with smooth indicator */
+.tab-button {
+  position: relative;
+  transition: color var(--transition-fast);
+}
+
+.tab-button::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background: var(--primary-500);
+  transition: width var(--transition-normal), left var(--transition-normal);
+}
+
+.tab-button.active::after {
+  width: 100%;
+  left: 0;
+}
+
+.tab-button:hover:not(.active) {
+  color: var(--text-primary);
+}
+
+.tab-button:hover:not(.active)::after {
+  width: 50%;
+  left: 25%;
+  opacity: 0.5;
+}
+
+/* Tab close button micro-interaction */
+.tab-close {
+  opacity: 0;
+  transform: scale(0.8);
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
+}
+
+.tab-button:hover .tab-close,
+.tab-button:focus-within .tab-close {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.tab-close:hover {
+  background-color: var(--error-500);
+  color: white;
+  transform: scale(1.1);
+}
+
+/* ===== RIBBON ANIMATIONS ===== */
+
+/* Ribbon button active state indicator */
+.ribbon-btn {
+  position: relative;
+  transition: background-color var(--transition-fast);
+}
+
+.ribbon-btn::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 3px;
+  height: 0;
+  background: var(--primary-500);
+  transform: translateY(-50%);
+  transition: height var(--transition-normal) var(--ease-spring);
+}
+
+.ribbon-btn.active::before {
+  height: 60%;
+}
+
+.ribbon-btn:hover:not(.active) {
+  background-color: var(--bg-hover);
+}
+
+/* ===== DROPDOWN ANIMATIONS ===== */
+
+/* Smooth dropdown appearance */
+.dropdown-menu {
+  opacity: 0;
+  transform: translateY(-var(--space-2)) scale(0.95);
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
+  transform-origin: top;
+}
+
+.dropdown-menu:not(.hidden) {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.dropdown-item {
+  transition: background-color var(--transition-fast), padding-left var(--transition-fast);
+}
+
+.dropdown-item:hover {
+  background-color: var(--bg-hover);
+  padding-left: calc(var(--space-4) + var(--space-1));
+}
+
+/* ===== MODAL ANIMATIONS ===== */
+
+/* Dialog/modal entrance */
+.dialog-overlay {
+  backdrop-filter: blur(0px);
+  transition: backdrop-filter var(--transition-slow);
+}
+
+.dialog-overlay:not(.hidden) {
+  backdrop-filter: blur(4px);
+}
+
+.dialog {
+  opacity: 0;
+  transform: translateY(-var(--space-8)) scale(0.9);
+  transition: opacity var(--transition-normal), transform var(--transition-normal);
+}
+
+.dialog-overlay:not(.hidden) .dialog {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+/* ===== SEARCH & FILTER ANIMATIONS ===== */
+
+/* Search results fade in */
+.search-result {
+  opacity: 0;
+  transform: translateY(var(--space-2));
+  transition: opacity var(--transition-normal), transform var(--transition-normal);
+}
+
+.search-result.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Search input focus expansion */
+.search-input-wrap {
+  position: relative;
+}
+
+.search-input-wrap::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--primary-500);
+  transform: scaleX(0);
+  transition: transform var(--transition-normal);
+}
+
+.search-input-wrap:focus-within::after {
+  transform: scaleX(1);
+}
+
+/* ===== LOADING ANIMATIONS ===== */
+
+/* Subtle pulse for loading states */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.loading {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Spinner animation */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+/* ===== STATUS INDICATOR ANIMATIONS ===== */
+
+/* Connection status pulse */
+@keyframes status-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.05);
+  }
+}
+
+.status-indicator {
+  transition: color var(--transition-fast);
+}
+
+.status-indicator.connecting {
+  animation: status-pulse 1s ease-in-out infinite;
+}
+
+/* ===== FOCUS ANIMATIONS ===== */
+
+/* Enhanced focus rings with animation */
+*:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  transition: box-shadow var(--transition-fast);
+}
+
+/* Keyboard navigation feedback */
+*:focus-visible {
+  position: relative;
+}
+
+*:focus-visible::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border: 2px solid var(--primary-500);
+  border-radius: var(--radius-md);
+  opacity: 0.6;
+  animation: focus-pulse 1.5s ease-out infinite;
+}
+
+@keyframes focus-pulse {
+  0% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.05);
+  }
+}
+
+/* ===== SCROLL ANIMATIONS ===== */
+
+/* Smooth scrollbar transitions */
+::-webkit-scrollbar {
+  transition: opacity var(--transition-slow);
+}
+
+::-webkit-scrollbar:hover {
+  opacity: 1;
+}
+
+::-webkit-scrollbar-thumb {
+  transition: background-color var(--transition-normal);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover);
+}
+
+/* ===== ENTRANCE ANIMATIONS ===== */
+
+/* Staggered entrance for lists */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(var(--space-4));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in-up {
+  animation: fade-in-up var(--duration-300) var(--ease-out) forwards;
+}
+
+/* Stagger children animations */
+.stagger-children > * {
+  opacity: 0;
+  transform: translateY(var(--space-2));
+  animation: fade-in-up var(--duration-200) var(--ease-out) forwards;
+}
+
+.stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-children > *:nth-child(2) { animation-delay: 50ms; }
+.stagger-children > *:nth-child(3) { animation-delay: 100ms; }
+.stagger-children > *:nth-child(4) { animation-delay: 150ms; }
+.stagger-children > *:nth-child(5) { animation-delay: 200ms; }
+
+/* ===== REDUCED MOTION PREFERENCES ===== */
+
+/* Respect user's motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  
+  /* Keep essential animations but make them faster */
+  .sidebar-panel,
+  .dropdown-menu,
+  .dialog {
+    transition-duration: var(--duration-75) !important;
+  }
+}

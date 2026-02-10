@@ -2395,6 +2395,15 @@ class Plugin extends Component {
         _stubWarn('Plugin', 'registerEditorSuggest');
     }
 
+    registerHoverLinkSource(id, info) {
+        // Register a hover link source for providing hover previews
+        // This is used by plugins like Kanban to provide custom hover content
+        if (window._oxidianPluginRegistry) {
+            window._oxidianPluginRegistry.registerHoverLinkSource(id, info);
+        }
+        return { id, info };
+    }
+
     async loadData() {
         try {
             // Primary: use Rust PluginRegistry settings (returns parsed JSON directly)

@@ -1,0 +1,37 @@
+[
+  {
+    "status": "error",
+    "plugin": "dataview",
+    "error": "Unexpected token 'export'"
+  },
+  {
+    "status": "error",
+    "plugin": "templater",
+    "error": "Unexpected token 'export'"
+  },
+  {
+    "status": "error",
+    "plugin": "calendar",
+    "error": "Unexpected token 'export'"
+  },
+  {
+    "status": "error",
+    "plugin": "kanban",
+    "error": "Unexpected token 'export'"
+  },
+  {
+    "status": "error",
+    "plugin": "excalidraw",
+    "error": "Unexpected token 'export'"
+  },
+  {
+    "status": "error",
+    "plugin": "admonition",
+    "error": "Unexpected token 'export'"
+  },
+  {
+    "status": "error",
+    "plugin": "outliner",
+    "error": "Unexpected token 'export'"
+  }
+]
