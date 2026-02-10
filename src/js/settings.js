@@ -1464,7 +1464,7 @@ export class SettingsPage {
         this.settings.editor.fold_indent = formData.get('editor-fold-indent') === 'true';
 
         // Files & Links
-        this.settings.files_links.default_note_location || s.new_file_location || 'vault_root' = formData.get('files-default-location') || 'vault_root';
+        this.settings.files_links.default_note_location = formData.get('files-default-location') || 'vault_root';
         this.settings.files_links.new_note_location = formData.get('files-new-note-location') || '';
         this.settings.files_links.new_link_format = formData.get('files-link-format') || 'shortest';
         this.settings.files_links.use_markdown_links = formData.get('files-use-wikilinks') !== 'true';

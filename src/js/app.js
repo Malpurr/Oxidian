@@ -1,4 +1,4 @@
-// Oxidian — Main Application Module
+window._moduleLoaded = true;
 import { invoke } from './tauri-bridge.js';
 
 import { Editor } from './editor.js';
