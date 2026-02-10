@@ -171,6 +171,39 @@ export class TabManager {
         }
     }
 
+    closeAllTabs() {
+        // Save dirty tabs first
+        const dirtyTabs = this.tabs.filter(t => t.dirty && t.type === 'note');
+        for (const tab of dirtyTabs) {
+            if (this.app.currentFile === tab.path) {
+                this.app.saveCurrentFile().catch(() => {});
+            }
+        }
+        this.tabs = [];
+        this.activeTabId = null;
+        if (this.splitActive) this.unsplit();
+        this.renderTabs();
+        this.app.onAllTabsClosed();
+    }
+
+    closeOtherTabs(keepId) {
+        const keep = this.tabs.find(t => t.id === keepId);
+        if (!keep) return;
+        // Save dirty tabs
+        const toClose = this.tabs.filter(t => t.id !== keepId);
+        for (const tab of toClose) {
+            if (tab.dirty && tab.type === 'note' && this.app.currentFile === tab.path) {
+                this.app.saveCurrentFile().catch(() => {});
+            }
+        }
+        this.tabs = [keep];
+        keep.pane = 0;
+        if (this.splitActive) this.unsplit();
+        this.activeTabId = keep.id;
+        this.renderTabs();
+        this.app.onTabActivated(keep);
+    }
+
     markDirty(path) {
         const tab = this.tabs.find(t => t.path === path && t.type === 'note');
         if (tab) { tab.dirty = true; this.renderTabs(); }
@@ -230,6 +263,12 @@ export class TabManager {
 
             el.addEventListener('mousedown', (e) => {
                 if (e.button === 1) { e.preventDefault(); this.closeTab(tab.id); }
+            });
+
+            // Right-click context menu for tabs
+            el.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                this._showTabContextMenu(e, tab);
             });
 
             // Drag events — tab reorder within same pane + split pane support
@@ -407,6 +446,49 @@ export class TabManager {
     setRightTabList(el) {
         this.tabListRight = el;
         if (el) this.renderTabs();
+    }
+
+    _showTabContextMenu(e, tab) {
+        // Remove existing menu
+        document.getElementById('tab-context-menu')?.remove();
+
+        const menu = document.createElement('div');
+        menu.id = 'tab-context-menu';
+        menu.className = 'context-menu';
+        menu.style.cssText = `position:fixed;left:${e.clientX}px;top:${e.clientY}px;z-index:10000;background:var(--bg-secondary,#1e1e2e);border:1px solid var(--border-color,#45475a);border-radius:6px;padding:4px 0;min-width:160px;box-shadow:0 4px 12px rgba(0,0,0,0.3);`;
+
+        const items = [
+            { label: 'Close', action: () => this.closeTab(tab.id) },
+            { label: 'Close Others', action: () => this.closeOtherTabs(tab.id) },
+            { label: 'Close All', action: () => this.closeAllTabs() },
+            null, // separator
+            { label: tab.pane === 0 ? 'Move to Right Pane' : 'Move to Left Pane', action: () => this.moveTabToPane(tab.id, tab.pane === 0 ? 1 : 0) },
+        ];
+
+        for (const item of items) {
+            if (!item) {
+                const sep = document.createElement('div');
+                sep.style.cssText = 'height:1px;background:var(--border-color,#45475a);margin:4px 8px;';
+                menu.appendChild(sep);
+                continue;
+            }
+            const el = document.createElement('div');
+            el.className = 'context-menu-item';
+            el.style.cssText = 'padding:6px 12px;cursor:pointer;font-size:13px;color:var(--text-primary,#cdd6f4);';
+            el.textContent = item.label;
+            el.addEventListener('mouseenter', () => el.style.background = 'var(--bg-hover,#313244)');
+            el.addEventListener('mouseleave', () => el.style.background = '');
+            el.addEventListener('click', () => { menu.remove(); item.action(); });
+            menu.appendChild(el);
+        }
+
+        document.body.appendChild(menu);
+
+        // Close on click outside
+        const closeMenu = (ev) => {
+            if (!menu.contains(ev.target)) { menu.remove(); document.removeEventListener('click', closeMenu); }
+        };
+        setTimeout(() => document.addEventListener('click', closeMenu), 0);
     }
 
     escapeHtml(text) {

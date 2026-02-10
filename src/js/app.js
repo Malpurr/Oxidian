@@ -669,6 +669,9 @@ class OxidianApp {
         if (!filePath || !this.isDirty || this.currentFile !== filePath) return;
 
         try {
+            // Show saving indicator
+            this._showSaveIndicator('saving');
+            
             // *** FIX: Optimistic UI - mark as saved immediately ***
             this.isDirty = false;
             this.tabManager.markClean(filePath);
@@ -679,8 +682,10 @@ class OxidianApp {
                 
                 // Invalidate backlinks after successful save
                 this.backlinksManager?.invalidate();
+                this._showSaveIndicator('saved');
             } catch (error) {
                 console.error('Failed to save note:', filePath, error);
+                this._showSaveIndicator('error');
                 throw error; // Re-throw so caller can handle
             }
             
@@ -775,6 +780,23 @@ class OxidianApp {
                 });
             }
         }, 2000); // Keep 2s interval as specified
+    }
+
+    // Save indicator in status bar
+    _showSaveIndicator(state) {
+        const rt = document.getElementById('status-reading-time');
+        if (!rt) return;
+        if (state === 'saving') {
+            rt.textContent = 'Saving...';
+        } else if (state === 'saved') {
+            rt.textContent = 'Saved';
+            clearTimeout(this._saveIndicatorTimer);
+            this._saveIndicatorTimer = setTimeout(() => {
+                if (rt.textContent === 'Saved') rt.textContent = '';
+            }, 2000);
+        } else if (state === 'error') {
+            rt.textContent = 'Save failed!';
+        }
     }
 
     // *** FIX: Error toast system for user feedback ***
@@ -1284,6 +1306,34 @@ class OxidianApp {
 
     // ===== File Operations (context menu) =====
 
+    async createNewFileInFolder(folderPath) {
+        const name = prompt('New note name:', 'Untitled');
+        if (!name) return;
+        const noteName = name.endsWith('.md') ? name : name + '.md';
+        const fullPath = folderPath ? `${folderPath}/${noteName}` : noteName;
+        try {
+            await invoke('save_note', { path: fullPath, content: '' });
+            await this.sidebar.refresh();
+            await this.openFile(fullPath);
+        } catch (err) {
+            console.error('Failed to create note:', err);
+            this.showErrorToast(`Failed to create note: ${err.message || err}`);
+        }
+    }
+
+    async createNewSubfolder(folderPath) {
+        const name = prompt('New subfolder name:');
+        if (!name) return;
+        const fullPath = folderPath ? `${folderPath}/${name}` : name;
+        try {
+            await invoke('create_folder', { path: fullPath });
+            await this.sidebar.refresh();
+        } catch (err) {
+            console.error('Failed to create subfolder:', err);
+            this.showErrorToast(`Failed to create subfolder: ${err.message || err}`);
+        }
+    }
+
     async deleteFile(path) {
         if (!confirm(`Delete "${path}"?`)) return;
         
@@ -1598,9 +1648,9 @@ class OxidianApp {
             e.preventDefault();
             this.openGraphView();
         } else if (ctrl && e.key === 't') {
-            // Ctrl+T → New Tab (open new note dialog)
+            // Ctrl+T → New Tab (open quick switcher to pick a file)
             e.preventDefault();
-            this.showNewNoteDialog();
+            this.quickSwitcher.show();
         } else if (ctrl && e.key === 'f' && !shift) {
             const isInEditor = document.activeElement?.classList?.contains('editor-textarea') || 
                              document.querySelector('.hypermark-editor') ||
@@ -1644,6 +1694,14 @@ class OxidianApp {
             // Ctrl+, → Open Settings
             e.preventDefault();
             this.openSettingsTab();
+        } else if (ctrl && e.key === 'b') {
+            // Ctrl+B → Bold
+            e.preventDefault();
+            this.wrapSelection('**', '**');
+        } else if (ctrl && e.key === 'i') {
+            // Ctrl+I → Italic
+            e.preventDefault();
+            this.wrapSelection('*', '*');
         } else if (ctrl && e.key === 'k') {
             // Ctrl+K → Insert link (wrap selection)
             e.preventDefault();
@@ -1686,6 +1744,50 @@ class OxidianApp {
             const wm = document.getElementById('workspace-manager-overlay');
             if (wm) wm.remove();
         }
+    }
+
+    /**
+     * Wrap the current selection with prefix/suffix (for bold, italic, etc.)
+     */
+    wrapSelection(prefix, suffix) {
+        // HyperMark mode
+        if (this.hypermarkEditor?.wrapSelection) {
+            this.hypermarkEditor.wrapSelection(prefix, suffix);
+            return;
+        }
+        // CodeMirror mode
+        if (this.editor?.cmEditor?.view) {
+            const view = this.editor.cmEditor.view;
+            const { from, to } = view.state.selection.main;
+            const selected = view.state.sliceDoc(from, to);
+            // Toggle: if already wrapped, unwrap
+            if (selected.startsWith(prefix) && selected.endsWith(suffix)) {
+                const unwrapped = selected.slice(prefix.length, selected.length - suffix.length);
+                view.dispatch({ changes: { from, to, insert: unwrapped } });
+            } else {
+                view.dispatch({ changes: { from, to, insert: prefix + selected + suffix } });
+            }
+            return;
+        }
+        // Classic textarea mode
+        const textarea = document.querySelector('.editor-textarea');
+        if (!textarea) return;
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const selected = textarea.value.substring(start, end);
+        // Toggle: if already wrapped, unwrap
+        if (selected.startsWith(prefix) && selected.endsWith(suffix)) {
+            const unwrapped = selected.slice(prefix.length, selected.length - suffix.length);
+            textarea.value = textarea.value.substring(0, start) + unwrapped + textarea.value.substring(end);
+            textarea.selectionStart = start;
+            textarea.selectionEnd = start + unwrapped.length;
+        } else {
+            textarea.value = textarea.value.substring(0, start) + prefix + selected + suffix + textarea.value.substring(end);
+            textarea.selectionStart = start + prefix.length;
+            textarea.selectionEnd = start + prefix.length + selected.length;
+        }
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        textarea.focus();
     }
 
     /**
@@ -2820,10 +2922,12 @@ function showKeyboardShortcuts() {
             ['Escape', 'Close dialog/menu'],
         ]},
         { group: 'Editor', items: [
+            ['Ctrl+B', 'Bold'],
+            ['Ctrl+I', 'Italic'],
+            ['Ctrl+K', 'Insert link'],
             ['Ctrl+E', 'Cycle view mode'],
             ['Ctrl+F', 'Find in file'],
             ['Ctrl+H', 'Find & replace'],
-            ['Ctrl+K', 'Insert link'],
             ['Ctrl+Enter', 'Toggle checkbox'],
             ['Alt+Enter', 'Follow link'],
             ['Ctrl+D', 'Duplicate line'],
@@ -2831,6 +2935,7 @@ function showKeyboardShortcuts() {
             ['Ctrl+[', 'Outdent'],
         ]},
         { group: 'Navigation', items: [
+            ['Ctrl+T', 'New tab (quick switcher)'],
             ['Ctrl+G', 'Graph view'],
             ['Ctrl+Shift+D', 'Daily note'],
             ['Ctrl+W', 'Close tab'],
@@ -2873,6 +2978,13 @@ function showKeyboardShortcuts() {
 // Export for use in handleKeyboard
 window._showKeyboardShortcuts = showKeyboardShortcuts;
 window._trapFocus = trapFocus;
+
+// Global unhandled promise rejection handler
+window.addEventListener('unhandledrejection', (event) => {
+    console.error('[Oxidian] Unhandled promise rejection:', event.reason);
+    // Prevent noisy console errors from crashing the UI
+    event.preventDefault();
+});
 
 document.addEventListener('DOMContentLoaded', async () => {
     try {

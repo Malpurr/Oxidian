@@ -1,4 +1,6 @@
 // Oxidian — Context Menu
+import { invoke } from './tauri-bridge.js';
+
 export class ContextMenu {
     constructor(app) {
         this.app = app;
@@ -58,7 +60,17 @@ export class ContextMenu {
         e.stopPropagation();
 
         const items = [];
-        if (!isDir) {
+        if (isDir) {
+            items.push({
+                label: 'New Note',
+                action: () => this.app.createNewFileInFolder(filePath)
+            });
+            items.push({
+                label: 'New Subfolder',
+                action: () => this.app.createNewSubfolder(filePath)
+            });
+            items.push({ separator: true });
+        } else {
             items.push({
                 label: 'Open in New Pane',
                 action: () => this.app.openFileInSplit(filePath)
@@ -78,6 +90,15 @@ export class ContextMenu {
         items.push({
             label: 'Copy Path',
             action: () => navigator.clipboard.writeText(filePath)
+        });
+        items.push({ separator: true });
+        items.push({
+            label: 'Reveal in File Manager',
+            action: () => {
+                invoke('reveal_in_file_manager', { path: filePath }).catch(err => {
+                    console.error('Failed to reveal in file manager:', err);
+                });
+            }
         });
         items.push({ separator: true });
         items.push({

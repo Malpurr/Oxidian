@@ -15,8 +15,8 @@ export class Sidebar {
 
     async refresh() {
         try {
-            const tree = await invoke('scan_vault', { path: this.app.vaultPath || '' });
-            this.render(tree.children || []);
+            const tree = await invoke('scan_vault');
+            this.render(Array.isArray(tree) ? tree : (tree.children || []));
         } catch (err) {
             console.error('Failed to scan vault:', err);
             this.app?.showErrorToast?.(`Failed to load file list: ${err.message || err}`);
@@ -26,7 +26,8 @@ export class Sidebar {
 
     async createFile(path) {
         try {
-            await invoke('create_file', { path });
+            const content = `# ${path.replace(/\.md$/, '').split('/').pop()}\n\n`;
+            await invoke('save_note', { path, content });
             await this.refresh();
             return true;
         } catch (err) {
@@ -74,7 +75,7 @@ export class Sidebar {
 
     async moveEntry(oldPath, newPath) {
         try {
-            await invoke('move_entry', { oldPath, newPath });
+            await invoke('move_entry', { sourcePath: oldPath, destDir: newPath });
             await this.refresh();
             return true;
         } catch (err) {

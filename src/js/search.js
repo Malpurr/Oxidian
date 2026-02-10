@@ -69,8 +69,8 @@ export class Search {
             // Detect tag search: queries starting with # use tag search
             let results;
             if (query.startsWith('#')) {
-                const tag = query.slice(1);
-                results = await invoke('search_by_tag', { tag });
+                // Search for the tag as text in notes via full-text search
+                results = await invoke('search_vault', { query: query });
             } else {
                 results = await invoke('search_vault', { query, options: {} });
             }
@@ -101,7 +101,7 @@ export class Search {
     async showSuggestions(prefix) {
         if (!this.results) return;
         try {
-            const suggestions = await invoke('search_suggest', { prefix });
+            const suggestions = await invoke('search_suggest', { query: prefix });
             this.renderSuggestions(suggestions);
         } catch (err) {
             // Silently ignore suggestion errors
@@ -158,10 +158,17 @@ export class Search {
         for (const suggestion of suggestions) {
             const item = document.createElement('div');
             item.className = 'search-result-item search-suggestion';
-            item.textContent = suggestion;
+            // suggestion is a SearchResult object with path, title, snippet
+            const title = suggestion.title || suggestion.path || suggestion;
+            item.textContent = typeof title === 'string' ? title : String(title);
             item.addEventListener('click', () => {
-                this.input.value = suggestion;
-                this.performSearch(suggestion);
+                if (suggestion.path && this.app?.openFile) {
+                    this.app.openFile(suggestion.path);
+                } else {
+                    const q = typeof suggestion === 'string' ? suggestion : title;
+                    this.input.value = q;
+                    this.performSearch(q);
+                }
             });
             this.results.appendChild(item);
         }

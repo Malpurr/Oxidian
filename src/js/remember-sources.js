@@ -216,12 +216,22 @@ export class RememberSources {
     bindFormEvents(overlay, source) {
         let rating = source?.rating || 0;
 
-        overlay.querySelectorAll('.rs-star').forEach(star => {
+        const stars = overlay.querySelectorAll('.rs-star');
+        stars.forEach(star => {
             star.addEventListener('click', () => {
                 rating = parseInt(star.dataset.val, 10);
-                overlay.querySelectorAll('.rs-star').forEach(s => {
+                stars.forEach(s => {
                     s.classList.toggle('active', parseInt(s.dataset.val, 10) <= rating);
                 });
+            });
+            star.addEventListener('mouseenter', () => {
+                const hoverVal = parseInt(star.dataset.val, 10);
+                stars.forEach(s => {
+                    s.classList.toggle('hover', parseInt(s.dataset.val, 10) <= hoverVal);
+                });
+            });
+            star.addEventListener('mouseleave', () => {
+                stars.forEach(s => s.classList.remove('hover'));
             });
         });
 

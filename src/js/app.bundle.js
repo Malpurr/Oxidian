@@ -462,6 +462,15 @@
                 this.updateCursor();
               }
             }),
+            // Intercept keydown for slash menu navigation (ArrowUp/Down, Enter, Escape)
+            import_codemirror_bundle4.EditorView.domEventHandlers({
+              keydown: (e) => {
+                if (this.app.slashMenu?.handleKeyDown(e)) {
+                  return true;
+                }
+                return false;
+              }
+            }),
             // Enable spellcheck
             import_codemirror_bundle4.EditorView.contentAttributes.of({ spellcheck: "true" }),
             // Custom styling
@@ -1641,8 +1650,8 @@
     // --- Data Layer (all via Rust) ---
     async refresh() {
       try {
-        const tree = await invoke("scan_vault", { path: this.app.vaultPath || "" });
-        this.render(tree.children || []);
+        const tree = await invoke("scan_vault");
+        this.render(Array.isArray(tree) ? tree : tree.children || []);
       } catch (err) {
         console.error("Failed to scan vault:", err);
         this.app?.showErrorToast?.(`Failed to load file list: ${err.message || err}`);
@@ -1651,7 +1660,10 @@
     }
     async createFile(path) {
       try {
-        await invoke("create_file", { path });
+        const content = `# ${path.replace(/\.md$/, "").split("/").pop()}
+
+`;
+        await invoke("save_note", { path, content });
         await this.refresh();
         return true;
       } catch (err) {
@@ -1695,7 +1707,7 @@
     }
     async moveEntry(oldPath, newPath) {
       try {
-        await invoke("move_entry", { oldPath, newPath });
+        await invoke("move_entry", { sourcePath: oldPath, destDir: newPath });
         await this.refresh();
         return true;
       } catch (err) {
@@ -1923,8 +1935,7 @@
       try {
         let results;
         if (query.startsWith("#")) {
-          const tag = query.slice(1);
-          results = await invoke("search_by_tag", { tag });
+          results = await invoke("search_vault", { query });
         } else {
           results = await invoke("search_vault", { query, options: {} });
         }
@@ -1953,7 +1964,7 @@
     async showSuggestions(prefix) {
       if (!this.results) return;
       try {
-        const suggestions = await invoke("search_suggest", { prefix });
+        const suggestions = await invoke("search_suggest", { query: prefix });
         this.renderSuggestions(suggestions);
       } catch (err) {
       }
@@ -2001,10 +2012,16 @@
       for (const suggestion of suggestions) {
         const item = document.createElement("div");
         item.className = "search-result-item search-suggestion";
-        item.textContent = suggestion;
+        const title = suggestion.title || suggestion.path || suggestion;
+        item.textContent = typeof title === "string" ? title : String(title);
         item.addEventListener("click", () => {
-          this.input.value = suggestion;
-          this.performSearch(suggestion);
+          if (suggestion.path && this.app?.openFile) {
+            this.app.openFile(suggestion.path);
+          } else {
+            const q = typeof suggestion === "string" ? suggestion : title;
+            this.input.value = q;
+            this.performSearch(q);
+          }
         });
         this.results.appendChild(item);
       }
@@ -2163,6 +2180,37 @@
         this.activateTab(this.tabs[0].id, true);
       }
     }
+    closeAllTabs() {
+      const dirtyTabs = this.tabs.filter((t) => t.dirty && t.type === "note");
+      for (const tab of dirtyTabs) {
+        if (this.app.currentFile === tab.path) {
+          this.app.saveCurrentFile().catch(() => {
+          });
+        }
+      }
+      this.tabs = [];
+      this.activeTabId = null;
+      if (this.splitActive) this.unsplit();
+      this.renderTabs();
+      this.app.onAllTabsClosed();
+    }
+    closeOtherTabs(keepId) {
+      const keep = this.tabs.find((t) => t.id === keepId);
+      if (!keep) return;
+      const toClose = this.tabs.filter((t) => t.id !== keepId);
+      for (const tab of toClose) {
+        if (tab.dirty && tab.type === "note" && this.app.currentFile === tab.path) {
+          this.app.saveCurrentFile().catch(() => {
+          });
+        }
+      }
+      this.tabs = [keep];
+      keep.pane = 0;
+      if (this.splitActive) this.unsplit();
+      this.activeTabId = keep.id;
+      this.renderTabs();
+      this.app.onTabActivated(keep);
+    }
     markDirty(path) {
       const tab = this.tabs.find((t) => t.path === path && t.type === "note");
       if (tab) {
@@ -2214,6 +2262,10 @@
             e.preventDefault();
             this.closeTab(tab.id);
           }
+        });
+        el.addEventListener("contextmenu", (e) => {
+          e.preventDefault();
+          this._showTabContextMenu(e, tab);
         });
         el.addEventListener("dragstart", (e) => {
           this.dragState = { tabId: tab.id, fromPane: tab.pane };
@@ -2357,6 +2409,48 @@
       this.tabListRight = el;
       if (el) this.renderTabs();
     }
+    _showTabContextMenu(e, tab) {
+      document.getElementById("tab-context-menu")?.remove();
+      const menu = document.createElement("div");
+      menu.id = "tab-context-menu";
+      menu.className = "context-menu";
+      menu.style.cssText = `position:fixed;left:${e.clientX}px;top:${e.clientY}px;z-index:10000;background:var(--bg-secondary,#1e1e2e);border:1px solid var(--border-color,#45475a);border-radius:6px;padding:4px 0;min-width:160px;box-shadow:0 4px 12px rgba(0,0,0,0.3);`;
+      const items = [
+        { label: "Close", action: () => this.closeTab(tab.id) },
+        { label: "Close Others", action: () => this.closeOtherTabs(tab.id) },
+        { label: "Close All", action: () => this.closeAllTabs() },
+        null,
+        // separator
+        { label: tab.pane === 0 ? "Move to Right Pane" : "Move to Left Pane", action: () => this.moveTabToPane(tab.id, tab.pane === 0 ? 1 : 0) }
+      ];
+      for (const item of items) {
+        if (!item) {
+          const sep = document.createElement("div");
+          sep.style.cssText = "height:1px;background:var(--border-color,#45475a);margin:4px 8px;";
+          menu.appendChild(sep);
+          continue;
+        }
+        const el = document.createElement("div");
+        el.className = "context-menu-item";
+        el.style.cssText = "padding:6px 12px;cursor:pointer;font-size:13px;color:var(--text-primary,#cdd6f4);";
+        el.textContent = item.label;
+        el.addEventListener("mouseenter", () => el.style.background = "var(--bg-hover,#313244)");
+        el.addEventListener("mouseleave", () => el.style.background = "");
+        el.addEventListener("click", () => {
+          menu.remove();
+          item.action();
+        });
+        menu.appendChild(el);
+      }
+      document.body.appendChild(menu);
+      const closeMenu = (ev) => {
+        if (!menu.contains(ev.target)) {
+          menu.remove();
+          document.removeEventListener("click", closeMenu);
+        }
+      };
+      setTimeout(() => document.addEventListener("click", closeMenu), 0);
+    }
     escapeHtml(text) {
       const div = document.createElement("div");
       div.textContent = text;
@@ -2365,6 +2459,7 @@
   };
 
   // src/js/contextmenu.js
+  init_tauri_bridge();
   var ContextMenu = class {
     constructor(app) {
       this.app = app;
@@ -2414,7 +2509,17 @@
       e.preventDefault();
       e.stopPropagation();
       const items = [];
-      if (!isDir) {
+      if (isDir) {
+        items.push({
+          label: "New Note",
+          action: () => this.app.createNewFileInFolder(filePath)
+        });
+        items.push({
+          label: "New Subfolder",
+          action: () => this.app.createNewSubfolder(filePath)
+        });
+        items.push({ separator: true });
+      } else {
         items.push({
           label: "Open in New Pane",
           action: () => this.app.openFileInSplit(filePath)
@@ -2434,6 +2539,15 @@
       items.push({
         label: "Copy Path",
         action: () => navigator.clipboard.writeText(filePath)
+      });
+      items.push({ separator: true });
+      items.push({
+        label: "Reveal in File Manager",
+        action: () => {
+          invoke("reveal_in_file_manager", { path: filePath }).catch((err) => {
+            console.error("Failed to reveal in file manager:", err);
+          });
+        }
       });
       items.push({ separator: true });
       items.push({
@@ -4747,13 +4861,14 @@
         if (selected) {
           const manifestPath = selected + "/manifest.json";
           try {
-            const content = await invoke("read_file_raw", { path: manifestPath });
+            const content = await invoke("read_file_absolute", { path: manifestPath });
             const manifest = JSON.parse(content);
             await invoke("install_plugin", { sourcePath: selected, pluginId: manifest.id });
             this.loadInstalledPlugins();
+            this.app?.showToast?.("Plugin installed successfully");
           } catch (err) {
             console.error("Failed to install plugin from folder:", err);
-            this.app?.showErrorToast?.("Failed to install plugin: " + err);
+            this.app?.showErrorToast?.("Failed to install plugin: " + String(err));
           }
         }
       } catch (err) {
@@ -4761,10 +4876,16 @@
       }
     }
     async reloadPlugins() {
-      if (this.app?.pluginLoader) {
-        this.app.pluginLoader.destroy();
-        await this.app.pluginLoader.init();
-        this.loadInstalledPlugins();
+      try {
+        if (this.app?.pluginLoader) {
+          this.app.pluginLoader.destroy();
+          await this.app.pluginLoader.init();
+          this.loadInstalledPlugins();
+          this.app?.showToast?.("Plugins reloaded");
+        }
+      } catch (err) {
+        console.error("Failed to reload plugins:", err);
+        this.app?.showErrorToast?.("Failed to reload plugins: " + String(err));
       }
     }
     async loadInstalledPlugins() {
@@ -17747,12 +17868,22 @@ A snapshot of the current version will be created first.`)) return;
     }
     bindFormEvents(overlay, source) {
       let rating = source?.rating || 0;
-      overlay.querySelectorAll(".rs-star").forEach((star) => {
+      const stars = overlay.querySelectorAll(".rs-star");
+      stars.forEach((star) => {
         star.addEventListener("click", () => {
           rating = parseInt(star.dataset.val, 10);
-          overlay.querySelectorAll(".rs-star").forEach((s) => {
+          stars.forEach((s) => {
             s.classList.toggle("active", parseInt(s.dataset.val, 10) <= rating);
           });
+        });
+        star.addEventListener("mouseenter", () => {
+          const hoverVal = parseInt(star.dataset.val, 10);
+          stars.forEach((s) => {
+            s.classList.toggle("hover", parseInt(s.dataset.val, 10) <= hoverVal);
+          });
+        });
+        star.addEventListener("mouseleave", () => {
+          stars.forEach((s) => s.classList.remove("hover"));
         });
       });
       overlay.addEventListener("click", async (e) => {
@@ -18870,8 +19001,10 @@ A snapshot of the current version will be created first.`)) return;
       this.ribbonBtn = null;
       this.statusIndicator = null;
       this.timerEl = null;
+      this.micAvailable = null;
       this._createRibbonButton();
       this._createStatusIndicator();
+      this._checkMicAvailability();
     }
     _createRibbonButton() {
       const ribbonBottom = document.querySelector(".ribbon-bottom");
@@ -18916,8 +19049,59 @@ A snapshot of the current version will be created first.`)) return;
         await this.start();
       }
     }
+    async _checkMicAvailability() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+        this.micAvailable = false;
+        this._setRibbonDisabled(true, "Audio recording requires a secure context");
+        return;
+      }
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const hasAudioInput = devices.some((d) => d.kind === "audioinput");
+        this.micAvailable = hasAudioInput;
+        this._setRibbonDisabled(!hasAudioInput, "No microphone detected");
+      } catch (e) {
+        console.warn("Could not enumerate audio devices:", e);
+        this.micAvailable = null;
+      }
+    }
+    _setRibbonDisabled(disabled, tooltip) {
+      if (!this.ribbonBtn) return;
+      if (disabled) {
+        this.ribbonBtn.disabled = true;
+        this.ribbonBtn.classList.add("ribbon-btn-disabled");
+        this.ribbonBtn.title = tooltip || "No microphone detected";
+        this.ribbonBtn.style.opacity = "0.4";
+        this.ribbonBtn.style.cursor = "not-allowed";
+      } else {
+        this.ribbonBtn.disabled = false;
+        this.ribbonBtn.classList.remove("ribbon-btn-disabled");
+        this.ribbonBtn.title = "Start/Stop Audio Recording";
+        this.ribbonBtn.style.opacity = "";
+        this.ribbonBtn.style.cursor = "";
+      }
+    }
     async start() {
       if (this.recording) return;
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        if (this.app.showNotice) {
+          this.app.showNotice("Audio recording requires a secure context.", "error");
+        }
+        return;
+      }
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const hasAudioInput = devices.some((d) => d.kind === "audioinput");
+        if (!hasAudioInput) {
+          if (this.app.showNotice) {
+            this.app.showNotice("No microphone found. Please connect a microphone and try again.", "error");
+          }
+          this._setRibbonDisabled(true, "No microphone detected");
+          return;
+        }
+      } catch (e) {
+        console.warn("Device enumeration failed, attempting getUserMedia anyway:", e);
+      }
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "audio/ogg";
@@ -18938,8 +19122,19 @@ A snapshot of the current version will be created first.`)) return;
         this._startTimer();
       } catch (err) {
         console.error("Audio recording failed:", err);
+        let message;
+        if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
+          message = "No microphone found. Please connect a microphone and try again.";
+          this._setRibbonDisabled(true, "No microphone detected");
+        } else if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+          message = "Microphone access was denied. Please allow microphone permissions and try again.";
+        } else if (err.name === "NotReadableError" || err.name === "TrackStartError") {
+          message = "Microphone is in use by another application. Please close it and try again.";
+        } else {
+          message = "Could not start audio recording. Please check your microphone and try again.";
+        }
         if (this.app.showNotice) {
-          this.app.showNotice("Failed to access microphone: " + err.message, "error");
+          this.app.showNotice(message, "error");
         }
       }
     }
@@ -19553,14 +19748,17 @@ A snapshot of the current version will be created first.`)) return;
     async _performSave(filePath) {
       if (!filePath || !this.isDirty || this.currentFile !== filePath) return;
       try {
+        this._showSaveIndicator("saving");
         this.isDirty = false;
         this.tabManager.markClean(filePath);
         const content = this.editor.getContent();
         try {
           await invoke("save_note", { path: filePath, content });
           this.backlinksManager?.invalidate();
+          this._showSaveIndicator("saved");
         } catch (error) {
           console.error("Failed to save note:", filePath, error);
+          this._showSaveIndicator("error");
           throw error;
         }
       } catch (err) {
@@ -19641,6 +19839,22 @@ A snapshot of the current version will be created first.`)) return;
           });
         }
       }, 2e3);
+    }
+    // Save indicator in status bar
+    _showSaveIndicator(state) {
+      const rt = document.getElementById("status-reading-time");
+      if (!rt) return;
+      if (state === "saving") {
+        rt.textContent = "Saving...";
+      } else if (state === "saved") {
+        rt.textContent = "Saved";
+        clearTimeout(this._saveIndicatorTimer);
+        this._saveIndicatorTimer = setTimeout(() => {
+          if (rt.textContent === "Saved") rt.textContent = "";
+        }, 2e3);
+      } else if (state === "error") {
+        rt.textContent = "Save failed!";
+      }
     }
     // *** FIX: Error toast system for user feedback ***
     showErrorToast(message) {
@@ -20054,6 +20268,32 @@ A snapshot of the current version will be created first.`)) return;
       }
     }
     // ===== File Operations (context menu) =====
+    async createNewFileInFolder(folderPath) {
+      const name = prompt("New note name:", "Untitled");
+      if (!name) return;
+      const noteName = name.endsWith(".md") ? name : name + ".md";
+      const fullPath = folderPath ? `${folderPath}/${noteName}` : noteName;
+      try {
+        await invoke("save_note", { path: fullPath, content: "" });
+        await this.sidebar.refresh();
+        await this.openFile(fullPath);
+      } catch (err) {
+        console.error("Failed to create note:", err);
+        this.showErrorToast(`Failed to create note: ${err.message || err}`);
+      }
+    }
+    async createNewSubfolder(folderPath) {
+      const name = prompt("New subfolder name:");
+      if (!name) return;
+      const fullPath = folderPath ? `${folderPath}/${name}` : name;
+      try {
+        await invoke("create_folder", { path: fullPath });
+        await this.sidebar.refresh();
+      } catch (err) {
+        console.error("Failed to create subfolder:", err);
+        this.showErrorToast(`Failed to create subfolder: ${err.message || err}`);
+      }
+    }
     async deleteFile(path) {
       if (!confirm(`Delete "${path}"?`)) return;
       try {
@@ -20319,7 +20559,7 @@ A snapshot of the current version will be created first.`)) return;
         this.openGraphView();
       } else if (ctrl && e.key === "t") {
         e.preventDefault();
-        this.showNewNoteDialog();
+        this.quickSwitcher.show();
       } else if (ctrl && e.key === "f" && !shift) {
         const isInEditor = document.activeElement?.classList?.contains("editor-textarea") || document.querySelector(".hypermark-editor") || this.currentFile;
         e.preventDefault();
@@ -20355,6 +20595,12 @@ A snapshot of the current version will be created first.`)) return;
       } else if (ctrl && e.key === ",") {
         e.preventDefault();
         this.openSettingsTab();
+      } else if (ctrl && e.key === "b") {
+        e.preventDefault();
+        this.wrapSelection("**", "**");
+      } else if (ctrl && e.key === "i") {
+        e.preventDefault();
+        this.wrapSelection("*", "*");
       } else if (ctrl && e.key === "k") {
         e.preventDefault();
         this.insertLink();
@@ -20392,6 +20638,44 @@ A snapshot of the current version will be created first.`)) return;
         const wm = document.getElementById("workspace-manager-overlay");
         if (wm) wm.remove();
       }
+    }
+    /**
+     * Wrap the current selection with prefix/suffix (for bold, italic, etc.)
+     */
+    wrapSelection(prefix, suffix) {
+      if (this.hypermarkEditor?.wrapSelection) {
+        this.hypermarkEditor.wrapSelection(prefix, suffix);
+        return;
+      }
+      if (this.editor?.cmEditor?.view) {
+        const view = this.editor.cmEditor.view;
+        const { from, to } = view.state.selection.main;
+        const selected2 = view.state.sliceDoc(from, to);
+        if (selected2.startsWith(prefix) && selected2.endsWith(suffix)) {
+          const unwrapped = selected2.slice(prefix.length, selected2.length - suffix.length);
+          view.dispatch({ changes: { from, to, insert: unwrapped } });
+        } else {
+          view.dispatch({ changes: { from, to, insert: prefix + selected2 + suffix } });
+        }
+        return;
+      }
+      const textarea = document.querySelector(".editor-textarea");
+      if (!textarea) return;
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const selected = textarea.value.substring(start, end);
+      if (selected.startsWith(prefix) && selected.endsWith(suffix)) {
+        const unwrapped = selected.slice(prefix.length, selected.length - suffix.length);
+        textarea.value = textarea.value.substring(0, start) + unwrapped + textarea.value.substring(end);
+        textarea.selectionStart = start;
+        textarea.selectionEnd = start + unwrapped.length;
+      } else {
+        textarea.value = textarea.value.substring(0, start) + prefix + selected + suffix + textarea.value.substring(end);
+        textarea.selectionStart = start + prefix.length;
+        textarea.selectionEnd = start + prefix.length + selected.length;
+      }
+      textarea.dispatchEvent(new Event("input", { bubbles: true }));
+      textarea.focus();
     }
     /**
      * Insert a markdown link, wrapping selection if present
@@ -21317,10 +21601,12 @@ ${footnoteItems}
         ["Escape", "Close dialog/menu"]
       ] },
       { group: "Editor", items: [
+        ["Ctrl+B", "Bold"],
+        ["Ctrl+I", "Italic"],
+        ["Ctrl+K", "Insert link"],
         ["Ctrl+E", "Cycle view mode"],
         ["Ctrl+F", "Find in file"],
         ["Ctrl+H", "Find & replace"],
-        ["Ctrl+K", "Insert link"],
         ["Ctrl+Enter", "Toggle checkbox"],
         ["Alt+Enter", "Follow link"],
         ["Ctrl+D", "Duplicate line"],
@@ -21328,6 +21614,7 @@ ${footnoteItems}
         ["Ctrl+[", "Outdent"]
       ] },
       { group: "Navigation", items: [
+        ["Ctrl+T", "New tab (quick switcher)"],
         ["Ctrl+G", "Graph view"],
         ["Ctrl+Shift+D", "Daily note"],
         ["Ctrl+W", "Close tab"],
@@ -21368,6 +21655,10 @@ ${footnoteItems}
   }
   window._showKeyboardShortcuts = showKeyboardShortcuts;
   window._trapFocus = trapFocus;
+  window.addEventListener("unhandledrejection", (event) => {
+    console.error("[Oxidian] Unhandled promise rejection:", event.reason);
+    event.preventDefault();
+  });
   document.addEventListener("DOMContentLoaded", async () => {
     try {
       window.oxidianApp = new OxidianApp();

@@ -234,6 +234,38 @@ pub fn save_plugin_settings(state: State<AppState>, plugin_id: String, settings:
     registry.save_settings(&plugin_id, settings).map_err(|e| e.to_string())
 }
 
+// ===== Community Plugin Browser =====
+
+#[tauri::command]
+pub async fn fetch_community_plugin_list() -> Result<Vec<crate::plugin::loader::CommunityPlugin>, String> {
+    crate::plugin::loader::fetch_community_plugin_list()
+        .await
+        .map_err(|e| format!("Failed to fetch community plugins: {}", e))
+}
+
+#[tauri::command]
+pub async fn install_community_plugin(state: State<'_, AppState>, plugin_id: String) -> Result<(), String> {
+    // First fetch the community list to find the repo
+    let plugins = crate::plugin::loader::fetch_community_plugin_list()
+        .await
+        .map_err(|e| format!("Failed to fetch community list: {}", e))?;
+
+    let plugin = plugins.iter().find(|p| p.id == plugin_id)
+        .ok_or_else(|| format!("Plugin '{}' not found in community registry", plugin_id))?;
+
+    let vault_path = {
+        let vp = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+        vp.clone()
+    };
+    let vault = std::path::Path::new(&vault_path);
+
+    crate::plugin::loader::download_plugin(vault, &plugin.repo, None)
+        .await
+        .map_err(|e| format!("Failed to install plugin: {}", e))?;
+
+    Ok(())
+}
+
 // ===== New Plugin Commands =====
 
 #[tauri::command]

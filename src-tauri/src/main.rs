@@ -181,6 +181,7 @@ fn main() {
             commands::load_workspace,
             commands::list_workspaces,
             commands::delete_workspace,
+            commands::reveal_in_file_manager,
             // ── Plugins ──
             commands::list_plugins,
             commands::list_obsidian_plugins,
@@ -197,6 +198,8 @@ fn main() {
             commands::disable_plugin,
             commands::get_plugin_settings,
             commands::save_plugin_settings,
+            commands::fetch_community_plugin_list,
+            commands::install_community_plugin,
             // ── Remember (spaced repetition) ──
             features::remember::remember_load_cards,
             features::remember::remember_create_card,
@@ -218,6 +221,22 @@ fn main() {
             features::remember::remember_insert_link,
             // ── Audio Recorder ──
             commands::save_binary_file,
+            // ── Missing commands (QA audit 2026-02-11) ──
+            commands::read_file_text,
+            commands::move_file,
+            commands::list_files_in_dir,
+            commands::open_external,
+            commands::save_binary,
+            commands::fuzzy_match_files,
+            commands::get_link_at_position,
+            commands::render_inline,
+            commands::get_available_commands,
+            commands::load_hotkeys,
+            commands::save_hotkeys,
+            commands::nav_state,
+            commands::canvas_add_edge,
+            commands::search_by_tag,
+            commands::resolve_embeds,
         ])
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();

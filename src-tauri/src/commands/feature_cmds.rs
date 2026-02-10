@@ -373,3 +373,126 @@ pub fn nav_current(state: State<AppState>) -> Result<Option<String>, String> {
     let nav = state.nav_history.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     Ok(nav.current().map(|s| s.to_string()))
 }
+
+// ── Missing commands called from JS (added by QA audit) ──
+
+#[tauri::command]
+pub fn nav_state(state: State<AppState>) -> Result<serde_json::Value, String> {
+    let nav = state.nav_history.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+    Ok(serde_json::json!({
+        "stack": nav.get_stack(),
+        "index": nav.get_index(),
+        "current": nav.current(),
+        "canGoBack": nav.can_go_back(),
+        "canGoForward": nav.can_go_forward(),
+    }))
+}
+
+#[tauri::command]
+pub fn canvas_add_edge(state: State<AppState>, canvas_path: String, from: String, to: String) -> Result<serde_json::Value, String> {
+    validate_canvas_path(&canvas_path)?;
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+    let full = std::path::Path::new(&*vault_path).join(&canvas_path);
+    let data = std::fs::read_to_string(&full).map_err(|e| format!("Read error: {}", e))?;
+    let mut canvas: Canvas = serde_json::from_str(&data).map_err(|e| format!("Parse error: {}", e))?;
+    let id = canvas.add_edge(&from, &to, None, None, None);
+    let json = serde_json::to_string(&canvas).map_err(|e| format!("Serialize error: {}", e))?;
+    std::fs::write(&full, json).map_err(|e| format!("Write error: {}", e))?;
+    Ok(serde_json::json!({ "id": id, "from": from, "to": to }))
+}
+
+#[tauri::command]
+pub fn search_by_tag(state: State<AppState>, tag: String) -> Result<Vec<serde_json::Value>, String> {
+    let mut idx = state.tag_index.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+    if idx.tag_count() == 0 {
+        let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+        idx.build_from_vault(&vault_path);
+    }
+    let files = idx.files_for_tag(&tag);
+    Ok(files.into_iter().map(|f| serde_json::json!({ "path": f, "matches": [] })).collect())
+}
+
+#[tauri::command]
+pub fn resolve_embeds(state: State<AppState>, content: String, _current_path: String, max_depth: Option<u32>) -> Result<serde_json::Value, String> {
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+    let max_d = max_depth.unwrap_or(5);
+    let mut processed = content.clone();
+    let mut embeds = Vec::new();
+    let re = regex::Regex::new(r"!\[\[([^\]]+)\]\]").map_err(|e| format!("Regex error: {}", e))?;
+    
+    if max_d > 0 {
+        for cap in re.captures_iter(&content) {
+            let full_match = cap[0].to_string();
+            let note_ref = &cap[1];
+            let (note_path, heading) = if let Some(idx) = note_ref.find('#') {
+                (&note_ref[..idx], Some(&note_ref[idx+1..]))
+            } else {
+                (note_ref, None)
+            };
+            
+            // Try to resolve the note
+            let resolved_path = if note_path.ends_with(".md") {
+                note_path.to_string()
+            } else {
+                format!("{}.md", note_path)
+            };
+            let full_file = std::path::Path::new(&*vault_path).join(&resolved_path);
+            
+            match std::fs::read_to_string(&full_file) {
+                Ok(mut file_content) => {
+                    // Strip frontmatter
+                    if file_content.starts_with("---") {
+                        if let Some(end) = file_content[3..].find("---") {
+                            file_content = file_content[end+6..].trim_start().to_string();
+                        }
+                    }
+                    // Extract heading section if specified
+                    if let Some(h) = heading {
+                        let h_lower = h.to_lowercase();
+                        let lines: Vec<&str> = file_content.lines().collect();
+                        let mut in_section = false;
+                        let mut section_lines = Vec::new();
+                        let mut section_level = 0;
+                        for line in &lines {
+                            if line.starts_with('#') {
+                                let level = line.chars().take_while(|c| *c == '#').count();
+                                let title = line.trim_start_matches('#').trim().to_lowercase();
+                                if title == h_lower && !in_section {
+                                    in_section = true;
+                                    section_level = level;
+                                    continue;
+                                } else if in_section && level <= section_level {
+                                    break;
+                                }
+                            }
+                            if in_section {
+                                section_lines.push(*line);
+                            }
+                        }
+                        file_content = section_lines.join("\n");
+                    }
+                    embeds.push(serde_json::json!({
+                        "fullMatch": full_match,
+                        "notePath": resolved_path,
+                        "heading": heading,
+                        "content": file_content,
+                    }));
+                    processed = processed.replace(&full_match, &file_content);
+                }
+                Err(e) => {
+                    embeds.push(serde_json::json!({
+                        "fullMatch": full_match,
+                        "notePath": resolved_path,
+                        "heading": heading,
+                        "error": format!("Not found: {}", e),
+                    }));
+                }
+            }
+        }
+    }
+    
+    Ok(serde_json::json!({
+        "processed": processed,
+        "embeds": embeds,
+    }))
+}

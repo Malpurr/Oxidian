@@ -450,6 +450,16 @@ export class CodeMirrorEditor {
         }
       }),
       
+      // Intercept keydown for slash menu navigation (ArrowUp/Down, Enter, Escape)
+      EditorView.domEventHandlers({
+        keydown: (e) => {
+          if (this.app.slashMenu?.handleKeyDown(e)) {
+            return true; // Consume the event
+          }
+          return false;
+        }
+      }),
+
       // Enable spellcheck
       EditorView.contentAttributes.of({ spellcheck: "true" }),
       

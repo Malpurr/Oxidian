@@ -1760,13 +1760,14 @@ export class SettingsPage {
                 // Try to read manifest.json from the folder
                 const manifestPath = selected + '/manifest.json';
                 try {
-                    const content = await invoke('read_file_raw', { path: manifestPath });
+                    const content = await invoke('read_file_absolute', { path: manifestPath });
                     const manifest = JSON.parse(content);
                     await invoke('install_plugin', { sourcePath: selected, pluginId: manifest.id });
                     this.loadInstalledPlugins();
+                    this.app?.showToast?.('Plugin installed successfully');
                 } catch (err) {
                     console.error('Failed to install plugin from folder:', err);
-                    this.app?.showErrorToast?.('Failed to install plugin: ' + err);
+                    this.app?.showErrorToast?.('Failed to install plugin: ' + String(err));
                 }
             }
         } catch (err) {
@@ -1775,10 +1776,16 @@ export class SettingsPage {
     }
 
     async reloadPlugins() {
-        if (this.app?.pluginLoader) {
-            this.app.pluginLoader.destroy();
-            await this.app.pluginLoader.init();
-            this.loadInstalledPlugins();
+        try {
+            if (this.app?.pluginLoader) {
+                this.app.pluginLoader.destroy();
+                await this.app.pluginLoader.init();
+                this.loadInstalledPlugins();
+                this.app?.showToast?.('Plugins reloaded');
+            }
+        } catch (err) {
+            console.error('Failed to reload plugins:', err);
+            this.app?.showErrorToast?.('Failed to reload plugins: ' + String(err));
         }
     }
 

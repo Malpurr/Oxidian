@@ -15,8 +15,11 @@ export class AudioRecorder {
         this.statusIndicator = null;
         this.timerEl = null;
 
+        this.micAvailable = null; // null = unknown, true/false after check
+
         this._createRibbonButton();
         this._createStatusIndicator();
+        this._checkMicAvailability();
     }
 
     _createRibbonButton() {
@@ -69,8 +72,66 @@ export class AudioRecorder {
         }
     }
 
+    async _checkMicAvailability() {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+            this.micAvailable = false;
+            this._setRibbonDisabled(true, 'Audio recording requires a secure context');
+            return;
+        }
+        try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const hasAudioInput = devices.some(d => d.kind === 'audioinput');
+            this.micAvailable = hasAudioInput;
+            this._setRibbonDisabled(!hasAudioInput, 'No microphone detected');
+        } catch (e) {
+            console.warn('Could not enumerate audio devices:', e);
+            // Don't disable — let getUserMedia attempt and fail gracefully
+            this.micAvailable = null;
+        }
+    }
+
+    _setRibbonDisabled(disabled, tooltip) {
+        if (!this.ribbonBtn) return;
+        if (disabled) {
+            this.ribbonBtn.disabled = true;
+            this.ribbonBtn.classList.add('ribbon-btn-disabled');
+            this.ribbonBtn.title = tooltip || 'No microphone detected';
+            this.ribbonBtn.style.opacity = '0.4';
+            this.ribbonBtn.style.cursor = 'not-allowed';
+        } else {
+            this.ribbonBtn.disabled = false;
+            this.ribbonBtn.classList.remove('ribbon-btn-disabled');
+            this.ribbonBtn.title = 'Start/Stop Audio Recording';
+            this.ribbonBtn.style.opacity = '';
+            this.ribbonBtn.style.cursor = '';
+        }
+    }
+
     async start() {
         if (this.recording) return;
+
+        // Check secure context
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            if (this.app.showNotice) {
+                this.app.showNotice('Audio recording requires a secure context.', 'error');
+            }
+            return;
+        }
+
+        // Check for audio input devices before attempting
+        try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const hasAudioInput = devices.some(d => d.kind === 'audioinput');
+            if (!hasAudioInput) {
+                if (this.app.showNotice) {
+                    this.app.showNotice('No microphone found. Please connect a microphone and try again.', 'error');
+                }
+                this._setRibbonDisabled(true, 'No microphone detected');
+                return;
+            }
+        } catch (e) {
+            console.warn('Device enumeration failed, attempting getUserMedia anyway:', e);
+        }
 
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -106,9 +167,20 @@ export class AudioRecorder {
 
         } catch (err) {
             console.error('Audio recording failed:', err);
-            // Show notification
+            // Friendly error messages based on error type
+            let message;
+            if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+                message = 'No microphone found. Please connect a microphone and try again.';
+                this._setRibbonDisabled(true, 'No microphone detected');
+            } else if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                message = 'Microphone access was denied. Please allow microphone permissions and try again.';
+            } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+                message = 'Microphone is in use by another application. Please close it and try again.';
+            } else {
+                message = 'Could not start audio recording. Please check your microphone and try again.';
+            }
             if (this.app.showNotice) {
-                this.app.showNotice('Failed to access microphone: ' + err.message, 'error');
+                this.app.showNotice(message, 'error');
             }
         }
     }

@@ -204,9 +204,9 @@ pub fn get_settings(state: State<AppState>) -> Result<Settings, String> {
 }
 
 #[tauri::command]
-pub fn save_settings(state: State<AppState>, new_settings: Settings) -> Result<(), String> {
+pub fn save_settings(state: State<AppState>, settings: Settings) -> Result<(), String> {
     let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
-    settings::save_settings(&vault_path, &new_settings)
+    settings::save_settings(&vault_path, &settings)
 }
 
 #[tauri::command]
@@ -803,6 +803,43 @@ pub fn save_binary_file(state: State<AppState>, relative_path: String, base64_da
 }
 
 #[tauri::command]
+pub fn reveal_in_file_manager(state: State<AppState>, path: String) -> Result<(), String> {
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+    let full_path = std::path::Path::new(&*vault_path).join(&path);
+    // For files, reveal parent directory; for dirs, open the dir itself
+    let target = if full_path.is_dir() {
+        full_path.clone()
+    } else {
+        full_path.parent().map(|p| p.to_path_buf()).unwrap_or(full_path.clone())
+    };
+    let target_str = target.to_string_lossy().to_string();
+
+    #[cfg(target_os = "linux")]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(&target_str)
+            .spawn()
+            .map_err(|e| format!("Failed to open file manager: {}", e))?;
+    }
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(&target_str)
+            .spawn()
+            .map_err(|e| format!("Failed to open file manager: {}", e))?;
+    }
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("explorer")
+            .arg(&target_str)
+            .spawn()
+            .map_err(|e| format!("Failed to open file manager: {}", e))?;
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
 pub fn delete_workspace(state: State<AppState>, name: String) -> Result<(), String> {
     let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     let file = std::path::Path::new(&*vault_path).join(".oxidian").join("workspaces").join(format!("{}.json", name));
@@ -810,4 +847,146 @@ pub fn delete_workspace(state: State<AppState>, name: String) -> Result<(), Stri
         std::fs::remove_file(&file).map_err(|e| format!("Failed to delete workspace: {}", e))?;
     }
     Ok(())
+}
+
+// ── Missing commands called from JS (added by QA audit) ──
+
+#[tauri::command]
+pub fn read_file_text(state: State<AppState>, path: String) -> Result<String, String> {
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+    let full = std::path::Path::new(&*vault_path).join(&path);
+    std::fs::read_to_string(&full).map_err(|e| format!("Read error: {}", e))
+}
+
+#[tauri::command]
+pub fn move_file(state: State<AppState>, old_path: String, new_path: String) -> Result<(), String> {
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+    let src = std::path::Path::new(&*vault_path).join(&old_path);
+    let dst = std::path::Path::new(&*vault_path).join(&new_path);
+    if let Some(parent) = dst.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| format!("Mkdir error: {}", e))?;
+    }
+    std::fs::rename(&src, &dst).map_err(|e| format!("Move error: {}", e))
+}
+
+#[tauri::command]
+pub fn list_files_in_dir(state: State<AppState>, path: String) -> Result<Vec<String>, String> {
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+    let dir = std::path::Path::new(&*vault_path).join(&path);
+    if !dir.exists() {
+        return Ok(vec![]);
+    }
+    let mut files = Vec::new();
+    let entries = std::fs::read_dir(&dir).map_err(|e| format!("Read dir error: {}", e))?;
+    for entry in entries.flatten() {
+        if let Some(name) = entry.file_name().to_str() {
+            files.push(name.to_string());
+        }
+    }
+    Ok(files)
+}
+
+#[tauri::command]
+pub fn open_external(url: String) -> Result<(), String> {
+    #[cfg(target_os = "linux")]
+    {
+        std::process::Command::new("xdg-open").arg(&url).spawn()
+            .map_err(|e| format!("Failed to open URL: {}", e))?;
+    }
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open").arg(&url).spawn()
+            .map_err(|e| format!("Failed to open URL: {}", e))?;
+    }
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("cmd").args(["/c", "start", &url]).spawn()
+            .map_err(|e| format!("Failed to open URL: {}", e))?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn save_binary(state: State<AppState>, path: String, data: Vec<u8>) -> Result<(), String> {
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+    let full = std::path::Path::new(&*vault_path).join(&path);
+    if let Some(parent) = full.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| format!("Mkdir error: {}", e))?;
+    }
+    std::fs::write(&full, &data).map_err(|e| format!("Write error: {}", e))
+}
+
+#[tauri::command]
+pub fn fuzzy_match_files(state: State<AppState>, query: String) -> Result<Vec<serde_json::Value>, String> {
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+    let query_lower = query.to_lowercase();
+    let mut results = Vec::new();
+    for entry in walkdir::WalkDir::new(&*vault_path).into_iter().filter_map(|e| e.ok()) {
+        let p = entry.path();
+        if p.extension().map(|e| e == "md").unwrap_or(false) {
+            if let Ok(rel) = p.strip_prefix(&*vault_path) {
+                let rel_str = rel.to_string_lossy().to_string();
+                if rel_str.to_lowercase().contains(&query_lower) {
+                    results.push(serde_json::json!({ "path": rel_str }));
+                    if results.len() >= 20 { break; }
+                }
+            }
+        }
+    }
+    Ok(results)
+}
+
+#[tauri::command]
+pub fn get_link_at_position(text: String, offset: usize) -> Result<Option<String>, String> {
+    let before = &text[..offset.min(text.len())];
+    if let Some(start) = before.rfind("[[") {
+        let after = &text[start..];
+        if let Some(end) = after.find("]]") {
+            let link_end = start + end + 2;
+            if offset <= link_end {
+                let inner = &text[start+2..start+end];
+                let link = inner.split('|').next().unwrap_or(inner);
+                return Ok(Some(link.to_string()));
+            }
+        }
+    }
+    Ok(None)
+}
+
+#[tauri::command]
+pub fn render_inline(text: String) -> Result<String, String> {
+    let html = md::render_markdown(&text);
+    let trimmed = html.trim();
+    let result = if trimmed.starts_with("<p>") && trimmed.ends_with("</p>") {
+        trimmed[3..trimmed.len()-4].to_string()
+    } else {
+        trimmed.to_string()
+    };
+    Ok(result)
+}
+
+#[tauri::command]
+pub fn get_available_commands() -> Result<Vec<serde_json::Value>, String> {
+    Ok(vec![])
+}
+
+#[tauri::command]
+pub fn load_hotkeys(state: State<AppState>) -> Result<std::collections::HashMap<String, serde_json::Value>, String> {
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+    let file = std::path::Path::new(&*vault_path).join(".oxidian").join("hotkeys.json");
+    if !file.exists() {
+        return Ok(std::collections::HashMap::new());
+    }
+    let data = std::fs::read_to_string(&file).map_err(|e| format!("Read error: {}", e))?;
+    serde_json::from_str(&data).map_err(|e| format!("Parse error: {}", e))
+}
+
+#[tauri::command]
+pub fn save_hotkeys(state: State<AppState>, hotkeys: serde_json::Value) -> Result<(), String> {
+    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+    let dir = std::path::Path::new(&*vault_path).join(".oxidian");
+    std::fs::create_dir_all(&dir).map_err(|e| format!("Mkdir error: {}", e))?;
+    let file = dir.join("hotkeys.json");
+    let json = serde_json::to_string_pretty(&hotkeys).map_err(|e| format!("Serialize error: {}", e))?;
+    std::fs::write(&file, json).map_err(|e| format!("Write error: {}", e))
 }
