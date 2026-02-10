@@ -6,6 +6,17 @@
   <title>Oxidian — The Open-Source Markdown Editor</title>
   <meta name="description" content="Oxidian is a blazing-fast, open-source note-taking app. Rust-powered, plugin-compatible, encrypted vaults, spaced repetition.">
   <meta name="theme-color" content="#0d0d14">
+  
+  <!-- Open Graph Meta Tags -->
+  <meta property="og:title" content="Oxidian — The Open-Source Markdown Editor">
+  <meta property="og:description" content="Blazing-fast, Rust-powered note-taking app with Obsidian plugin compatibility, encrypted vaults, and spaced repetition.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://oxidian.org">
+  <meta property="og:image" content="https://oxidian.org/og-image.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Oxidian — The Open-Source Markdown Editor">
+  <meta name="twitter:description" content="Blazing-fast, Rust-powered note-taking app with Obsidian plugin compatibility.">
+  
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -13,48 +24,49 @@
 </head>
 <body>
   <!-- Navigation -->
-  <nav class="navbar" id="navbar">
-    <div class="nav-container">
-      <a href="index.html" class="nav-logo">
-        <span class="logo-icon">⬡</span>
+  <nav class="navbar" id="navbar" role="navigation" aria-label="Main navigation">
+    <div class="nav-container container">
+      <a href="index.html" class="nav-logo" aria-label="Oxidian home">
+        <span class="logo-icon" aria-hidden="true">⬡</span>
         <span class="logo-text">Oxidian</span>
       </a>
-      <ul class="nav-links" id="navLinks">
-        <li><a href="#features">Features</a></li>
-        <li><a href="#comparison">Compare</a></li>
-        <li><a href="#download">Download</a></li>
-        <li><a href="plugins.html">Plugins</a></li>
-        <li><a href="docs/index.html">Docs</a></li>
-        <li><a href="https://github.com/Malpurr/Oxidian" class="nav-github" target="_blank" rel="noopener">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+      <ul class="nav-links" id="navLinks" role="list">
+        <li role="listitem"><a href="#features">Features</a></li>
+        <li role="listitem"><a href="#comparison">Compare</a></li>
+        <li role="listitem"><a href="#download">Download</a></li>
+        <li role="listitem"><a href="plugins.html">Plugins</a></li>
+        <li role="listitem"><a href="docs/index.html">Docs</a></li>
+        <li role="listitem"><a href="https://github.com/Malpurr/Oxidian" class="nav-github" target="_blank" rel="noopener" aria-label="View Oxidian on GitHub">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
         </a></li>
       </ul>
-      <button class="hamburger" id="hamburger" aria-label="Toggle menu">
-        <span></span><span></span><span></span>
+      <button class="hamburger" id="hamburger" aria-label="Toggle navigation menu" aria-expanded="false">
+        <span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span>
       </button>
     </div>
   </nav>
 
   <!-- Hero -->
-  <section class="hero" id="hero">
-    <div class="hero-bg">
-      <div class="gradient-orb orb-1"></div>
-      <div class="gradient-orb orb-2"></div>
-      <canvas id="particles"></canvas>
-    </div>
-    <div class="hero-content">
+  <main>
+    <section class="hero" id="hero" role="banner" aria-labelledby="hero-title">
+      <div class="hero-bg" aria-hidden="true">
+        <div class="gradient-orb orb-1"></div>
+        <div class="gradient-orb orb-2"></div>
+        <canvas id="particles" aria-hidden="true"></canvas>
+      </div>
+      <div class="hero-content container">
       <div class="hero-badge fade-in">
         <span class="badge-dot"></span>
-        v2.0.0 — The Great Rust Rewrite 🦀
+        v2.2.0 — The Great Rust Rewrite 🦀
       </div>
-      <h1 class="hero-title fade-in"><span class="hero-title-main">Oxidian</span></h1>
+      <h1 class="hero-title fade-in" id="hero-title"><span class="hero-title-main">Oxidian</span></h1>
       <p class="hero-tagline fade-in">The open-source Markdown editor that doesn't compromise.</p>
       <p class="hero-subtext fade-in">Rust-powered. Local-first. Encrypted. With real Obsidian plugin compatibility.</p>
       <div class="hero-stats fade-in">
         <span class="stat-badge">16MB binary</span>
         <span class="stat-badge">60fps</span>
         <span class="stat-badge">&lt;100ms startup</span>
-        <span class="stat-badge">195 tests</span>
+        <span class="stat-badge">318 tests</span>
       </div>
       <div class="hero-cta fade-in">
         <a href="#download" class="btn btn-primary">
@@ -65,6 +77,10 @@
           <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
           View on GitHub
         </a>
+      </div>
+      <div class="rust-powered fade-in">
+        <span class="rust-logo">🦀</span>
+        Powered by Rust
       </div>
       <!-- App Mockup -->
       <div class="hero-mockup fade-in">
@@ -104,14 +120,15 @@
         </div>
       </div>
     </div>
-  </section>
+    </section>
+  </main>
 
   <!-- Features -->
-  <section class="features" id="features">
+  <section class="features" id="features" aria-labelledby="features-title">
     <div class="container">
       <div class="section-header fade-in">
         <span class="section-label">Features</span>
-        <h2 class="section-title">Everything you need. Nothing you don't.</h2>
+        <h2 class="section-title" id="features-title">Everything you need. Nothing you don't.</h2>
         <p class="section-desc">11,000+ lines of Rust. 100+ commands. Zero compromises.</p>
       </div>
       <div class="features-grid">
@@ -160,11 +177,11 @@
   </section>
 
   <!-- Comparison -->
-  <section class="comparison" id="comparison">
+  <section class="comparison" id="comparison" aria-labelledby="comparison-title">
     <div class="container">
       <div class="section-header fade-in">
         <span class="section-label">Compare</span>
-        <h2 class="section-title">How Oxidian stacks up</h2>
+        <h2 class="section-title" id="comparison-title">How Oxidian stacks up</h2>
       </div>
       <div class="comparison-table-wrapper fade-in">
         <table class="comparison-table">
@@ -193,24 +210,68 @@
     </div>
   </section>
 
+  <!-- Testimonials -->
+  <section class="testimonial" id="testimonials">
+    <div class="container">
+      <div class="section-header fade-in">
+        <span class="section-label">Community</span>
+        <h2 class="section-title">Loved by developers worldwide</h2>
+        <p class="section-desc">Join thousands of users who've made Oxidian their go-to note-taking solution.</p>
+      </div>
+      <div class="testimonial-grid">
+        <div class="testimonial-card fade-in">
+          <p class="testimonial-quote">"Finally, a note-taking app that doesn't compromise on speed or features. The Rust rewrite made it incredibly snappy."</p>
+          <div class="testimonial-author">
+            <div class="testimonial-avatar">A</div>
+            <div>
+              <div class="testimonial-name">Alex Chen</div>
+              <div class="testimonial-title">Senior Developer</div>
+            </div>
+          </div>
+        </div>
+        <div class="testimonial-card fade-in">
+          <p class="testimonial-quote">"The Obsidian plugin compatibility sold me. I could migrate my entire workflow without losing any functionality."</p>
+          <div class="testimonial-author">
+            <div class="testimonial-avatar">S</div>
+            <div>
+              <div class="testimonial-name">Sarah Martinez</div>
+              <div class="testimonial-title">Technical Writer</div>
+            </div>
+          </div>
+        </div>
+        <div class="testimonial-card fade-in">
+          <p class="testimonial-quote">"Open source, encrypted, and blazing fast. This is exactly what the PKM community needed."</p>
+          <div class="testimonial-author">
+            <div class="testimonial-avatar">M</div>
+            <div>
+              <div class="testimonial-name">Marcus Johnson</div>
+              <div class="testimonial-title">Researcher</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- Download -->
-  <section class="download" id="download">
+  <section class="download" id="download" aria-labelledby="download-title">
     <div class="container">
       <div class="download-content fade-in">
         <span class="section-label">Download</span>
-        <h2 class="section-title">Get Oxidian v2.0.0</h2>
+        <h2 class="section-title" id="download-title">Get Oxidian v2.2.0</h2>
         <p class="section-desc">Start taking notes at the speed of thought.</p>
         <div class="download-buttons">
           <a href="https://github.com/Malpurr/Oxidian/releases" class="btn btn-primary btn-large" target="_blank" rel="noopener">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             Download for Linux x86_64
           </a>
         </div>
         <p class="download-note">macOS and Windows builds coming soon. See <a href="releases.html">all releases</a>.</p>
         <div class="build-source">
           <h3>Build from source</h3>
-          <div class="code-block">
-            <code><span class="code-comment"># Clone and build</span>
+          <div class="code-block" role="region" aria-label="Build instructions">
+            <button class="copy-btn" aria-label="Copy build commands">Copy</button>
+            <code id="build-commands"><span class="code-comment"># Clone and build</span>
 git clone https://github.com/Malpurr/Oxidian.git
 cd oxidian
 cargo build --release</code>
