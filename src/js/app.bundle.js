@@ -17272,6 +17272,7 @@ body.hm-dragging { cursor: grabbing !important; user-select: none; }
       document.querySelector('.ribbon-btn[data-action="graph"]')?.addEventListener("click", () => this.openGraphView());
       document.querySelector('.ribbon-btn[data-action="canvas"]')?.addEventListener("click", () => this.openCanvasView());
       document.querySelector('.ribbon-btn[data-action="daily"]')?.addEventListener("click", () => this.openDailyNote());
+      document.querySelector('.ribbon-btn[data-action="settings"]')?.addEventListener("click", () => this.openSettingsPage());
       document.querySelector('.ribbon-btn[data-action="focus"]')?.addEventListener("click", () => this.toggleFocusMode());
       document.getElementById("btn-view-mode")?.addEventListener("click", () => this.cycleViewMode());
       document.getElementById("btn-backlinks")?.addEventListener("click", () => this.toggleBacklinksPanel());
@@ -17934,7 +17935,25 @@ body.hm-dragging { cursor: grabbing !important; user-select: none; }
     }
     // ===== Settings =====
     openSettingsTab() {
-      this.tabManager.openTab("__settings__", "Settings", "settings");
+      this.openSettingsPage();
+    }
+    async openSettingsPage() {
+      this.hideWelcome();
+      this.clearPanes();
+      const container = document.getElementById("pane-container");
+      const settingsDiv = document.createElement("div");
+      settingsDiv.className = "pane settings-fullpage";
+      settingsDiv.id = "left-pane";
+      container.insertBefore(settingsDiv, container.firstChild);
+      try {
+        await this.settingsPage.show(settingsDiv);
+      } catch (err) {
+        console.error("Failed to show settings:", err);
+        settingsDiv.innerHTML = `<div style="padding:40px;color:var(--text-secondary);">
+                <h2>\u2699\uFE0F Settings</h2>
+                <p>Error: ${err?.message || err}</p>
+            </div>`;
+      }
     }
     async showSettingsPane(pane = 0) {
       if (this.isDirty && this.currentFile) {

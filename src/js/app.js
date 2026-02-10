@@ -239,7 +239,7 @@ class OxidianApp {
         document.querySelector('.ribbon-btn[data-action="graph"]')?.addEventListener('click', () => this.openGraphView());
         document.querySelector('.ribbon-btn[data-action="canvas"]')?.addEventListener('click', () => this.openCanvasView());
         document.querySelector('.ribbon-btn[data-action="daily"]')?.addEventListener('click', () => this.openDailyNote());
-        // Settings now loads in sidebar panel (not as tab)
+        document.querySelector('.ribbon-btn[data-action="settings"]')?.addEventListener('click', () => this.openSettingsPage());
         document.querySelector('.ribbon-btn[data-action="focus"]')?.addEventListener('click', () => this.toggleFocusMode());
 
         // View toolbar buttons
@@ -1046,7 +1046,28 @@ class OxidianApp {
     // ===== Settings =====
 
     openSettingsTab() {
-        this.tabManager.openTab('__settings__', 'Settings', 'settings');
+        this.openSettingsPage();
+    }
+
+    async openSettingsPage() {
+        this.hideWelcome();
+        this.clearPanes();
+        
+        const container = document.getElementById('pane-container');
+        const settingsDiv = document.createElement('div');
+        settingsDiv.className = 'pane settings-fullpage';
+        settingsDiv.id = 'left-pane';
+        container.insertBefore(settingsDiv, container.firstChild);
+        
+        try {
+            await this.settingsPage.show(settingsDiv);
+        } catch (err) {
+            console.error('Failed to show settings:', err);
+            settingsDiv.innerHTML = `<div style="padding:40px;color:var(--text-secondary);">
+                <h2>⚙️ Settings</h2>
+                <p>Error: ${err?.message || err}</p>
+            </div>`;
+        }
     }
 
     async showSettingsPane(pane = 0) {
