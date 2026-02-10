@@ -129,6 +129,57 @@
   __export(codemirror_editor_exports, {
     CodeMirrorEditor: () => CodeMirrorEditor
   });
+  async function loadWikiNotes() {
+    const now = Date.now();
+    if (_wikiNotesCache && now - _wikiCacheTime < 5e3) return _wikiNotesCache;
+    try {
+      const tree = await invoke("list_files");
+      const files = [];
+      const walk = (nodes) => {
+        if (!Array.isArray(nodes)) return;
+        for (const n of nodes) {
+          if (n.is_dir) walk(n.children || []);
+          else if (n.path && n.path.endsWith(".md")) files.push(n.path);
+        }
+      };
+      walk(tree);
+      _wikiNotesCache = files;
+      _wikiCacheTime = now;
+    } catch (e) {
+      console.error("wikilink completion: list_files failed", e);
+      if (!_wikiNotesCache) _wikiNotesCache = [];
+    }
+    return _wikiNotesCache;
+  }
+  async function wikilinkCompletion(context) {
+    const line = context.state.doc.lineAt(context.pos);
+    const textBefore = line.text.slice(0, context.pos - line.from);
+    const match = textBefore.match(/\[\[([^\]\[]*)$/);
+    if (!match) return null;
+    const query = match[1];
+    const from = context.pos - query.length;
+    const files = await loadWikiNotes();
+    const lq = query.toLowerCase();
+    const filtered = lq ? files.filter((f) => f.toLowerCase().includes(lq)) : files;
+    return {
+      from,
+      filter: false,
+      validFor: /^[^\]\[]*$/,
+      options: filtered.slice(0, 20).map((f) => {
+        const name = f.replace(".md", "").split("/").pop();
+        return {
+          label: name,
+          detail: f,
+          apply: (view, _completion, from2, to) => {
+            view.dispatch({
+              changes: { from: from2, to, insert: name + "]]" },
+              selection: { anchor: from2 + name.length + 2 }
+            });
+          }
+        };
+      })
+    };
+  }
   function toggleBold(view) {
     return wrapSelection(view, "**", "**");
   }
@@ -175,7 +226,7 @@
     dispatch(state.update({ changes, selection }));
     return true;
   }
-  var import_codemirror_bundle3, import_codemirror_bundle4, import_codemirror_bundle5, import_codemirror_bundle6, import_codemirror_bundle7, import_codemirror_bundle8, import_codemirror_bundle9, import_codemirror_bundle10, import_codemirror_bundle11, oxidianTheme, oxidianHighlight, markdownKeymap, CodeMirrorEditor, foldKeymap;
+  var import_codemirror_bundle3, import_codemirror_bundle4, import_codemirror_bundle5, import_codemirror_bundle6, import_codemirror_bundle7, import_codemirror_bundle8, import_codemirror_bundle9, import_codemirror_bundle10, import_codemirror_bundle11, _wikiNotesCache, _wikiCacheTime, oxidianTheme, oxidianHighlight, markdownKeymap, CodeMirrorEditor, foldKeymap;
   var init_codemirror_editor = __esm({
     "src/js/codemirror-editor.js"() {
       import_codemirror_bundle3 = __require("./codemirror-bundle.js");
@@ -188,6 +239,9 @@
       import_codemirror_bundle10 = __require("./codemirror-bundle.js");
       import_codemirror_bundle11 = __require("./codemirror-bundle.js");
       init_highlight_extension();
+      init_tauri_bridge();
+      _wikiNotesCache = null;
+      _wikiCacheTime = 0;
       oxidianTheme = import_codemirror_bundle4.EditorView.theme({
         "&": {
           color: "#cdd6f4",
@@ -344,7 +398,10 @@
             (0, import_codemirror_bundle6.indentOnInput)(),
             (0, import_codemirror_bundle6.bracketMatching)(),
             (0, import_codemirror_bundle10.closeBrackets)(),
-            (0, import_codemirror_bundle10.autocompletion)(),
+            (0, import_codemirror_bundle10.autocompletion)({
+              override: [wikilinkCompletion],
+              activateOnTyping: true
+            }),
             (0, import_codemirror_bundle4.rectangularSelection)(),
             (0, import_codemirror_bundle9.highlightSelectionMatches)(),
             (0, import_codemirror_bundle9.search)({ top: true }),
@@ -2380,6 +2437,10 @@
           shortcut: "Ctrl+Shift+E",
           action: () => this.app.extractToCard()
         });
+        items.push({
+          label: "\u{1F4DD} Extract to New Note",
+          action: () => this.app.extractSelectionToNote()
+        });
       }
       this.show(e.clientX, e.clientY, items);
     }
@@ -4296,46 +4357,57 @@
       }
     }
     updateSettingsFromForm(formData) {
-      this.settings.general.language = formData.get("general-language") || "en";
-      this.settings.general.startup_behavior = formData.get("general-startup") || "welcome";
-      this.settings.general.check_for_updates = formData.get("general-check-updates") === "true";
-      this.settings.general.auto_update = formData.get("general-auto-update") === "true";
-      this.settings.general.developer_mode = formData.get("general-dev-mode") === "true";
-      this.settings.editor.font_family = formData.get("editor-font-family") || "";
-      this.settings.editor.font_size = parseInt(formData.get("editor-font-size")) || 15;
-      this.settings.editor.line_height = parseFloat(formData.get("editor-line-height")) || 1.6;
-      this.settings.editor.tab_size = parseInt(formData.get("editor-tab-size")) || 4;
-      this.settings.editor.show_line_numbers = formData.get("editor-line-numbers") === "true";
-      this.settings.editor.readable_line_length = formData.get("editor-readable-length") === "true";
-      this.settings.editor.max_line_width = parseInt(formData.get("editor-max-width")) || 700;
-      this.settings.editor.default_edit_mode = formData.get("editor-default-mode") || "source";
-      this.settings.editor.strict_line_breaks = formData.get("editor-strict-breaks") === "true";
-      this.settings.editor.smart_indent = formData.get("editor-smart-indent") === "true";
-      this.settings.editor.auto_pair_brackets = formData.get("editor-auto-pair-brackets") === "true";
-      this.settings.editor.auto_pair_markdown = formData.get("editor-auto-pair-markdown") === "true";
-      this.settings.editor.spell_check = formData.get("editor-spell-check") === "true";
-      this.settings.editor.vim_mode = formData.get("editor-vim-mode") === "true";
-      this.settings.editor.show_frontmatter = formData.get("editor-show-frontmatter") === "true";
-      this.settings.editor.fold_heading = formData.get("editor-fold-heading") === "true";
-      this.settings.editor.fold_indent = formData.get("editor-fold-indent") === "true";
-      this.settings.files_links.default_note_location = formData.get("files-default-location") || "vault_root";
-      this.settings.files_links.new_note_location = formData.get("files-new-note-location") || "";
-      this.settings.files_links.new_link_format = formData.get("files-link-format") || "shortest";
-      this.settings.files_links.use_markdown_links = formData.get("files-use-wikilinks") !== "true";
-      this.settings.files_links.auto_update_internal_links = formData.get("files-auto-update-links") === "true";
-      this.settings.files_links.detect_all_extensions = formData.get("files-detect-extensions") === "true";
-      this.settings.files_links.attachment_folder = formData.get("files-attachment-folder") || "attachments";
-      this.settings.files_links.always_update_links = formData.get("files-always-update") === "true";
-      this.settings.files_links.confirm_file_deletion = formData.get("files-confirm-delete") === "true";
-      this.settings.appearance.accent_color = formData.get("appearance-accent-color") || "#7f6df2";
-      this.settings.appearance.interface_font = formData.get("appearance-interface-font") || "default";
-      this.settings.appearance.interface_font_size = parseInt(formData.get("appearance-font-size")) || 13;
-      this.settings.appearance.zoom_level = parseFloat(formData.get("appearance-zoom")) || 1;
-      this.settings.appearance.translucent = formData.get("appearance-translucent") === "true";
-      this.settings.appearance.native_menus = formData.get("appearance-native-menus") === "true";
-      this.settings.appearance.custom_css = formData.get("appearance-custom-css") === "true";
-      this.settings.community_plugins.safe_mode = formData.get("community-safe-mode") !== "true";
-      this.settings.community_plugins.plugin_updates = formData.get("community-plugin-updates") === "true";
+      const getCheckbox = (id) => {
+        const el = this.paneEl?.querySelector("#" + id);
+        return el ? el.checked : false;
+      };
+      const getVal = (id, fallback) => {
+        const el = this.paneEl?.querySelector("#" + id);
+        return el ? el.value : fallback || "";
+      };
+      const getNum = (id, fallback) => {
+        return parseFloat(getVal(id, fallback)) || fallback;
+      };
+      this.settings.general.language = getVal("general-language", "en");
+      this.settings.general.startup_behavior = getVal("general-startup", "welcome");
+      this.settings.general.check_for_updates = getCheckbox("general-check-updates");
+      this.settings.general.auto_update = getCheckbox("general-auto-update");
+      this.settings.general.developer_mode = getCheckbox("general-dev-mode");
+      this.settings.editor.font_family = getVal("editor-font-family", "");
+      this.settings.editor.font_size = getNum("editor-font-size", 15);
+      this.settings.editor.line_height = getNum("editor-line-height", 1.6);
+      this.settings.editor.tab_size = getNum("editor-tab-size", 4);
+      this.settings.editor.show_line_numbers = getCheckbox("editor-line-numbers");
+      this.settings.editor.readable_line_length = getCheckbox("editor-readable-length");
+      this.settings.editor.max_line_width = getNum("editor-max-width", 700);
+      this.settings.editor.default_edit_mode = getVal("editor-default-mode", "source");
+      this.settings.editor.strict_line_breaks = getCheckbox("editor-strict-breaks");
+      this.settings.editor.smart_indent = getCheckbox("editor-smart-indent");
+      this.settings.editor.auto_pair_brackets = getCheckbox("editor-auto-pair-brackets");
+      this.settings.editor.auto_pair_markdown = getCheckbox("editor-auto-pair-markdown");
+      this.settings.editor.spell_check = getCheckbox("editor-spell-check");
+      this.settings.editor.vim_mode = getCheckbox("editor-vim-mode");
+      this.settings.editor.show_frontmatter = getCheckbox("editor-show-frontmatter");
+      this.settings.editor.fold_heading = getCheckbox("editor-fold-heading");
+      this.settings.editor.fold_indent = getCheckbox("editor-fold-indent");
+      this.settings.files_links.default_note_location = getVal("files-default-location", "vault_root");
+      this.settings.files_links.new_note_location = getVal("files-new-note-location", "");
+      this.settings.files_links.new_link_format = getVal("files-link-format", "shortest");
+      this.settings.files_links.use_markdown_links = !getCheckbox("files-use-wikilinks");
+      this.settings.files_links.auto_update_internal_links = getCheckbox("files-auto-update-links");
+      this.settings.files_links.detect_all_extensions = getCheckbox("files-detect-extensions");
+      this.settings.files_links.attachment_folder = getVal("files-attachment-folder", "attachments");
+      this.settings.files_links.always_update_links = getCheckbox("files-always-update");
+      this.settings.files_links.confirm_file_deletion = getCheckbox("files-confirm-delete");
+      this.settings.appearance.accent_color = getVal("appearance-accent-color", "#7f6df2");
+      this.settings.appearance.interface_font = getVal("appearance-interface-font", "default");
+      this.settings.appearance.interface_font_size = getNum("appearance-font-size", 13);
+      this.settings.appearance.zoom_level = getNum("appearance-zoom", 1);
+      this.settings.appearance.translucent = getCheckbox("appearance-translucent");
+      this.settings.appearance.native_menus = getCheckbox("appearance-native-menus");
+      this.settings.appearance.custom_css = getCheckbox("appearance-custom-css");
+      this.settings.community_plugins.safe_mode = !getCheckbox("community-safe-mode");
+      this.settings.community_plugins.plugin_updates = getCheckbox("community-plugin-updates");
     }
     // Utility methods
     debounce(fn, ms) {
@@ -15216,6 +15288,11 @@ body.hm-dragging { cursor: grabbing !important; user-select: none; }
         { name: "Toggle Focus Mode", shortcut: "Ctrl+Shift+D", cat: "View", action: () => app.toggleFocusMode() },
         { name: "Switch to Classic Editor", cat: "View", action: () => app.setEditorMode("classic") },
         { name: "Switch to HyperMark Editor", cat: "View", action: () => app.setEditorMode("hypermark") },
+        // New Features
+        { name: "Open Random Note", cat: "Navigate", action: () => app.openRandomNote() },
+        { name: "Extract Selection to New Note", cat: "Editor", action: () => app.extractSelectionToNote() },
+        { name: "Record Audio", cat: "Editor", action: () => app.startAudioRecording() },
+        { name: "Stop Audio Recording", cat: "Editor", action: () => app.stopAudioRecording() },
         // Organisation
         { name: "Toggle Bookmark", cat: "Organize", action: () => app.toggleBookmark() },
         { name: "Open Settings", shortcut: "Ctrl+,", cat: "Settings", action: () => app.openSettingsTab() },
@@ -17273,7 +17350,9 @@ body.hm-dragging { cursor: grabbing !important; user-select: none; }
       document.querySelector('.ribbon-btn[data-action="canvas"]')?.addEventListener("click", () => this.openCanvasView());
       document.querySelector('.ribbon-btn[data-action="daily"]')?.addEventListener("click", () => this.openDailyNote());
       document.querySelector('.ribbon-btn[data-action="settings"]')?.addEventListener("click", () => this.openSettingsPage());
+      document.querySelector('.ribbon-btn[data-action="random"]')?.addEventListener("click", () => this.openRandomNote());
       document.querySelector('.ribbon-btn[data-action="focus"]')?.addEventListener("click", () => this.toggleFocusMode());
+      document.getElementById("btn-audio-recorder")?.addEventListener("click", () => this.startAudioRecording());
       document.getElementById("btn-view-mode")?.addEventListener("click", () => this.cycleViewMode());
       document.getElementById("btn-backlinks")?.addEventListener("click", () => this.toggleBacklinksPanel());
       document.getElementById("btn-more-options")?.addEventListener("click", (e) => {
@@ -17316,6 +17395,10 @@ body.hm-dragging { cursor: grabbing !important; user-select: none; }
       document.getElementById("new-note-name")?.addEventListener("keydown", (e) => {
         if (e.key === "Enter") this.createNewNote();
         if (e.key === "Escape") this.hideNewNoteDialog();
+      });
+      document.getElementById("new-note-name")?.addEventListener("input", (e) => {
+        const createBtn = document.getElementById("btn-dialog-create");
+        if (createBtn) createBtn.disabled = !e.target.value.trim();
       });
       document.getElementById("btn-folder-cancel")?.addEventListener("click", () => this.hideNewFolderDialog());
       document.getElementById("btn-folder-create")?.addEventListener("click", () => this.createNewFolderFromDialog());
@@ -17465,9 +17548,11 @@ body.hm-dragging { cursor: grabbing !important; user-select: none; }
     }
     onAllTabsClosed() {
       this.currentFile = null;
+      this.isDirty = false;
       this.showWelcome();
       this.clearPanes();
       this.updateBreadcrumb("");
+      this.clearStatusBar();
     }
     // ===== File Operations =====
     async openFile(path) {
@@ -17656,7 +17741,10 @@ body.hm-dragging { cursor: grabbing !important; user-select: none; }
 
 `;
           await invoke("save_note", { path, content });
+          this.invalidateFileTreeCache();
           await this.openFile(path);
+          this.isDirty = false;
+          if (this.tabManager) this.tabManager.markClean(path);
           await this.sidebar.refresh();
         } catch (createErr) {
           console.error("Failed to create note:", createErr);
@@ -17731,6 +17819,15 @@ body.hm-dragging { cursor: grabbing !important; user-select: none; }
     }
     showWelcome() {
       document.getElementById("welcome-screen").classList.remove("hidden");
+    }
+    // BUG FIX: Clear status bar when no file is open
+    clearStatusBar() {
+      const wc = document.getElementById("status-word-count");
+      const cc = document.getElementById("status-char-count");
+      const rt = document.getElementById("status-reading-time");
+      if (wc) wc.textContent = "";
+      if (cc) cc.textContent = "";
+      if (rt) rt.textContent = "No file open";
     }
     updateBreadcrumb(path) {
       const bc = document.getElementById("breadcrumb-path");
@@ -18002,8 +18099,10 @@ body.hm-dragging { cursor: grabbing !important; user-select: none; }
     showNewNoteDialog() {
       const dialog = document.getElementById("new-note-dialog");
       const input = document.getElementById("new-note-name");
+      const createBtn = document.getElementById("btn-dialog-create");
       dialog.classList.remove("hidden");
       input.value = "";
+      if (createBtn) createBtn.disabled = true;
       input.focus();
     }
     hideNewNoteDialog() {
@@ -18023,8 +18122,11 @@ body.hm-dragging { cursor: grabbing !important; user-select: none; }
 `;
       try {
         await invoke("save_note", { path: name, content });
+        this.invalidateFileTreeCache();
         this.hideNewNoteDialog();
         await this.openFile(name);
+        this.isDirty = false;
+        if (this.tabManager) this.tabManager.markClean(name);
         await this.sidebar.refresh();
       } catch (err) {
         console.error("Failed to create note:", err);
@@ -18783,7 +18885,8 @@ Lines: ${lines}`);
           processedContent = await this.embedProcessor.processEmbeds(processedContent, currentPath || this.currentFile);
         }
         const html = await invoke("render_markdown", { content: processedContent });
-        const processed = this.calloutProcessor?.process(html) || html;
+        let processed = this.calloutProcessor?.process(html) || html;
+        processed = this._processFootnotes(processed, processedContent);
         return processed;
       } catch (err) {
         console.error("Failed to render markdown:", err);
@@ -18968,6 +19071,144 @@ Lines: ${lines}`);
     invalidateAutoCompleteCaches() {
       this.wikilinksAutoComplete?.invalidateCache();
       this.tagAutoComplete?.invalidateCache();
+    }
+    // ===== Feature: Footnotes =====
+    /**
+     * Process footnotes: convert [^N] references to superscript links
+     * and render footnote definitions as a block at the end.
+     */
+    _processFootnotes(html, rawMarkdown) {
+      if (!rawMarkdown || !rawMarkdown.includes("[^")) return html;
+      const defRegex = /^\[\^(\w+)\]:\s*(.+)$/gm;
+      const definitions = {};
+      let match;
+      while ((match = defRegex.exec(rawMarkdown)) !== null) {
+        definitions[match[1]] = match[2].trim();
+      }
+      if (Object.keys(definitions).length === 0) return html;
+      let result = html.replace(/\[\^(\w+)\]/g, (full, id) => {
+        if (definitions[id] !== void 0) {
+          return `<sup class="footnote-ref"><a href="#fn-${id}" id="fnref-${id}">${id}</a></sup>`;
+        }
+        return full;
+      });
+      result = result.replace(/<p>\[\^(\w+)\]:\s*.+?<\/p>/g, "");
+      const footnoteItems = Object.entries(definitions).map(
+        ([id, text]) => `<li id="fn-${id}" class="footnote-item"><span class="footnote-content">${this.escapeHtml(text)}</span> <a href="#fnref-${id}" class="footnote-backref" title="Back to reference">\u21A9</a></li>`
+      ).join("\n");
+      result += `
+<section class="footnotes"><hr><ol class="footnotes-list">
+${footnoteItems}
+</ol></section>`;
+      return result;
+    }
+    // ===== Feature: Random Note =====
+    async openRandomNote() {
+      try {
+        const tree = await this.getFileTree();
+        const files = [];
+        const collect = (nodes) => {
+          for (const node of nodes || []) {
+            if (node.children) {
+              collect(node.children);
+            } else if (node.name?.endsWith(".md")) {
+              files.push(node.path || node.name);
+            }
+          }
+        };
+        collect(tree.children || tree);
+        if (files.length === 0) {
+          this.showErrorToast("No notes found in vault.");
+          return;
+        }
+        const random = files[Math.floor(Math.random() * files.length)];
+        await this.openFile(random);
+      } catch (err) {
+        console.error("[Oxidian] Random note failed:", err);
+        this.showErrorToast("Failed to open random note: " + (err.message || err));
+      }
+    }
+    // ===== Feature: Note Composer (Extract Selection) =====
+    async extractSelectionToNote() {
+      try {
+        const selection = this.editor?.getSelection?.();
+        if (!selection || selection.trim().length === 0) {
+          this.showErrorToast("No text selected. Select text first to extract.");
+          return;
+        }
+        const noteName = prompt("New note name for extracted text:");
+        if (!noteName || noteName.trim().length === 0) return;
+        const sanitized = noteName.trim().replace(/\.md$/, "");
+        const newPath = sanitized + ".md";
+        await invoke("save_note", { path: newPath, content: selection });
+        this.editor.replaceSelection(`[[${sanitized}]]`);
+        this.isDirty = true;
+        await this.saveCurrentFile();
+        this.sidebar?.refresh();
+        this.invalidateFileTreeCache();
+        console.log(`[Oxidian] Extracted selection to ${newPath}`);
+      } catch (err) {
+        console.error("[Oxidian] Extract selection failed:", err);
+        this.showErrorToast("Failed to extract selection: " + (err.message || err));
+      }
+    }
+    // ===== Feature: Audio Recorder =====
+    _audioRecorderState = null;
+    // { mediaRecorder, chunks, stream }
+    async startAudioRecording() {
+      try {
+        if (this._audioRecorderState) {
+          this.stopAudioRecording();
+          return;
+        }
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+        const chunks = [];
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) chunks.push(e.data);
+        };
+        mediaRecorder.onstop = async () => {
+          stream.getTracks().forEach((t) => t.stop());
+          const blob = new Blob(chunks, { type: "audio/webm" });
+          const arrayBuffer = await blob.arrayBuffer();
+          const uint8 = Array.from(new Uint8Array(arrayBuffer));
+          const timestamp = (/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-").slice(0, 19);
+          const filename = `recordings/recording-${timestamp}.webm`;
+          try {
+            await invoke("save_binary", { path: filename, data: uint8 });
+          } catch {
+            const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+            await invoke("save_note", { path: filename, content: base64 });
+          }
+          if (this.editor) {
+            this.editor.insertMarkdown(`
+![[${filename}]]
+`);
+            this.isDirty = true;
+          }
+          this._audioRecorderState = null;
+          this._updateAudioRecorderUI(false);
+          console.log(`[Oxidian] Audio saved: ${filename}`);
+        };
+        mediaRecorder.start();
+        this._audioRecorderState = { mediaRecorder, chunks, stream };
+        this._updateAudioRecorderUI(true);
+      } catch (err) {
+        console.error("[Oxidian] Audio recording failed:", err);
+        this.showErrorToast("Audio recording failed: " + (err.message || err));
+      }
+    }
+    stopAudioRecording() {
+      if (this._audioRecorderState?.mediaRecorder?.state === "recording") {
+        this._audioRecorderState.mediaRecorder.stop();
+      }
+    }
+    _updateAudioRecorderUI(recording) {
+      const btn = document.getElementById("btn-audio-recorder");
+      if (btn) {
+        btn.classList.toggle("recording", recording);
+        btn.title = recording ? "Stop Recording" : "Record Audio";
+      }
     }
   };
   document.addEventListener("DOMContentLoaded", async () => {

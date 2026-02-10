@@ -1438,55 +1438,70 @@ export class SettingsPage {
     }
 
     updateSettingsFromForm(formData) {
+        // BUG FIX: Read checkbox values directly from DOM using .checked instead of
+        // relying on FormData string coercion (which converts booleans to "true"/"false"
+        // strings unreliably across browsers)
+        const getCheckbox = (id) => {
+            const el = this.paneEl?.querySelector('#' + id);
+            return el ? el.checked : false;
+        };
+        const getVal = (id, fallback) => {
+            const el = this.paneEl?.querySelector('#' + id);
+            return el ? el.value : (fallback || '');
+        };
+        const getNum = (id, fallback) => {
+            return parseFloat(getVal(id, fallback)) || fallback;
+        };
+
         // General
-        this.settings.general.language = formData.get('general-language') || 'en';
-        this.settings.general.startup_behavior = formData.get('general-startup') || 'welcome';
-        this.settings.general.check_for_updates = formData.get('general-check-updates') === 'true';
-        this.settings.general.auto_update = formData.get('general-auto-update') === 'true';
-        this.settings.general.developer_mode = formData.get('general-dev-mode') === 'true';
+        this.settings.general.language = getVal('general-language', 'en');
+        this.settings.general.startup_behavior = getVal('general-startup', 'welcome');
+        this.settings.general.check_for_updates = getCheckbox('general-check-updates');
+        this.settings.general.auto_update = getCheckbox('general-auto-update');
+        this.settings.general.developer_mode = getCheckbox('general-dev-mode');
 
         // Editor
-        this.settings.editor.font_family = formData.get('editor-font-family') || '';
-        this.settings.editor.font_size = parseInt(formData.get('editor-font-size')) || 15;
-        this.settings.editor.line_height = parseFloat(formData.get('editor-line-height')) || 1.6;
-        this.settings.editor.tab_size = parseInt(formData.get('editor-tab-size')) || 4;
-        this.settings.editor.show_line_numbers = formData.get('editor-line-numbers') === 'true';
-        this.settings.editor.readable_line_length = formData.get('editor-readable-length') === 'true';
-        this.settings.editor.max_line_width = parseInt(formData.get('editor-max-width')) || 700;
-        this.settings.editor.default_edit_mode = formData.get('editor-default-mode') || 'source';
-        this.settings.editor.strict_line_breaks = formData.get('editor-strict-breaks') === 'true';
-        this.settings.editor.smart_indent = formData.get('editor-smart-indent') === 'true';
-        this.settings.editor.auto_pair_brackets = formData.get('editor-auto-pair-brackets') === 'true';
-        this.settings.editor.auto_pair_markdown = formData.get('editor-auto-pair-markdown') === 'true';
-        this.settings.editor.spell_check = formData.get('editor-spell-check') === 'true';
-        this.settings.editor.vim_mode = formData.get('editor-vim-mode') === 'true';
-        this.settings.editor.show_frontmatter = formData.get('editor-show-frontmatter') === 'true';
-        this.settings.editor.fold_heading = formData.get('editor-fold-heading') === 'true';
-        this.settings.editor.fold_indent = formData.get('editor-fold-indent') === 'true';
+        this.settings.editor.font_family = getVal('editor-font-family', '');
+        this.settings.editor.font_size = getNum('editor-font-size', 15);
+        this.settings.editor.line_height = getNum('editor-line-height', 1.6);
+        this.settings.editor.tab_size = getNum('editor-tab-size', 4);
+        this.settings.editor.show_line_numbers = getCheckbox('editor-line-numbers');
+        this.settings.editor.readable_line_length = getCheckbox('editor-readable-length');
+        this.settings.editor.max_line_width = getNum('editor-max-width', 700);
+        this.settings.editor.default_edit_mode = getVal('editor-default-mode', 'source');
+        this.settings.editor.strict_line_breaks = getCheckbox('editor-strict-breaks');
+        this.settings.editor.smart_indent = getCheckbox('editor-smart-indent');
+        this.settings.editor.auto_pair_brackets = getCheckbox('editor-auto-pair-brackets');
+        this.settings.editor.auto_pair_markdown = getCheckbox('editor-auto-pair-markdown');
+        this.settings.editor.spell_check = getCheckbox('editor-spell-check');
+        this.settings.editor.vim_mode = getCheckbox('editor-vim-mode');
+        this.settings.editor.show_frontmatter = getCheckbox('editor-show-frontmatter');
+        this.settings.editor.fold_heading = getCheckbox('editor-fold-heading');
+        this.settings.editor.fold_indent = getCheckbox('editor-fold-indent');
 
         // Files & Links
-        this.settings.files_links.default_note_location = formData.get('files-default-location') || 'vault_root';
-        this.settings.files_links.new_note_location = formData.get('files-new-note-location') || '';
-        this.settings.files_links.new_link_format = formData.get('files-link-format') || 'shortest';
-        this.settings.files_links.use_markdown_links = formData.get('files-use-wikilinks') !== 'true';
-        this.settings.files_links.auto_update_internal_links = formData.get('files-auto-update-links') === 'true';
-        this.settings.files_links.detect_all_extensions = formData.get('files-detect-extensions') === 'true';
-        this.settings.files_links.attachment_folder = formData.get('files-attachment-folder') || 'attachments';
-        this.settings.files_links.always_update_links = formData.get('files-always-update') === 'true';
-        this.settings.files_links.confirm_file_deletion = formData.get('files-confirm-delete') === 'true';
+        this.settings.files_links.default_note_location = getVal('files-default-location', 'vault_root');
+        this.settings.files_links.new_note_location = getVal('files-new-note-location', '');
+        this.settings.files_links.new_link_format = getVal('files-link-format', 'shortest');
+        this.settings.files_links.use_markdown_links = !getCheckbox('files-use-wikilinks');
+        this.settings.files_links.auto_update_internal_links = getCheckbox('files-auto-update-links');
+        this.settings.files_links.detect_all_extensions = getCheckbox('files-detect-extensions');
+        this.settings.files_links.attachment_folder = getVal('files-attachment-folder', 'attachments');
+        this.settings.files_links.always_update_links = getCheckbox('files-always-update');
+        this.settings.files_links.confirm_file_deletion = getCheckbox('files-confirm-delete');
 
         // Appearance
-        this.settings.appearance.accent_color = formData.get('appearance-accent-color') || '#7f6df2';
-        this.settings.appearance.interface_font = formData.get('appearance-interface-font') || 'default';
-        this.settings.appearance.interface_font_size = parseInt(formData.get('appearance-font-size')) || 13;
-        this.settings.appearance.zoom_level = parseFloat(formData.get('appearance-zoom')) || 1.0;
-        this.settings.appearance.translucent = formData.get('appearance-translucent') === 'true';
-        this.settings.appearance.native_menus = formData.get('appearance-native-menus') === 'true';
-        this.settings.appearance.custom_css = formData.get('appearance-custom-css') === 'true';
+        this.settings.appearance.accent_color = getVal('appearance-accent-color', '#7f6df2');
+        this.settings.appearance.interface_font = getVal('appearance-interface-font', 'default');
+        this.settings.appearance.interface_font_size = getNum('appearance-font-size', 13);
+        this.settings.appearance.zoom_level = getNum('appearance-zoom', 1.0);
+        this.settings.appearance.translucent = getCheckbox('appearance-translucent');
+        this.settings.appearance.native_menus = getCheckbox('appearance-native-menus');
+        this.settings.appearance.custom_css = getCheckbox('appearance-custom-css');
 
         // Community Plugins
-        this.settings.community_plugins.safe_mode = formData.get('community-safe-mode') !== 'true';
-        this.settings.community_plugins.plugin_updates = formData.get('community-plugin-updates') === 'true';
+        this.settings.community_plugins.safe_mode = !getCheckbox('community-safe-mode');
+        this.settings.community_plugins.plugin_updates = getCheckbox('community-plugin-updates');
     }
 
     // Utility methods

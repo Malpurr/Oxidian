@@ -85,6 +85,73 @@ import {
 } from './codemirror-bundle.js';
 
 import { highlightExtension } from './highlight-extension.js';
+import { invoke } from './tauri-bridge.js';
+
+/**
+ * Wikilink auto-complete source for CodeMirror 6.
+ * Triggers when the user types `[[` and shows matching note names.
+ */
+let _wikiNotesCache = null;
+let _wikiCacheTime = 0;
+
+async function loadWikiNotes() {
+  const now = Date.now();
+  if (_wikiNotesCache && (now - _wikiCacheTime) < 5000) return _wikiNotesCache;
+  try {
+    const tree = await invoke('list_files');
+    const files = [];
+    const walk = (nodes) => {
+      if (!Array.isArray(nodes)) return;
+      for (const n of nodes) {
+        if (n.is_dir) walk(n.children || []);
+        else if (n.path && n.path.endsWith('.md')) files.push(n.path);
+      }
+    };
+    walk(tree);
+    _wikiNotesCache = files;
+    _wikiCacheTime = now;
+  } catch (e) {
+    console.error('wikilink completion: list_files failed', e);
+    if (!_wikiNotesCache) _wikiNotesCache = [];
+  }
+  return _wikiNotesCache;
+}
+
+async function wikilinkCompletion(context) {
+  // Look backwards for `[[` that isn't closed yet
+  const line = context.state.doc.lineAt(context.pos);
+  const textBefore = line.text.slice(0, context.pos - line.from);
+  const match = textBefore.match(/\[\[([^\]\[]*)$/);
+  if (!match) return null;
+
+  const query = match[1];
+  const from = context.pos - query.length;
+
+  const files = await loadWikiNotes();
+  const lq = query.toLowerCase();
+  const filtered = lq
+    ? files.filter(f => f.toLowerCase().includes(lq))
+    : files;
+
+  return {
+    from,
+    filter: false,
+    validFor: /^[^\]\[]*$/,
+    options: filtered.slice(0, 20).map(f => {
+      const name = f.replace('.md', '').split('/').pop();
+      return {
+        label: name,
+        detail: f,
+        apply: (view, _completion, from, to) => {
+          view.dispatch({
+            changes: { from, to, insert: name + ']]' },
+            selection: { anchor: from + name.length + 2 }
+          });
+        }
+      };
+    })
+  };
+}
 
 /**
  * Custom Oxidian Dark Theme - matches the app's catppuccin-inspired theme
@@ -325,7 +392,10 @@ export class CodeMirrorEditor {
       indentOnInput(),
       bracketMatching(),
       closeBrackets(),
-      autocompletion(),
+      autocompletion({
+        override: [wikilinkCompletion],
+        activateOnTyping: true,
+      }),
       rectangularSelection(),
       highlightSelectionMatches(),
       search({ top: true }),

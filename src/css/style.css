@@ -24,7 +24,7 @@
     /* Text Colors */
     --text-primary: #dcddde;
     --text-secondary: #a9aaab;
-    --text-muted: #686a6e;
+    --text-muted: #9ca3af;
     --text-faint: #4a4c50;
     --text-accent: #7f6df2;
     --text-accent-hover: #8b7cf3;
@@ -53,6 +53,9 @@
 
     /* Shadows & Effects */
     --shadow-color: rgba(0, 0, 0, 0.4);
+
+    /* Accent RGB for alpha compositing */
+    --accent-rgb: 127, 109, 242;
 
     /* Color Scheme Marker */
     color-scheme: dark;
@@ -604,9 +607,9 @@ input[type="color"]::-webkit-color-swatch {
 
 .ribbon-btn.active {
     color: var(--text-accent);
-    background: rgba(127, 109, 242, 0.12);
+    background: rgba(var(--accent-rgb), 0.15);
     border-radius: 50%;
-    box-shadow: 0 0 12px rgba(127, 109, 242, 0.08);
+    box-shadow: 0 0 12px rgba(var(--accent-rgb), 0.08);
 }
 
 /* ===== Sidebar ===== */
@@ -1382,6 +1385,7 @@ input[type="color"]::-webkit-color-swatch {
 .graph-pane canvas {
     width: 100%;
     height: 100%;
+    background: var(--bg-primary);
 }
 
 /* ===== Welcome Screen ===== */

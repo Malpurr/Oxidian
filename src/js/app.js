@@ -240,9 +240,11 @@ class OxidianApp {
         document.querySelector('.ribbon-btn[data-action="canvas"]')?.addEventListener('click', () => this.openCanvasView());
         document.querySelector('.ribbon-btn[data-action="daily"]')?.addEventListener('click', () => this.openDailyNote());
         document.querySelector('.ribbon-btn[data-action="settings"]')?.addEventListener('click', () => this.openSettingsPage());
+        document.querySelector('.ribbon-btn[data-action="random"]')?.addEventListener('click', () => this.openRandomNote());
         document.querySelector('.ribbon-btn[data-action="focus"]')?.addEventListener('click', () => this.toggleFocusMode());
 
         // View toolbar buttons
+        document.getElementById('btn-audio-recorder')?.addEventListener('click', () => this.startAudioRecording());
         document.getElementById('btn-view-mode')?.addEventListener('click', () => this.cycleViewMode());
         document.getElementById('btn-backlinks')?.addEventListener('click', () => this.toggleBacklinksPanel());
         document.getElementById('btn-more-options')?.addEventListener('click', (e) => { e.stopPropagation(); this.toggleMoreOptions(); });
@@ -284,6 +286,11 @@ class OxidianApp {
         document.getElementById('new-note-name')?.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') this.createNewNote();
             if (e.key === 'Escape') this.hideNewNoteDialog();
+        });
+        // BUG FIX: Disable create button when input is empty
+        document.getElementById('new-note-name')?.addEventListener('input', (e) => {
+            const createBtn = document.getElementById('btn-dialog-create');
+            if (createBtn) createBtn.disabled = !e.target.value.trim();
         });
 
         // New folder dialog
@@ -454,9 +461,12 @@ class OxidianApp {
 
     onAllTabsClosed() {
         this.currentFile = null;
+        this.isDirty = false;
         this.showWelcome();
         this.clearPanes();
         this.updateBreadcrumb('');
+        // BUG FIX: Clear status bar when no file is open
+        this.clearStatusBar();
     }
 
     // ===== File Operations =====
@@ -693,7 +703,11 @@ class OxidianApp {
             try {
                 const content = `# ${target}\n\n`;
                 await invoke('save_note', { path, content });
+                this.invalidateFileTreeCache();
                 await this.openFile(path);
+                // BUG FIX: Reset dirty after openFile (setContent may trigger markDirty)
+                this.isDirty = false;
+                if (this.tabManager) this.tabManager.markClean(path);
                 await this.sidebar.refresh();
             } catch (createErr) {
                 console.error('Failed to create note:', createErr);
@@ -782,6 +796,16 @@ class OxidianApp {
 
     showWelcome() {
         document.getElementById('welcome-screen').classList.remove('hidden');
+    }
+
+    // BUG FIX: Clear status bar when no file is open
+    clearStatusBar() {
+        const wc = document.getElementById('status-word-count');
+        const cc = document.getElementById('status-char-count');
+        const rt = document.getElementById('status-reading-time');
+        if (wc) wc.textContent = '';
+        if (cc) cc.textContent = '';
+        if (rt) rt.textContent = 'No file open';
     }
 
     updateBreadcrumb(path) {
@@ -1124,8 +1148,10 @@ class OxidianApp {
     showNewNoteDialog() {
         const dialog = document.getElementById('new-note-dialog');
         const input = document.getElementById('new-note-name');
+        const createBtn = document.getElementById('btn-dialog-create');
         dialog.classList.remove('hidden');
         input.value = '';
+        if (createBtn) createBtn.disabled = true; // BUG FIX: Disabled until input not empty
         input.focus();
     }
 
@@ -1148,8 +1174,12 @@ class OxidianApp {
 
         try {
             await invoke('save_note', { path: name, content });
+            this.invalidateFileTreeCache();
             this.hideNewNoteDialog();
             await this.openFile(name);
+            // BUG FIX: Reset dirty state after openFile since setContent may trigger markDirty
+            this.isDirty = false;
+            if (this.tabManager) this.tabManager.markClean(name);
             await this.sidebar.refresh();
         } catch (err) {
             console.error('Failed to create note:', err);
@@ -2059,7 +2089,9 @@ class OxidianApp {
             
             const html = await invoke('render_markdown', { content: processedContent });
             // Apply callout processing
-            const processed = this.calloutProcessor?.process(html) || html;
+            let processed = this.calloutProcessor?.process(html) || html;
+            // Apply footnote processing
+            processed = this._processFootnotes(processed, processedContent);
             return processed;
         } catch (err) {
             console.error('Failed to render markdown:', err);
@@ -2288,6 +2320,183 @@ class OxidianApp {
     invalidateAutoCompleteCaches() {
         this.wikilinksAutoComplete?.invalidateCache();
         this.tagAutoComplete?.invalidateCache();
+    }
+
+    // ===== Feature: Footnotes =====
+
+    /**
+     * Process footnotes: convert [^N] references to superscript links
+     * and render footnote definitions as a block at the end.
+     */
+    _processFootnotes(html, rawMarkdown) {
+        if (!rawMarkdown || !rawMarkdown.includes('[^')) return html;
+
+        // Extract footnote definitions from raw markdown: [^id]: text
+        const defRegex = /^\[\^(\w+)\]:\s*(.+)$/gm;
+        const definitions = {};
+        let match;
+        while ((match = defRegex.exec(rawMarkdown)) !== null) {
+            definitions[match[1]] = match[2].trim();
+        }
+
+        if (Object.keys(definitions).length === 0) return html;
+
+        // Replace inline [^id] references with superscript links
+        let result = html.replace(/\[\^(\w+)\]/g, (full, id) => {
+            // Skip if this is a definition line (already rendered below)
+            if (definitions[id] !== undefined) {
+                return `<sup class="footnote-ref"><a href="#fn-${id}" id="fnref-${id}">${id}</a></sup>`;
+            }
+            return full;
+        });
+
+        // Remove rendered definition paragraphs (they appear as <p>[^id]: text</p>)
+        result = result.replace(/<p>\[\^(\w+)\]:\s*.+?<\/p>/g, '');
+
+        // Append footnotes block
+        const footnoteItems = Object.entries(definitions).map(([id, text]) =>
+            `<li id="fn-${id}" class="footnote-item"><span class="footnote-content">${this.escapeHtml(text)}</span> <a href="#fnref-${id}" class="footnote-backref" title="Back to reference">↩</a></li>`
+        ).join('\n');
+
+        result += `\n<section class="footnotes"><hr><ol class="footnotes-list">\n${footnoteItems}\n</ol></section>`;
+
+        return result;
+    }
+
+    // ===== Feature: Random Note =====
+
+    async openRandomNote() {
+        try {
+            const tree = await this.getFileTree();
+            const files = [];
+            const collect = (nodes) => {
+                for (const node of (nodes || [])) {
+                    if (node.children) {
+                        collect(node.children);
+                    } else if (node.name?.endsWith('.md')) {
+                        files.push(node.path || node.name);
+                    }
+                }
+            };
+            collect(tree.children || tree);
+            if (files.length === 0) {
+                this.showErrorToast('No notes found in vault.');
+                return;
+            }
+            const random = files[Math.floor(Math.random() * files.length)];
+            await this.openFile(random);
+        } catch (err) {
+            console.error('[Oxidian] Random note failed:', err);
+            this.showErrorToast('Failed to open random note: ' + (err.message || err));
+        }
+    }
+
+    // ===== Feature: Note Composer (Extract Selection) =====
+
+    async extractSelectionToNote() {
+        try {
+            const selection = this.editor?.getSelection?.();
+            if (!selection || selection.trim().length === 0) {
+                this.showErrorToast('No text selected. Select text first to extract.');
+                return;
+            }
+
+            // Prompt for new note name
+            const noteName = prompt('New note name for extracted text:');
+            if (!noteName || noteName.trim().length === 0) return;
+
+            const sanitized = noteName.trim().replace(/\.md$/, '');
+            const newPath = sanitized + '.md';
+
+            // Save extracted text as new note
+            await invoke('save_note', { path: newPath, content: selection });
+
+            // Replace selection with wikilink
+            this.editor.replaceSelection(`[[${sanitized}]]`);
+            this.isDirty = true;
+
+            // Auto-save current file
+            await this.saveCurrentFile();
+
+            // Refresh sidebar
+            this.sidebar?.refresh();
+            this.invalidateFileTreeCache();
+
+            console.log(`[Oxidian] Extracted selection to ${newPath}`);
+        } catch (err) {
+            console.error('[Oxidian] Extract selection failed:', err);
+            this.showErrorToast('Failed to extract selection: ' + (err.message || err));
+        }
+    }
+
+    // ===== Feature: Audio Recorder =====
+
+    _audioRecorderState = null; // { mediaRecorder, chunks, stream }
+
+    async startAudioRecording() {
+        try {
+            if (this._audioRecorderState) {
+                this.stopAudioRecording();
+                return;
+            }
+
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+            const chunks = [];
+
+            mediaRecorder.ondataavailable = (e) => {
+                if (e.data.size > 0) chunks.push(e.data);
+            };
+
+            mediaRecorder.onstop = async () => {
+                stream.getTracks().forEach(t => t.stop());
+                const blob = new Blob(chunks, { type: 'audio/webm' });
+                const arrayBuffer = await blob.arrayBuffer();
+                const uint8 = Array.from(new Uint8Array(arrayBuffer));
+
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+                const filename = `recordings/recording-${timestamp}.webm`;
+
+                try {
+                    await invoke('save_binary', { path: filename, data: uint8 });
+                } catch {
+                    // Fallback: save as base64 text if save_binary doesn't exist
+                    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+                    await invoke('save_note', { path: filename, content: base64 });
+                }
+
+                // Insert link into editor
+                if (this.editor) {
+                    this.editor.insertMarkdown(`\n![[${filename}]]\n`);
+                    this.isDirty = true;
+                }
+
+                this._audioRecorderState = null;
+                this._updateAudioRecorderUI(false);
+                console.log(`[Oxidian] Audio saved: ${filename}`);
+            };
+
+            mediaRecorder.start();
+            this._audioRecorderState = { mediaRecorder, chunks, stream };
+            this._updateAudioRecorderUI(true);
+        } catch (err) {
+            console.error('[Oxidian] Audio recording failed:', err);
+            this.showErrorToast('Audio recording failed: ' + (err.message || err));
+        }
+    }
+
+    stopAudioRecording() {
+        if (this._audioRecorderState?.mediaRecorder?.state === 'recording') {
+            this._audioRecorderState.mediaRecorder.stop();
+        }
+    }
+
+    _updateAudioRecorderUI(recording) {
+        const btn = document.getElementById('btn-audio-recorder');
+        if (btn) {
+            btn.classList.toggle('recording', recording);
+            btn.title = recording ? 'Stop Recording' : 'Record Audio';
+        }
     }
 }
 

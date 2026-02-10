@@ -53,6 +53,12 @@ export class CommandPalette {
             { name: 'Switch to Classic Editor', cat: 'View', action: () => app.setEditorMode('classic') },
             { name: 'Switch to HyperMark Editor', cat: 'View', action: () => app.setEditorMode('hypermark') },
 
+            // New Features
+            { name: 'Open Random Note', cat: 'Navigate', action: () => app.openRandomNote() },
+            { name: 'Extract Selection to New Note', cat: 'Editor', action: () => app.extractSelectionToNote() },
+            { name: 'Record Audio', cat: 'Editor', action: () => app.startAudioRecording() },
+            { name: 'Stop Audio Recording', cat: 'Editor', action: () => app.stopAudioRecording() },
+
             // Organisation
             { name: 'Toggle Bookmark', cat: 'Organize', action: () => app.toggleBookmark() },
             { name: 'Open Settings', shortcut: 'Ctrl+,', cat: 'Settings', action: () => app.openSettingsTab() },

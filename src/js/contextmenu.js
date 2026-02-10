@@ -104,6 +104,10 @@ export class ContextMenu {
                 shortcut: 'Ctrl+Shift+E',
                 action: () => this.app.extractToCard()
             });
+            items.push({
+                label: '📝 Extract to New Note',
+                action: () => this.app.extractSelectionToNote()
+            });
         }
 
         this.show(e.clientX, e.clientY, items);
