@@ -267,7 +267,7 @@ export class SettingsPage {
     }
 
     renderGeneralSection() {
-        const s = this.settings.general;
+        const s = this.settings.general || {};
         return `
             <section class="settings-section" data-section="general">
                 <div class="settings-section-header">
@@ -368,7 +368,7 @@ export class SettingsPage {
     }
 
     renderEditorSection() {
-        const s = this.settings.editor;
+        const s = this.settings.editor || {};
         return `
             <section class="settings-section" data-section="editor">
                 <div class="settings-section-header">
@@ -581,7 +581,16 @@ export class SettingsPage {
     }
 
     renderFilesLinksSection() {
-        const s = this.settings.files_links;
+        const s = this.settings.files_links || this.settings.files || {
+            default_note_location: 'vault_root',
+            new_note_location: '',
+            new_link_format: 'shortest',
+            auto_update_internal_links: true,
+            detect_all_extensions: true,
+            default_attachment_folder: 'attachments',
+            confirm_file_delete: true,
+            trash_option: 'system_trash'
+        };
         return `
             <section class="settings-section" data-section="files-links">
                 <div class="settings-section-header">
@@ -598,9 +607,9 @@ export class SettingsPage {
                         </div>
                         <div class="setting-item-control">
                             <select id="files-default-location">
-                                <option value="vault_root" ${s.default_note_location === 'vault_root' ? 'selected' : ''}>Vault folder</option>
-                                <option value="current_folder" ${s.default_note_location === 'current_folder' ? 'selected' : ''}>Same folder as current file</option>
-                                <option value="specified_folder" ${s.default_note_location === 'specified_folder' ? 'selected' : ''}>In the folder specified below</option>
+                                <option value="vault_root" ${s.default_note_location || s.new_file_location || 'vault_root' === 'vault_root' ? 'selected' : ''}>Vault folder</option>
+                                <option value="current_folder" ${s.default_note_location || s.new_file_location || 'vault_root' === 'current_folder' ? 'selected' : ''}>Same folder as current file</option>
+                                <option value="specified_folder" ${s.default_note_location || s.new_file_location || 'vault_root' === 'specified_folder' ? 'selected' : ''}>In the folder specified below</option>
                             </select>
                         </div>
                     </div>
@@ -704,7 +713,7 @@ export class SettingsPage {
     }
 
     renderAppearanceSection() {
-        const s = this.settings.appearance;
+        const s = this.settings.appearance || {};
         return `
             <section class="settings-section" data-section="appearance">
                 <div class="settings-section-header">
@@ -942,7 +951,7 @@ export class SettingsPage {
     }
 
     renderCorePluginsSection() {
-        const s = this.settings.core_plugins;
+        const s = this.settings.core_plugins || this.settings.plugins || {};
         return `
             <section class="settings-section" data-section="core-plugins">
                 <div class="settings-section-header">
@@ -996,7 +1005,7 @@ export class SettingsPage {
     }
 
     renderCommunityPluginsSection() {
-        const s = this.settings.community_plugins;
+        const s = this.settings.community_plugins || this.settings.plugins || {};
         return `
             <section class="settings-section" data-section="community-plugins">
                 <div class="settings-section-header">
@@ -1057,7 +1066,7 @@ export class SettingsPage {
     }
 
     renderAboutSection() {
-        const s = this.settings.about;
+        const s = this.settings.about || { version: "2.2.0", license: "MIT", credits: "Built with Tauri & Rust" };
         return `
             <section class="settings-section" data-section="about">
                 <div class="settings-section-header">
@@ -1455,7 +1464,7 @@ export class SettingsPage {
         this.settings.editor.fold_indent = formData.get('editor-fold-indent') === 'true';
 
         // Files & Links
-        this.settings.files_links.default_note_location = formData.get('files-default-location') || 'vault_root';
+        this.settings.files_links.default_note_location || s.new_file_location || 'vault_root' = formData.get('files-default-location') || 'vault_root';
         this.settings.files_links.new_note_location = formData.get('files-new-note-location') || '';
         this.settings.files_links.new_link_format = formData.get('files-link-format') || 'shortest';
         this.settings.files_links.use_markdown_links = formData.get('files-use-wikilinks') !== 'true';

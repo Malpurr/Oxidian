@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>i18n Test - Oxidian Docs</title>
+  <link rel="stylesheet" href="docs/docs.css">
+</head>
+<body>
+  <nav class="docs-topnav">
+    <div class="topnav-inner">
+      <div class="topnav-left">
+        <span>i18n Test Page</span>
+      </div>
+      <div class="topnav-right">
+        <div class="topnav-search">
+          <span class="search-icon">🔍</span>
+          <input type="text" placeholder="Search docs..." data-i18n="Search docs..." aria-label="Search documentation">
+          <div class="search-results-dropdown"></div>
+        </div>
+        <a href="index.html" class="topnav-link" data-i18n="Home">Home</a>
+        <a href="releases.html" class="topnav-link" data-i18n="Releases">Releases</a>
+        <!-- Language dropdown will be inserted here by JavaScript -->
+      </div>
+    </div>
+  </nav>
+
+  <div style="padding: 100px 20px; text-align: center; background: var(--bg-base); color: var(--text-primary);">
+    <h1 data-i18n="Getting Started">Getting Started</h1>
+    <p data-i18n="Everything you need to know about Oxidian">Everything you need to know about Oxidian — the blazing-fast, open-source, Rust-powered note-taking app. Whether you're getting started or diving deep into advanced features, you'll find it here.</p>
+    
+    <div style="margin-top: 40px;">
+      <h2 data-i18n="Quick Links">Quick Links</h2>
+      <ul style="list-style: none; padding: 0; max-width: 300px; margin: 0 auto;">
+        <li><a href="#" data-i18n="User Guide">User Guide</a></li>
+        <li><a href="#" data-i18n="Features">Features</a></li>
+        <li><a href="#" data-i18n="Architecture">Architecture</a></li>
+        <li><a href="#" data-i18n="Developer Guide">Developer Guide</a></li>
+        <li><a href="#" data-i18n="API Reference">API Reference</a></li>
+      </ul>
+    </div>
+
+    <div style="margin-top: 40px; padding: 20px; background: var(--bg-surface); border-radius: 12px; max-width: 500px; margin: 40px auto;">
+      <h3>Test Instructions:</h3>
+      <ol style="text-align: left;">
+        <li>Look for the language dropdown (🌐 English) in the top-right corner</li>
+        <li>Click it to see all language options</li>
+        <li>Select a different language (e.g., Deutsch, Español)</li>
+        <li>Observe how the text on the page changes</li>
+        <li>The selection should persist when you refresh the page</li>
+      </ol>
+    </div>
+  </div>
+
+  <script src="docs/docs.js"></script>
+</body>
+</html>
