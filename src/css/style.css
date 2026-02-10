@@ -4,7 +4,7 @@
    Uses design-tokens.css for all values.
    ============================================================ */
 
-@import url('./design-tokens.css');
+/* design-tokens.css loaded via index.html */
 
 /* ─── Reset ───────────────────────────────────────────────── */
 *, *::before, *::after {
