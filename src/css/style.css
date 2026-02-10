@@ -7175,3 +7175,73 @@ body.ctrl-pressed a {
     color: var(--text-accent);
     margin-right: 6px;
 }
+
+
+/* ===== Settings in Sidebar Panel ===== */
+#panel-settings {
+    overflow-y: auto;
+}
+
+#panel-settings .settings-container {
+    flex-direction: column;
+    height: auto;
+}
+
+#panel-settings .settings-sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+}
+
+#panel-settings .settings-sidebar-header {
+    display: none;
+}
+
+#panel-settings .settings-nav-section {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 8px;
+}
+
+#panel-settings .settings-nav-item {
+    padding: 4px 10px;
+    font-size: 12px;
+}
+
+#panel-settings .settings-nav-icon {
+    width: 14px;
+    height: 14px;
+}
+
+#panel-settings .settings-content {
+    overflow-y: visible;
+}
+
+#panel-settings .settings-sections {
+    padding: 12px;
+    max-width: 100%;
+}
+
+#panel-settings .settings-section h2 {
+    font-size: 14px;
+}
+
+#panel-settings .setting-group {
+    margin-bottom: 12px;
+}
+
+#panel-settings .setting-label {
+    font-size: 12px;
+}
+
+#panel-settings .setting-description {
+    font-size: 11px;
+}
+
+/* Sidebar widens when settings are active */
+#sidebar.settings-active {
+    width: 520px;
+    max-width: 60vw;
+    transition: width 200ms ease-out;
+}

@@ -239,7 +239,7 @@ class OxidianApp {
         document.querySelector('.ribbon-btn[data-action="graph"]')?.addEventListener('click', () => this.openGraphView());
         document.querySelector('.ribbon-btn[data-action="canvas"]')?.addEventListener('click', () => this.openCanvasView());
         document.querySelector('.ribbon-btn[data-action="daily"]')?.addEventListener('click', () => this.openDailyNote());
-        document.querySelector('.ribbon-btn[data-action="settings"]')?.addEventListener('click', () => this.openSettingsTab());
+        // Settings now loads in sidebar panel (not as tab)
         document.querySelector('.ribbon-btn[data-action="focus"]')?.addEventListener('click', () => this.toggleFocusMode());
 
         // View toolbar buttons
@@ -1349,6 +1349,36 @@ class OxidianApp {
         // Refresh outline when switching to it
         if (name === 'outline' && this.editor?.textarea) {
             this.updateOutline(this.editor.textarea.value);
+        }
+
+        // Settings: lazy-load into sidebar with wider panel
+        const sidebar = document.getElementById('sidebar');
+        if (name === 'settings') {
+            this.loadSettingsInSidebar();
+        } else if (sidebar) {
+            sidebar.classList.remove('settings-active');
+        }
+    }
+
+    async loadSettingsInSidebar() {
+        const container = document.getElementById('settings-sidebar-container');
+        if (!container) return;
+        
+        // Widen sidebar for settings
+        const sidebar = document.getElementById('sidebar');
+        if (sidebar) sidebar.classList.add('settings-active');
+        
+        if (container.dataset.loaded !== 'true') {
+            container.dataset.loaded = 'true';
+            try {
+                await this.settingsPage.show(container);
+            } catch (err) {
+                console.error('Failed to load settings in sidebar:', err);
+                container.innerHTML = `<div style="padding:16px;color:var(--text-secondary);">
+                    <p>⚙️ Settings could not be loaded.</p>
+                    <p style="font-size:12px;margin-top:8px;">${err?.message || err}</p>
+                </div>`;
+            }
         }
     }
 
