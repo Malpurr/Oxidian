@@ -1,6 +1,6 @@
-// Oxidian — Settings Page (opens as a tab)
-// UI-only: rendering, form handling, theme preview
-// All data/logic via Rust invoke()
+// Oxidian — Comprehensive Settings Panel (Obsidian-inspired)
+// Fully redesigned settings with professional sidebar navigation and all sections
+
 const { invoke } = window.__TAURI__.core;
 
 export class SettingsPage {
@@ -8,21 +8,150 @@ export class SettingsPage {
         this.app = app;
         this.settings = null;
         this.paneEl = null;
+        this.activeSection = 'general';
+        this.hotkeys = new Map();
+        this.availableCommands = new Map();
     }
 
     async load() {
         try {
             this.settings = await invoke('load_settings');
+            await this.loadHotkeys();
+            await this.loadCommands();
         } catch (err) {
             console.error('Failed to load settings:', err);
-            // Fallback: Rust should provide defaults, but if invoke fails entirely use minimal defaults
+            // Comprehensive fallback settings
             this.settings = {
-                general: { vault_path: '', language: 'en', startup_behavior: 'welcome' },
-                editor: { font_family: 'JetBrains Mono, Fira Code, Consolas, monospace', font_size: 15, line_height: 1.7, tab_size: 4, spell_check: true, vim_mode: false },
-                appearance: { theme: 'dark', accent_color: '#7f6df2', interface_font_size: 13 },
-                vault: { encryption_enabled: false, auto_backup: false },
-                plugins: { enabled_plugins: [] },
+                general: {
+                    vault_path: '',
+                    language: 'en',
+                    startup_behavior: 'welcome',
+                    check_for_updates: true,
+                    auto_update: false,
+                    developer_mode: false
+                },
+                editor: {
+                    font_family: 'JetBrains Mono, Fira Code, Consolas, monospace',
+                    font_size: 15,
+                    line_height: 1.6,
+                    tab_size: 4,
+                    spell_check: true,
+                    vim_mode: false,
+                    show_line_numbers: true,
+                    readable_line_length: false,
+                    max_line_width: 700,
+                    strict_line_breaks: false,
+                    smart_indent: true,
+                    show_frontmatter: true,
+                    default_edit_mode: 'source',
+                    auto_pair_brackets: true,
+                    auto_pair_markdown: true,
+                    fold_heading: true,
+                    fold_indent: true
+                },
+                files_links: {
+                    default_note_location: 'vault_root',
+                    new_note_location: '',
+                    new_link_format: 'shortest',
+                    auto_update_internal_links: true,
+                    detect_all_extensions: true,
+                    attachment_folder: 'attachments',
+                    always_update_links: true,
+                    use_markdown_links: false,
+                    confirm_file_deletion: true
+                },
+                appearance: {
+                    theme: 'dark',
+                    accent_color: '#7f6df2',
+                    interface_font_size: 13,
+                    interface_font: 'default',
+                    translucent: false,
+                    custom_css: true,
+                    native_menus: true,
+                    show_inline_title: true,
+                    show_tab_title_bar: true,
+                    zoom_level: 1.0
+                },
+                hotkeys: {},
+                core_plugins: {
+                    file_explorer: true,
+                    search: true,
+                    quick_switcher: true,
+                    graph_view: true,
+                    backlinks: true,
+                    outgoing_links: true,
+                    tag_pane: true,
+                    page_preview: true,
+                    starred: true,
+                    templates: false,
+                    note_composer: false,
+                    command_palette: true,
+                    markdown_importer: false,
+                    word_count: true,
+                    open_with_default_app: true,
+                    file_recovery: true
+                },
+                community_plugins: {
+                    safe_mode: false,
+                    enabled_plugins: [],
+                    plugin_updates: true,
+                    browse_plugins: true
+                },
+                about: {
+                    version: '1.2.0',
+                    license: 'MIT',
+                    credits: 'Built with Tauri & Rust'
+                }
             };
+        }
+    }
+
+    async loadHotkeys() {
+        try {
+            const hotkeyData = await invoke('load_hotkeys') || {};
+            this.hotkeys = new Map(Object.entries(hotkeyData));
+        } catch (err) {
+            console.warn('Could not load hotkeys:', err);
+            this.hotkeys = new Map();
+        }
+    }
+
+    async loadCommands() {
+        try {
+            const commands = await invoke('get_available_commands') || [];
+            this.availableCommands = new Map();
+            
+            // Default command set
+            const defaultCommands = [
+                { id: 'app:open-settings', name: 'Open Settings', category: 'App' },
+                { id: 'app:toggle-theme', name: 'Toggle Theme', category: 'App' },
+                { id: 'app:reload-app', name: 'Reload App', category: 'App' },
+                { id: 'file:new-note', name: 'Create New Note', category: 'File' },
+                { id: 'file:open-file', name: 'Open File', category: 'File' },
+                { id: 'file:save', name: 'Save Current File', category: 'File' },
+                { id: 'file:save-as', name: 'Save As...', category: 'File' },
+                { id: 'file:delete', name: 'Delete File', category: 'File' },
+                { id: 'editor:toggle-preview', name: 'Toggle Preview', category: 'Editor' },
+                { id: 'editor:toggle-source', name: 'Toggle Source Mode', category: 'Editor' },
+                { id: 'editor:bold', name: 'Bold', category: 'Editor' },
+                { id: 'editor:italic', name: 'Italic', category: 'Editor' },
+                { id: 'editor:strikethrough', name: 'Strikethrough', category: 'Editor' },
+                { id: 'editor:code', name: 'Inline Code', category: 'Editor' },
+                { id: 'editor:codeblock', name: 'Code Block', category: 'Editor' },
+                { id: 'search:global-search', name: 'Search in All Files', category: 'Search' },
+                { id: 'search:current-file', name: 'Search in Current File', category: 'Search' },
+                { id: 'navigation:quick-switcher', name: 'Quick Switcher', category: 'Navigation' },
+                { id: 'navigation:go-back', name: 'Navigate Back', category: 'Navigation' },
+                { id: 'navigation:go-forward', name: 'Navigate Forward', category: 'Navigation' },
+                { id: 'view:toggle-sidebar', name: 'Toggle Sidebar', category: 'View' },
+                { id: 'view:toggle-reading-mode', name: 'Toggle Reading Mode', category: 'View' }
+            ];
+            
+            (commands.length > 0 ? commands : defaultCommands).forEach(cmd => {
+                this.availableCommands.set(cmd.id, cmd);
+            });
+        } catch (err) {
+            console.warn('Could not load commands:', err);
         }
     }
 
@@ -37,596 +166,1401 @@ export class SettingsPage {
         container.appendChild(wrapper);
 
         this.bindEvents(wrapper);
+        this.initializeSection(this.activeSection);
     }
 
     renderHTML() {
-        const s = this.settings;
         return `
-            <div class="settings-header">
-                <h1>Settings</h1>
-            </div>
-            <div class="settings-body">
-                <nav class="settings-nav">
-                    <button class="settings-nav-item active" data-section="general">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-                        General
-                    </button>
-                    <button class="settings-nav-item" data-section="editor">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                        Editor
-                    </button>
-                    <button class="settings-nav-item" data-section="appearance">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-                        Appearance
-                    </button>
-                    <button class="settings-nav-item" data-section="vault-settings">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-                        Vault
-                    </button>
-                    <button class="settings-nav-item" data-section="plugins">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="8" height="8" rx="1"/><rect x="14" y="2" width="8" height="8" rx="1"/><rect x="2" y="14" width="8" height="8" rx="1"/><rect x="14" y="14" width="8" height="8" rx="1"/></svg>
-                        Plugins
-                    </button>
-                    <button class="settings-nav-item" data-section="updates">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-                        Updates
-                    </button>
+            <div class="settings-container">
+                <nav class="settings-sidebar">
+                    <div class="settings-sidebar-header">
+                        <h2>Settings</h2>
+                    </div>
+                    <div class="settings-nav-section">
+                        <button class="settings-nav-item ${this.activeSection === 'general' ? 'active' : ''}" data-section="general">
+                            <svg class="settings-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="3"/>
+                                <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+                            </svg>
+                            <span>General</span>
+                        </button>
+                        <button class="settings-nav-item ${this.activeSection === 'editor' ? 'active' : ''}" data-section="editor">
+                            <svg class="settings-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                            </svg>
+                            <span>Editor</span>
+                        </button>
+                        <button class="settings-nav-item ${this.activeSection === 'files-links' ? 'active' : ''}" data-section="files-links">
+                            <svg class="settings-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                                <polyline points="14,2 14,8 20,8"/>
+                                <line x1="16" y1="13" x2="8" y2="13"/>
+                                <line x1="16" y1="17" x2="8" y2="17"/>
+                                <polyline points="10,9 9,9 8,9"/>
+                            </svg>
+                            <span>Files &amp; Links</span>
+                        </button>
+                        <button class="settings-nav-item ${this.activeSection === 'appearance' ? 'active' : ''}" data-section="appearance">
+                            <svg class="settings-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="5"/>
+                                <line x1="12" y1="1" x2="12" y2="3"/>
+                                <line x1="12" y1="21" x2="12" y2="23"/>
+                                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                                <line x1="1" y1="12" x2="3" y2="12"/>
+                                <line x1="21" y1="12" x2="23" y2="12"/>
+                            </svg>
+                            <span>Appearance</span>
+                        </button>
+                        <button class="settings-nav-item ${this.activeSection === 'hotkeys' ? 'active' : ''}" data-section="hotkeys">
+                            <svg class="settings-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="2" y="6" width="20" height="12" rx="2"/>
+                                <line x1="6" y1="10" x2="6" y2="14"/>
+                                <line x1="10" y1="10" x2="10" y2="14"/>
+                                <line x1="14" y1="10" x2="14" y2="14"/>
+                                <line x1="18" y1="10" x2="18" y2="14"/>
+                            </svg>
+                            <span>Hotkeys</span>
+                        </button>
+                        <button class="settings-nav-item ${this.activeSection === 'core-plugins' ? 'active' : ''}" data-section="core-plugins">
+                            <svg class="settings-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="8" height="8" rx="1"/>
+                                <rect x="13" y="3" width="8" height="8" rx="1"/>
+                                <rect x="3" y="13" width="8" height="8" rx="1"/>
+                                <rect x="13" y="13" width="8" height="8" rx="1"/>
+                            </svg>
+                            <span>Core plugins</span>
+                        </button>
+                        <button class="settings-nav-item ${this.activeSection === 'community-plugins' ? 'active' : ''}" data-section="community-plugins">
+                            <svg class="settings-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/>
+                                <path d="M2 12h20"/>
+                            </svg>
+                            <span>Community plugins</span>
+                        </button>
+                        <button class="settings-nav-item ${this.activeSection === 'about' ? 'active' : ''}" data-section="about">
+                            <svg class="settings-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <path d="M12 16v-4"/>
+                                <path d="M12 8h.01"/>
+                            </svg>
+                            <span>About</span>
+                        </button>
+                    </div>
                 </nav>
-                <div class="settings-content">
-                    <!-- General -->
-                    <div class="settings-section active" id="section-general">
-                        <h2><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg> General</h2>
-                        <div class="setting-row">
-                            <div class="setting-info"><label>Vault Path</label><p>Location of your notes vault</p></div>
-                            <div class="setting-control"><input type="text" id="set-vault-path" value="${this.esc(s.general.vault_path)}" readonly><button class="btn-secondary btn-sm" id="btn-browse-vault">Browse</button></div>
-                        </div>
-                        <div class="setting-row">
-                            <div class="setting-info"><label>Language</label><p>Interface language</p></div>
-                            <div class="setting-control">
-                                <select id="set-language"><option value="en" ${s.general.language === 'en' ? 'selected' : ''}>English</option><option value="de" ${s.general.language === 'de' ? 'selected' : ''}>Deutsch</option><option value="fr" ${s.general.language === 'fr' ? 'selected' : ''}>Français</option></select>
-                            </div>
-                        </div>
-                        <div class="setting-row">
-                            <div class="setting-info"><label>Startup Behavior</label><p>What to show when Oxidian starts</p></div>
-                            <div class="setting-control">
-                                <select id="set-startup"><option value="welcome" ${s.general.startup_behavior === 'welcome' ? 'selected' : ''}>Welcome Screen</option><option value="last-session" ${s.general.startup_behavior === 'last-session' ? 'selected' : ''}>Last Session</option><option value="daily-note" ${s.general.startup_behavior === 'daily-note' ? 'selected' : ''}>Daily Note</option></select>
-                            </div>
-                        </div>
+                <main class="settings-content">
+                    <div class="settings-sections">
+                        ${this.renderGeneralSection()}
+                        ${this.renderEditorSection()}
+                        ${this.renderFilesLinksSection()}
+                        ${this.renderAppearanceSection()}
+                        ${this.renderHotkeysSection()}
+                        ${this.renderCorePluginsSection()}
+                        ${this.renderCommunityPluginsSection()}
+                        ${this.renderAboutSection()}
                     </div>
+                </main>
+            </div>
+        `;
+    }
 
-                    <!-- Editor -->
-                    <div class="settings-section" id="section-editor">
-                        <h2><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Editor</h2>
-                        <div class="setting-row">
-                            <div class="setting-info"><label>Font Family</label><p>Editor font</p></div>
-                            <div class="setting-control"><input type="text" id="set-font-family" value="${this.esc(s.editor.font_family)}"></div>
+    renderGeneralSection() {
+        const s = this.settings.general;
+        return `
+            <section class="settings-section" data-section="general">
+                <div class="settings-section-header">
+                    <h1>General</h1>
+                    <p class="settings-section-description">Manage your vault and application preferences</p>
+                </div>
+                
+                <div class="settings-group">
+                    <h3>Vault</h3>
+                    <div class="setting-item">
+                        <div class="setting-item-info">
+                            <div class="setting-item-name">Vault location</div>
+                            <div class="setting-item-description">Location of your notes vault on disk</div>
                         </div>
-                        <div class="setting-row">
-                            <div class="setting-info"><label>Font Size</label><p>Editor font size in pixels</p></div>
-                            <div class="setting-control"><input type="range" id="set-font-size" min="10" max="28" value="${s.editor.font_size}"><span id="set-font-size-val">${s.editor.font_size}px</span></div>
+                        <div class="setting-item-control">
+                            <input type="text" id="general-vault-path" value="${this.esc(s.vault_path)}" readonly />
+                            <button class="mod-cta" id="btn-browse-vault">Browse</button>
                         </div>
-                        <div class="setting-row">
-                            <div class="setting-info"><label>Line Height</label><p>Line spacing multiplier</p></div>
-                            <div class="setting-control"><input type="range" id="set-line-height" min="1.0" max="2.5" step="0.1" value="${s.editor.line_height}"><span id="set-line-height-val">${s.editor.line_height}</span></div>
-                        </div>
-                        <div class="setting-row">
-                            <div class="setting-info"><label>Tab Size</label><p>Number of spaces per tab</p></div>
-                            <div class="setting-control"><select id="set-tab-size"><option value="2" ${s.editor.tab_size === 2 ? 'selected' : ''}>2</option><option value="4" ${s.editor.tab_size === 4 ? 'selected' : ''}>4</option><option value="8" ${s.editor.tab_size === 8 ? 'selected' : ''}>8</option></select></div>
-                        </div>
-                        <div class="setting-row">
-                            <div class="setting-info"><label>Spell Check</label><p>Enable browser spell checking</p></div>
-                            <div class="setting-control"><label class="toggle"><input type="checkbox" id="set-spellcheck" ${s.editor.spell_check ? 'checked' : ''}><span class="toggle-slider"></span></label></div>
-                        </div>
-                        <div class="setting-row">
-                            <div class="setting-info"><label>Vim Mode</label><p>Enable Vim keybindings (experimental)</p></div>
-                            <div class="setting-control"><label class="toggle"><input type="checkbox" id="set-vim" ${s.editor.vim_mode ? 'checked' : ''}><span class="toggle-slider"></span></label></div>
-                        </div>
-                        <div class="setting-row">
-                            <div class="setting-info"><label>Editor Engine</label><p>Choose your editing experience</p></div>
-                            <div class="setting-control">
-                                <select id="set-editor-mode">
-                                    <option value="classic" ${(this.app.editorMode === 'classic') ? 'selected' : ''}>Classic</option>
-                                    <option value="hypermark" ${(this.app.editorMode === 'hypermark') ? 'selected' : ''}>HyperMark (Experimental)</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="setting-row" id="row-hypermark-warning" style="display:${this.app.editorMode === 'hypermark' ? 'flex' : 'none'}">
-                            <div class="setting-info" style="flex:1">
-                                <p style="color: var(--text-yellow); font-size: 12px;">⚠️ HyperMark ist ein block-basierter Editor und kann instabil sein. Bei Problemen wechsle zurück zu Classic.</p>
-                            </div>
-                        </div>
-                        <div class="setting-row">
-                            <div class="setting-info"><label>Show Line Numbers</label><p>Display line numbers in the classic editor</p></div>
-                            <div class="setting-control"><label class="toggle"><input type="checkbox" id="set-line-numbers" ${localStorage.getItem('oxidian-line-numbers') === 'true' ? 'checked' : ''}><span class="toggle-slider"></span></label></div>
-                        </div>
-                    </div>
-
-                    <!-- Appearance -->
-                    <div class="settings-section" id="section-appearance">
-                        <h2><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg> Appearance</h2>
-                        <div class="setting-row">
-                            <div class="setting-info"><label>Theme</label><p>Choose a color theme</p></div>
-                            <div class="setting-control">
-                                <div class="theme-grid" id="theme-grid"></div>
-                            </div>
-                        </div>
-                        <div class="setting-row">
-                            <div class="setting-info"><label>Accent Color</label><p>Primary accent color</p></div>
-                            <div class="setting-control"><input type="color" id="set-accent" value="${s.appearance.accent_color}"></div>
-                        </div>
-                        <div class="setting-row">
-                            <div class="setting-info"><label>Interface Font Size</label><p>UI font size in pixels</p></div>
-                            <div class="setting-control"><input type="range" id="set-ui-font-size" min="11" max="18" value="${s.appearance.interface_font_size}"><span id="set-ui-font-size-val">${s.appearance.interface_font_size}px</span></div>
-                        </div>
-                    </div>
-
-                    <!-- Vault -->
-                    <div class="settings-section" id="section-vault-settings">
-                        <h2><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg> Vault</h2>
-                        <div class="setting-row">
-                            <div class="setting-info"><label>Encryption</label><p>Encrypt vault files with AES-256-GCM</p></div>
-                            <div class="setting-control"><label class="toggle"><input type="checkbox" id="set-encryption" ${s.vault.encryption_enabled ? 'checked' : ''}><span class="toggle-slider"></span></label></div>
-                        </div>
-                        <div class="setting-row" id="row-change-password" style="display:${s.vault.encryption_enabled ? 'flex' : 'none'}">
-                            <div class="setting-info"><label>Change Password</label><p>Update your vault encryption password</p></div>
-                            <div class="setting-control"><button class="btn-secondary btn-sm" id="btn-change-password">Change Password</button></div>
-                        </div>
-                        <div class="setting-row">
-                            <div class="setting-info"><label>Auto Backup</label><p>Automatically backup vault periodically</p></div>
-                            <div class="setting-control"><label class="toggle"><input type="checkbox" id="set-backup" ${s.vault.auto_backup ? 'checked' : ''}><span class="toggle-slider"></span></label></div>
-                        </div>
-                    </div>
-
-                    <!-- Plugins -->
-                    <div class="settings-section" id="section-plugins">
-                        <h2><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="8" height="8" rx="1"/><rect x="14" y="2" width="8" height="8" rx="1"/><rect x="2" y="14" width="8" height="8" rx="1"/><rect x="14" y="14" width="8" height="8" rx="1"/></svg> Plugins</h2>
-                        <div id="plugins-list" class="plugins-list"><p class="text-muted">Loading plugins...</p></div>
-                        <button class="btn-secondary" id="btn-load-plugin" style="margin-top:12px">Load Plugin</button>
-                    </div>
-
-                    <!-- Updates -->
-                    <div class="settings-section" id="section-updates">
-                        <h2><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Updates</h2>
-                        <div class="setting-row">
-                            <div class="setting-info"><label>Current Version</label><p id="current-version-display">v1.1.2</p></div>
-                            <div class="setting-control"><button class="btn-secondary btn-sm" id="btn-check-update">Check Now</button></div>
-                        </div>
-                        <div class="setting-row">
-                            <div class="setting-info"><label>Check for updates on startup</label><p>Automatically check for new versions when Oxidian starts</p></div>
-                            <div class="setting-control"><label class="toggle"><input type="checkbox" id="set-update-check" ${localStorage.getItem('oxidian-update-check') !== 'false' ? 'checked' : ''}><span class="toggle-slider"></span></label></div>
-                        </div>
-                        <div class="setting-row">
-                            <div class="setting-info"><label>Auto-install updates</label><p>Automatically download and install updates (requires restart)</p></div>
-                            <div class="setting-control"><label class="toggle"><input type="checkbox" id="set-auto-install" ${localStorage.getItem('oxidian-auto-install-updates') === 'true' ? 'checked' : ''}><span class="toggle-slider"></span></label></div>
-                        </div>
-                        <div id="update-status" class="text-muted" style="padding:8px 0;font-size:13px"></div>
                     </div>
                 </div>
+
+                <div class="settings-group">
+                    <h3>Interface</h3>
+                    <div class="setting-item">
+                        <div class="setting-item-info">
+                            <div class="setting-item-name">Language</div>
+                            <div class="setting-item-description">Select the interface language</div>
+                        </div>
+                        <div class="setting-item-control">
+                            <select id="general-language">
+                                <option value="en" ${s.language === 'en' ? 'selected' : ''}>English</option>
+                                <option value="de" ${s.language === 'de' ? 'selected' : ''}>Deutsch</option>
+                                <option value="fr" ${s.language === 'fr' ? 'selected' : ''}>Français</option>
+                                <option value="es" ${s.language === 'es' ? 'selected' : ''}>Español</option>
+                                <option value="zh" ${s.language === 'zh' ? 'selected' : ''}>中文</option>
+                                <option value="ja" ${s.language === 'ja' ? 'selected' : ''}>日本語</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <div class="setting-item-info">
+                            <div class="setting-item-name">Start-up behavior</div>
+                            <div class="setting-item-description">Choose what to display when opening Oxidian</div>
+                        </div>
+                        <div class="setting-item-control">
+                            <select id="general-startup">
+                                <option value="welcome" ${s.startup_behavior === 'welcome' ? 'selected' : ''}>Show welcome screen</option>
+                                <option value="last-session" ${s.startup_behavior === 'last-session' ? 'selected' : ''}>Restore last session</option>
+                                <option value="daily-note" ${s.startup_behavior === 'daily-note' ? 'selected' : ''}>Open daily note</option>
+                                <option value="empty" ${s.startup_behavior === 'empty' ? 'selected' : ''}>Start with empty workspace</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-group">
+                    <h3>Updates</h3>
+                    <div class="setting-item">
+                        <div class="setting-item-info">
+                            <div class="setting-item-name">Check for updates</div>
+                            <div class="setting-item-description">Automatically check for application updates</div>
+                        </div>
+                        <div class="setting-item-control">
+                            <div class="checkbox-container">
+                                <input type="checkbox" id="general-check-updates" ${s.check_for_updates ? 'checked' : ''} />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <div class="setting-item-info">
+                            <div class="setting-item-name">Automatic updates</div>
+                            <div class="setting-item-description">Automatically download and install updates</div>
+                        </div>
+                        <div class="setting-item-control">
+                            <div class="checkbox-container">
+                                <input type="checkbox" id="general-auto-update" ${s.auto_update ? 'checked' : ''} />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-group">
+                    <h3>Advanced</h3>
+                    <div class="setting-item">
+                        <div class="setting-item-info">
+                            <div class="setting-item-name">Developer mode</div>
+                            <div class="setting-item-description">Enable developer tools and debugging features</div>
+                        </div>
+                        <div class="setting-item-control">
+                            <div class="checkbox-container">
+                                <input type="checkbox" id="general-dev-mode" ${s.developer_mode ? 'checked' : ''} />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        `;
+    }
+
+    renderEditorSection() {
+        const s = this.settings.editor;
+        return `
+            <section class="settings-section" data-section="editor">
+                <div class="settings-section-header">
+                    <h1>Editor</h1>
+                    <p class="settings-section-description">Configure your note editing experience</p>
+                </div>
+                
+                <div class="settings-group">
+                    <h3>Display</h3>
+                    <div class="setting-item">
+                        <div class="setting-item-info">
+                            <div class="setting-item-name">Font family</div>
+                            <div class="setting-item-description">The font used for editing notes</div>
+                        </div>
+                        <div class="setting-item-control">
+                            <input type="text" id="editor-font-family" value="${this.esc(s.font_family)}" placeholder="JetBrains Mono, Consolas, monospace" />
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <div class="setting-item-info">
+                            <div class="setting-item-name">Font size</div>
+                            <div class="setting-item-description">Font size in pixels</div>
+                        </div>
+                        <div class="setting-item-control">
+                            <div class="slider-container">
+                                <input type="range" id="editor-font-size" min="10" max="36" value="${s.font_size}" />
+                                <div class="slider-value">${s.font_size}px</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <div class="setting-item-info">
+                            <div class="setting-item-name">Line height</div>
+                            <div class="setting-item-description">Line spacing multiplier for better readability</div>
+                        </div>
+                        <div class="setting-item-control">
+                            <div class="slider-container">
+                                <input type="range" id="editor-line-height" min="1.0" max="2.5" step="0.1" value="${s.line_height}" />
+                                <div class="slider-value">${s.line_height}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <div class="setting-item-info">
+                            <div class="setting-item-name">Show line numbers</div>
+                            <div class="setting-item-description">Display line numbers in the editor gutter</div>
+                        </div>
+                        <div class="setting-item-control">
+                            <div class="checkbox-container">
+                                <input type="checkbox" id="editor-line-numbers" ${s.show_line_numbers ? 'checked' : ''} />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <div class="setting-item-info">
+                            <div class="setting-item-name">Readable line length</div>
+                            <div class="setting-item-description">Limit the maximum line width for better readability</div>
+                        </div>
+                        <div class="setting-item-control">
+                            <div class="checkbox-container">
+                                <input type="checkbox" id="editor-readable-length" ${s.readable_line_length ? 'checked' : ''} />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="setting-item" data-show-if="editor-readable-length">
+                        <div class="setting-item-info">
+                            <div class="setting-item-name">Maximum line width</div>
+                            <div class="setting-item-description">Maximum width in pixels when readable line length is enabled</div>
+                        </div>
+                        <div class="setting-item-control">
+                            <input type="number" id="editor-max-width" value="${s.max_line_width}" min="400" max="1200" step="50" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-group">
+                    <h3>Behavior</h3>
+                    <div class="setting-item">
+                        <div class="setting-item-info">
+                            <div class="setting-item-name">Tab indent size</div>
+                            <div class="setting-item-description">Number of spaces for each tab indentation</div>
+                        </div>
+                        <div class="setting-item-control">
+                            <select id="editor-tab-size">
+                                <option value="2" ${s.tab_size === 2 ? 'selected' : ''}>2 spaces</option>
+                                <option value="4" ${s.tab_size === 4 ? 'selected' : ''}>4 spaces</option>
+                                <option value="8" ${s.tab_size === 8 ? 'selected' : ''}>8 spaces</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <div class="setting-item-info">
+                            <div class="setting-item-name">Default editing mode</div>
+                            <div class="setting-item-description">The default editing mode for new notes</div>
+                        </div>
+                        <div class="setting-item-control">
+                            <select id="editor-default-mode">
+                                <option value="source" ${s.default_edit_mode === 'source' ? 'selected' : ''}>Source mode</option>
+                                <option value="live-preview" ${s.default_edit_mode === 'live-preview' ? 'selected' : ''}>Live Preview</option>
+                                <option value="reading" ${s.default_edit_mode === 'reading' ? 'selected' : ''}>Reading mode</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <div class="setting-item-info">
+                            <div class="setting-item-name">Strict line breaks</div>
+                            <div class="setting-item-description">Force line breaks to be respected in preview mode</div>
+                        </div>
+                        <div class="setting-item-control">
+                            <div class="checkbox-container">
+                                <input type="checkbox" id="editor-strict-breaks" ${s.strict_line_breaks ? 'checked' : ''} />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <div class="setting-item-info">
+                            <div class="setting-item-name">Smart indent lists</div>
+                            <div class="setting-item-description">Automatically indent lists and maintain structure</div>
+                        </div>
+                        <div class="setting-item-control">
+                            <div class="checkbox-container">
+                                <input type="checkbox" id="editor-smart-indent" ${s.smart_indent ? 'checked' : ''} />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <div class="setting-item-info">
+                            <div class="setting-item-name">Auto-pair brackets</div>
+                            <div class="setting-item-description">Automatically close brackets, quotes, and parentheses</div>
+                        </div>
+                        <div class="setting-item-control">
+                            <div class="checkbox-container">
+                                <input type="checkbox" id="editor-auto-pair-brackets" ${s.auto_pair_brackets ? 'checked' : ''} />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <div class="setting-item-info">
+                            <div class="setting-item-name">Auto-pair Markdown formatting</div>
+                            <div class="setting-item-description">Automatically close bold, italic, and other markdown formatting</div>
+                        </div>
+                        <div class="setting-item-control">
+                            <div class="checkbox-container">
+                                <input type="checkbox" id="editor-auto-pair-markdown" ${s.auto_pair_markdown ? 'checked' : ''} />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-group">
+                    <h3>Advanced</h3>
+                    <div class="setting-item">
+                        <div class="setting-item-info">
+                            <div class="setting-item-name">Spell check</div>
+                            <div class="setting-item-description">Enable browser spell checking</div>
+                        </div>
+                        <div class="setting-item-control">
+                            <div class="checkbox-container">
+                                <input type="checkbox" id="editor-spell-check" ${s.spell_check ? 'checked' : ''} />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <div class="setting-item-info">
+                            <div class="setting-item-name">Vim key bindings</div>
+                            <div class="setting-item-description">Enable Vim keyboard shortcuts (experimental)</div>
+                        </div>
+                        <div class="setting-item-control">
+                            <div class="checkbox-container">
+                                <input type="checkbox" id="editor-vim-mode" ${s.vim_mode ? 'checked' : ''} />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <div class="setting-item-info">
+                            <div class="setting-item-name">Show frontmatter</div>
+                            <div class="setting-item-description">Display YAML frontmatter in the editor</div>
+                        </div>
+                        <div class="setting-item-control">
+                            <div class="checkbox-container">
+                                <input type="checkbox" id="editor-show-frontmatter" ${s.show_frontmatter ? 'checked' : ''} />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <div class="setting-item-info">
+                            <div class="setting-item-name">Fold heading</div>
+                            <div class="setting-item-description">Allow collapsing sections under headings</div>
+                        </div>
+                        <div class="setting-item-control">
+                            <div class="checkbox-container">
+                                <input type="checkbox" id="editor-fold-heading" ${s.fold_heading ? 'checked' : ''} />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <div class="setting-item-info">
+                            <div class="setting-item-name">Fold indent</div>
+                            <div class="setting-item-description">Allow collapsing indented sections</div>
+                        </div>
+                        <div class="setting-item-control">
+                            <div class="checkbox-container">
+                                <input type="checkbox" id="editor-fold-indent" ${s.fold_indent ? 'checked' : ''} />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        `;
+    }
+
+    renderFilesLinksSection() {
+        const s = this.settings.files_links;
+        return `
+            <section class="settings-section" data-section="files-links">
+                <div class="settings-section-header">
+                    <h1>Files &amp; Links</h1>
+                    <p class="settings-section-description">Manage how files and links are handled in your vault</p>
+                </div>
+                
+                <div class="settings-group">
+                    <h3>File Creation</h3>
+                    <div class="setting-item">
+                        <div class="setting-item-info">
+                            <div class="setting-item-name">Default location for new notes</div>
+                            <div class="setting-item-description">Where to place newly created notes</div>
+                        </div>
+                        <div class="setting-item-control">
+                            <select id="files-default-location">
+                                <option value="vault_root" ${s.default_note_location === 'vault_root' ? 'selected' : ''}>Vault folder</option>
+                                <option value="current_folder" ${s.default_note_location === 'current_folder' ? 'selected' : ''}>Same folder as current file</option>
+                                <option value="specified_folder" ${s.default_note_location === 'specified_folder' ? 'selected' : ''}>In the folder specified below</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="setting-item" data-show-if-value="files-default-location:specified_folder">
+                        <div class="setting-item-info">
+                            <div class="setting-item-name">New note folder</div>
+                            <div class="setting-item-description">Folder path for new notes (relative to vault root)</div>
+                        </div>
+                        <div class="setting-item-control">
+                            <input type="text" id="files-new-note-location" value="${this.esc(s.new_note_location)}" placeholder="notes/" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-group">
+                    <h3>Links</h3>
+                    <div class="setting-item">
+                        <div class="setting-item-info">
+                            <div class="setting-item-name">New link format</div>
+                            <div class="setting-item-description">How to format new wikilinks</div>
+                        </div>
+                        <div class="setting-item-control">
+                            <select id="files-link-format">
+                                <option value="shortest" ${s.new_link_format === 'shortest' ? 'selected' : ''}>Shortest path when possible</option>
+                                <option value="relative" ${s.new_link_format === 'relative' ? 'selected' : ''}>Relative path to file</option>
+                                <option value="absolute" ${s.new_link_format === 'absolute' ? 'selected' : ''}>Absolute path in vault</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <div class="setting-item-info">
+                            <div class="setting-item-name">Use [[Wikilinks]]</div>
+                            <div class="setting-item-description">Use wikilink format instead of Markdown links</div>
+                        </div>
+                        <div class="setting-item-control">
+                            <div class="checkbox-container">
+                                <input type="checkbox" id="files-use-wikilinks" ${!s.use_markdown_links ? 'checked' : ''} />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <div class="setting-item-info">
+                            <div class="setting-item-name">Automatically update internal links</div>
+                            <div class="setting-item-description">Update links when renaming or moving files</div>
+                        </div>
+                        <div class="setting-item-control">
+                            <div class="checkbox-container">
+                                <input type="checkbox" id="files-auto-update-links" ${s.auto_update_internal_links ? 'checked' : ''} />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-group">
+                    <h3>File Management</h3>
+                    <div class="setting-item">
+                        <div class="setting-item-info">
+                            <div class="setting-item-name">Detect all file extensions</div>
+                            <div class="setting-item-description">Include all files in vault, not just markdown files</div>
+                        </div>
+                        <div class="setting-item-control">
+                            <div class="checkbox-container">
+                                <input type="checkbox" id="files-detect-extensions" ${s.detect_all_extensions ? 'checked' : ''} />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <div class="setting-item-info">
+                            <div class="setting-item-name">Default attachment folder</div>
+                            <div class="setting-item-description">Where to place attachments (images, files, etc.)</div>
+                        </div>
+                        <div class="setting-item-control">
+                            <input type="text" id="files-attachment-folder" value="${this.esc(s.attachment_folder)}" placeholder="attachments" />
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <div class="setting-item-info">
+                            <div class="setting-item-name">Always update links on rename</div>
+                            <div class="setting-item-description">Always update links when files are renamed, without asking</div>
+                        </div>
+                        <div class="setting-item-control">
+                            <div class="checkbox-container">
+                                <input type="checkbox" id="files-always-update" ${s.always_update_links ? 'checked' : ''} />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <div class="setting-item-info">
+                            <div class="setting-item-name">Confirm file deletion</div>
+                            <div class="setting-item-description">Ask for confirmation before deleting files</div>
+                        </div>
+                        <div class="setting-item-control">
+                            <div class="checkbox-container">
+                                <input type="checkbox" id="files-confirm-delete" ${s.confirm_file_deletion ? 'checked' : ''} />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        `;
+    }
+
+    renderAppearanceSection() {
+        const s = this.settings.appearance;
+        return `
+            <section class="settings-section" data-section="appearance">
+                <div class="settings-section-header">
+                    <h1>Appearance</h1>
+                    <p class="settings-section-description">Customize the visual appearance of Oxidian</p>
+                </div>
+                
+                <div class="settings-group">
+                    <h3>Theme</h3>
+                    <div class="setting-item">
+                        <div class="setting-item-info">
+                            <div class="setting-item-name">Base color scheme</div>
+                            <div class="setting-item-description">Choose between dark and light themes</div>
+                        </div>
+                        <div class="setting-item-control">
+                            <div id="theme-selector" class="theme-selector">
+                                <div class="theme-option ${s.theme === 'dark' ? 'active' : ''}" data-theme="dark">
+                                    <div class="theme-preview theme-preview-dark">
+                                        <div class="theme-preview-content">
+                                            <div class="theme-preview-bar"></div>
+                                            <div class="theme-preview-text"></div>
+                                            <div class="theme-preview-text short"></div>
+                                        </div>
+                                    </div>
+                                    <span>Dark</span>
+                                </div>
+                                <div class="theme-option ${s.theme === 'light' ? 'active' : ''}" data-theme="light">
+                                    <div class="theme-preview theme-preview-light">
+                                        <div class="theme-preview-content">
+                                            <div class="theme-preview-bar"></div>
+                                            <div class="theme-preview-text"></div>
+                                            <div class="theme-preview-text short"></div>
+                                        </div>
+                                    </div>
+                                    <span>Light</span>
+                                </div>
+                                <div class="theme-option ${s.theme === 'system' ? 'active' : ''}" data-theme="system">
+                                    <div class="theme-preview theme-preview-auto">
+                                        <div class="theme-preview-content">
+                                            <div class="theme-preview-bar"></div>
+                                            <div class="theme-preview-text"></div>
+                                            <div class="theme-preview-text short"></div>
+                                        </div>
+                                    </div>
+                                    <span>Adapt to system</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <div class="setting-item-info">
+                            <div class="setting-item-name">Accent color</div>
+                            <div class="setting-item-description">Used for interactive elements and highlights</div>
+                        </div>
+                        <div class="setting-item-control">
+                            <div class="color-picker-wrapper">
+                                <input type="color" id="appearance-accent-color" value="${s.accent_color}" />
+                                <div class="color-presets">
+                                    <button class="color-preset" data-color="#7f6df2" style="background-color: #7f6df2;"></button>
+                                    <button class="color-preset" data-color="#6366f1" style="background-color: #6366f1;"></button>
+                                    <button class="color-preset" data-color="#8b5cf6" style="background-color: #8b5cf6;"></button>
+                                    <button class="color-preset" data-color="#ec4899" style="background-color: #ec4899;"></button>
+                                    <button class="color-preset" data-color="#f43f5e" style="background-color: #f43f5e;"></button>
+                                    <button class="color-preset" data-color="#06b6d4" style="background-color: #06b6d4;"></button>
+                                    <button class="color-preset" data-color="#10b981" style="background-color: #10b981;"></button>
+                                    <button class="color-preset" data-color="#f59e0b" style="background-color: #f59e0b;"></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-group">
+                    <h3>Text</h3>
+                    <div class="setting-item">
+                        <div class="setting-item-info">
+                            <div class="setting-item-name">Interface font</div>
+                            <div class="setting-item-description">Font used for the interface</div>
+                        </div>
+                        <div class="setting-item-control">
+                            <select id="appearance-interface-font">
+                                <option value="default" ${s.interface_font === 'default' ? 'selected' : ''}>Default</option>
+                                <option value="system" ${s.interface_font === 'system' ? 'selected' : ''}>System font</option>
+                                <option value="inter" ${s.interface_font === 'inter' ? 'selected' : ''}>Inter</option>
+                                <option value="roboto" ${s.interface_font === 'roboto' ? 'selected' : ''}>Roboto</option>
+                                <option value="custom" ${s.interface_font === 'custom' ? 'selected' : ''}>Custom</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <div class="setting-item-info">
+                            <div class="setting-item-name">Interface font size</div>
+                            <div class="setting-item-description">Font size for menus and interface elements</div>
+                        </div>
+                        <div class="setting-item-control">
+                            <div class="slider-container">
+                                <input type="range" id="appearance-font-size" min="10" max="18" value="${s.interface_font_size}" />
+                                <div class="slider-value">${s.interface_font_size}px</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <div class="setting-item-info">
+                            <div class="setting-item-name">Zoom level</div>
+                            <div class="setting-item-description">Zoom factor for the entire interface</div>
+                        </div>
+                        <div class="setting-item-control">
+                            <div class="slider-container">
+                                <input type="range" id="appearance-zoom" min="0.75" max="2.0" step="0.25" value="${s.zoom_level}" />
+                                <div class="slider-value">${Math.round(s.zoom_level * 100)}%</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-group">
+                    <h3>Window</h3>
+                    <div class="setting-item">
+                        <div class="setting-item-info">
+                            <div class="setting-item-name">Translucent window</div>
+                            <div class="setting-item-description">Make the window background semi-transparent</div>
+                        </div>
+                        <div class="setting-item-control">
+                            <div class="checkbox-container">
+                                <input type="checkbox" id="appearance-translucent" ${s.translucent ? 'checked' : ''} />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <div class="setting-item-info">
+                            <div class="setting-item-name">Native menus</div>
+                            <div class="setting-item-description">Use the operating system's native menus</div>
+                        </div>
+                        <div class="setting-item-control">
+                            <div class="checkbox-container">
+                                <input type="checkbox" id="appearance-native-menus" ${s.native_menus ? 'checked' : ''} />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-group">
+                    <h3>Advanced</h3>
+                    <div class="setting-item">
+                        <div class="setting-item-info">
+                            <div class="setting-item-name">CSS snippets</div>
+                            <div class="setting-item-description">Enable custom CSS snippets for advanced customization</div>
+                        </div>
+                        <div class="setting-item-control">
+                            <div class="checkbox-container">
+                                <input type="checkbox" id="appearance-custom-css" ${s.custom_css ? 'checked' : ''} />
+                            </div>
+                            <button class="mod-secondary" id="btn-manage-css" ${s.custom_css ? '' : 'disabled'}>Manage snippets</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        `;
+    }
+
+    renderHotkeysSection() {
+        return `
+            <section class="settings-section" data-section="hotkeys">
+                <div class="settings-section-header">
+                    <h1>Hotkeys</h1>
+                    <p class="settings-section-description">Customize keyboard shortcuts for commands</p>
+                </div>
+                
+                <div class="hotkeys-search">
+                    <input type="text" id="hotkeys-search" placeholder="Search hotkeys..." />
+                </div>
+                
+                <div id="hotkeys-list" class="hotkeys-list">
+                    ${this.renderHotkeysList()}
+                </div>
+            </section>
+        `;
+    }
+
+    renderHotkeysList() {
+        const commandsByCategory = new Map();
+        
+        for (const [commandId, command] of this.availableCommands) {
+            const category = command.category || 'Other';
+            if (!commandsByCategory.has(category)) {
+                commandsByCategory.set(category, []);
+            }
+            commandsByCategory.get(category).push({
+                id: commandId,
+                name: command.name,
+                hotkey: this.hotkeys.get(commandId) || ''
+            });
+        }
+
+        let html = '';
+        for (const [category, commands] of commandsByCategory) {
+            html += `
+                <div class="hotkey-category">
+                    <h3 class="hotkey-category-title">${category}</h3>
+                    ${commands.map(cmd => `
+                        <div class="hotkey-item" data-command="${cmd.id}">
+                            <div class="hotkey-command">
+                                <span class="hotkey-command-name">${this.esc(cmd.name)}</span>
+                            </div>
+                            <div class="hotkey-binding">
+                                <div class="hotkey-keys" data-command="${cmd.id}">
+                                    ${cmd.hotkey ? this.renderHotkey(cmd.hotkey) : '<span class="hotkey-none">No hotkey</span>'}
+                                </div>
+                                <button class="hotkey-edit-btn" data-command="${cmd.id}">Edit</button>
+                                ${cmd.hotkey ? `<button class="hotkey-remove-btn" data-command="${cmd.id}">×</button>` : ''}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+        
+        return html;
+    }
+
+    renderHotkey(hotkey) {
+        const keys = hotkey.split('+').map(key => {
+            const cleanKey = key.trim();
+            const keyMap = {
+                'Ctrl': 'Ctrl',
+                'Cmd': '⌘',
+                'Alt': 'Alt',
+                'Shift': '⇧',
+                'Meta': '⌘',
+                'Control': 'Ctrl'
+            };
+            return `<span class="hotkey-key">${keyMap[cleanKey] || cleanKey}</span>`;
+        });
+        return keys.join('<span class="hotkey-plus">+</span>');
+    }
+
+    renderCorePluginsSection() {
+        const s = this.settings.core_plugins;
+        return `
+            <section class="settings-section" data-section="core-plugins">
+                <div class="settings-section-header">
+                    <h1>Core plugins</h1>
+                    <p class="settings-section-description">These are built-in plugins that extend Oxidian's functionality</p>
+                </div>
+                
+                <div class="plugins-list">
+                    ${Object.entries(s).map(([pluginId, enabled]) => {
+                        const pluginInfo = this.getCorePluginInfo(pluginId);
+                        return `
+                            <div class="plugin-item ${enabled ? 'enabled' : 'disabled'}">
+                                <div class="plugin-info">
+                                    <div class="plugin-name">${pluginInfo.name}</div>
+                                    <div class="plugin-description">${pluginInfo.description}</div>
+                                </div>
+                                <div class="plugin-toggle">
+                                    <div class="checkbox-container">
+                                        <input type="checkbox" id="core-plugin-${pluginId}" ${enabled ? 'checked' : ''} />
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </section>
+        `;
+    }
+
+    getCorePluginInfo(pluginId) {
+        const pluginInfoMap = {
+            file_explorer: { name: 'File explorer', description: 'Browse files and folders in your vault.' },
+            search: { name: 'Search', description: 'Find notes and content across your vault.' },
+            quick_switcher: { name: 'Quick switcher', description: 'Jump to any file with a few keystrokes.' },
+            graph_view: { name: 'Graph view', description: 'Visualize connections between your notes.' },
+            backlinks: { name: 'Backlinks', description: 'See which notes link to the current note.' },
+            outgoing_links: { name: 'Outgoing links', description: 'See which notes the current note links to.' },
+            tag_pane: { name: 'Tags', description: 'Browse and manage tags in your vault.' },
+            page_preview: { name: 'Page preview', description: 'Preview notes when hovering over links.' },
+            starred: { name: 'Starred', description: 'Star important notes for quick access.' },
+            templates: { name: 'Templates', description: 'Create notes from predefined templates.' },
+            note_composer: { name: 'Note composer', description: 'Merge, split, and refactor notes.' },
+            command_palette: { name: 'Command palette', description: 'Access all commands from one place.' },
+            markdown_importer: { name: 'Markdown importer', description: 'Import markdown files from other apps.' },
+            word_count: { name: 'Word count', description: 'Display word and character counts.' },
+            open_with_default_app: { name: 'Open with default app', description: 'Open files in external applications.' },
+            file_recovery: { name: 'File recovery', description: 'Recover accidentally deleted files.' }
+        };
+        
+        return pluginInfoMap[pluginId] || { name: pluginId, description: 'Core plugin functionality.' };
+    }
+
+    renderCommunityPluginsSection() {
+        const s = this.settings.community_plugins;
+        return `
+            <section class="settings-section" data-section="community-plugins">
+                <div class="settings-section-header">
+                    <h1>Community plugins</h1>
+                    <p class="settings-section-description">Plugins made by the community to extend Oxidian</p>
+                </div>
+                
+                <div class="community-plugins-header">
+                    <div class="setting-item">
+                        <div class="setting-item-info">
+                            <div class="setting-item-name">Turn off safe mode to enable plugins</div>
+                            <div class="setting-item-description">Safe mode prevents third-party code from running</div>
+                        </div>
+                        <div class="setting-item-control">
+                            <div class="checkbox-container">
+                                <input type="checkbox" id="community-safe-mode" ${!s.safe_mode ? 'checked' : ''} />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="community-plugins-controls ${s.safe_mode ? 'disabled' : ''}">
+                    <div class="plugins-actions">
+                        <button class="mod-cta" id="btn-browse-plugins" ${s.safe_mode ? 'disabled' : ''}>Browse community plugins</button>
+                        <button class="mod-secondary" id="btn-install-plugin" ${s.safe_mode ? 'disabled' : ''}>Install from folder</button>
+                        <button class="mod-secondary" id="btn-reload-plugins" ${s.safe_mode ? 'disabled' : ''}>Reload plugins</button>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <div class="setting-item-info">
+                            <div class="setting-item-name">Check for plugin updates</div>
+                            <div class="setting-item-description">Automatically check for updates to installed plugins</div>
+                        </div>
+                        <div class="setting-item-control">
+                            <div class="checkbox-container">
+                                <input type="checkbox" id="community-plugin-updates" ${s.plugin_updates ? 'checked' : ''} ${s.safe_mode ? 'disabled' : ''} />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="installed-plugins-list" class="installed-plugins-list">
+                    ${this.renderInstalledPlugins()}
+                </div>
+            </section>
+        `;
+    }
+
+    renderInstalledPlugins() {
+        // This would be populated with actual plugin data
+        return `
+            <div class="plugins-empty-state">
+                <div class="empty-state-icon">🧩</div>
+                <h3>No community plugins installed</h3>
+                <p>Browse the community plugin directory to discover new ways to extend Oxidian.</p>
             </div>
+        `;
+    }
+
+    renderAboutSection() {
+        const s = this.settings.about;
+        return `
+            <section class="settings-section" data-section="about">
+                <div class="settings-section-header">
+                    <h1>About</h1>
+                    <p class="settings-section-description">Information about Oxidian</p>
+                </div>
+                
+                <div class="about-content">
+                    <div class="about-logo">
+                        <div class="app-icon">
+                            <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+                                <rect width="64" height="64" rx="12" fill="currentColor" opacity="0.1"/>
+                                <path d="M20 44L44 20M20 20L44 44" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+                                <circle cx="32" cy="32" r="4" fill="currentColor"/>
+                            </svg>
+                        </div>
+                        <div class="app-info">
+                            <h2>Oxidian</h2>
+                            <p class="version">Version ${s.version}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="about-details">
+                        <div class="about-section">
+                            <h3>License</h3>
+                            <p>${s.license}</p>
+                        </div>
+                        
+                        <div class="about-section">
+                            <h3>Built with</h3>
+                            <p>${s.credits}</p>
+                        </div>
+                        
+                        <div class="about-section">
+                            <h3>System Information</h3>
+                            <div class="system-info">
+                                <div class="system-item">
+                                    <span class="system-label">Platform:</span>
+                                    <span class="system-value" id="platform-info">Loading...</span>
+                                </div>
+                                <div class="system-item">
+                                    <span class="system-label">Architecture:</span>
+                                    <span class="system-value" id="arch-info">Loading...</span>
+                                </div>
+                                <div class="system-item">
+                                    <span class="system-label">Vault path:</span>
+                                    <span class="system-value" id="vault-path-info">${this.esc(this.settings.general.vault_path || 'Not set')}</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="about-section">
+                            <h3>Links</h3>
+                            <div class="about-links">
+                                <button class="link-button" id="btn-github">GitHub Repository</button>
+                                <button class="link-button" id="btn-docs">Documentation</button>
+                                <button class="link-button" id="btn-community">Community</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
         `;
     }
 
     bindEvents(wrapper) {
-        // Nav
+        // Navigation
         wrapper.querySelectorAll('.settings-nav-item').forEach(btn => {
             btn.addEventListener('click', () => {
-                wrapper.querySelectorAll('.settings-nav-item').forEach(b => b.classList.remove('active'));
-                wrapper.querySelectorAll('.settings-section').forEach(s => s.classList.remove('active'));
-                btn.classList.add('active');
-                const section = wrapper.querySelector(`#section-${btn.dataset.section}`);
-                if (section) section.classList.add('active');
+                this.switchToSection(btn.dataset.section, wrapper);
             });
         });
 
-        // Theme grid
-        this.renderThemeGrid(wrapper);
+        // General settings
+        this.bindGeneralEvents(wrapper);
+        this.bindEditorEvents(wrapper);
+        this.bindFilesLinksEvents(wrapper);
+        this.bindAppearanceEvents(wrapper);
+        this.bindHotkeysEvents(wrapper);
+        this.bindCorePluginsEvents(wrapper);
+        this.bindCommunityPluginsEvents(wrapper);
+        this.bindAboutEvents(wrapper);
 
-        // Live preview bindings
-        const fontSizeRange = wrapper.querySelector('#set-font-size');
-        fontSizeRange?.addEventListener('input', (e) => {
-            wrapper.querySelector('#set-font-size-val').textContent = e.target.value + 'px';
+        // Auto-save with debouncing
+        const saveDebounce = this.debounce(() => this.saveAll(wrapper), 500);
+        wrapper.querySelectorAll('input, select, textarea').forEach(el => {
+            if (!el.hasAttribute('data-no-autosave')) {
+                el.addEventListener('change', saveDebounce);
+                if (el.type !== 'range') {
+                    el.addEventListener('input', saveDebounce);
+                }
+            }
+        });
+
+        // Conditional visibility
+        this.setupConditionalVisibility(wrapper);
+    }
+
+    switchToSection(sectionName, wrapper) {
+        this.activeSection = sectionName;
+        
+        // Update navigation
+        wrapper.querySelectorAll('.settings-nav-item').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.section === sectionName);
+        });
+        
+        // Update content
+        wrapper.querySelectorAll('.settings-section').forEach(section => {
+            section.classList.toggle('active', section.dataset.section === sectionName);
+        });
+    }
+
+    initializeSection(sectionName) {
+        // Initialize specific section functionality
+        if (sectionName === 'hotkeys') {
+            this.initializeHotkeys();
+        } else if (sectionName === 'community-plugins') {
+            this.loadInstalledPlugins();
+        } else if (sectionName === 'about') {
+            this.loadSystemInfo();
+        }
+    }
+
+    bindGeneralEvents(wrapper) {
+        wrapper.querySelector('#btn-browse-vault')?.addEventListener('click', async () => {
+            try {
+                const { open } = window.__TAURI__.dialog;
+                const selected = await open({ directory: true, multiple: false });
+                if (selected) {
+                    const pathInput = wrapper.querySelector('#general-vault-path');
+                    pathInput.value = selected;
+                    this.settings.general.vault_path = selected;
+                    await this.saveAll(wrapper);
+                }
+            } catch (err) {
+                console.error('Failed to browse vault:', err);
+            }
+        });
+    }
+
+    bindEditorEvents(wrapper) {
+        // Font size slider
+        const fontSizeSlider = wrapper.querySelector('#editor-font-size');
+        const fontSizeValue = wrapper.querySelector('#editor-font-size + .slider-container .slider-value');
+        fontSizeSlider?.addEventListener('input', (e) => {
+            fontSizeValue.textContent = e.target.value + 'px';
             document.documentElement.style.setProperty('--font-size-editor', e.target.value + 'px');
         });
 
-        const lineHeightRange = wrapper.querySelector('#set-line-height');
-        lineHeightRange?.addEventListener('input', (e) => {
-            wrapper.querySelector('#set-line-height-val').textContent = e.target.value;
+        // Line height slider
+        const lineHeightSlider = wrapper.querySelector('#editor-line-height');
+        const lineHeightValue = wrapper.querySelector('#editor-line-height + .slider-container .slider-value');
+        lineHeightSlider?.addEventListener('input', (e) => {
+            lineHeightValue.textContent = e.target.value;
+            document.documentElement.style.setProperty('--line-height-editor', e.target.value);
         });
 
-        const uiFontRange = wrapper.querySelector('#set-ui-font-size');
-        uiFontRange?.addEventListener('input', (e) => {
-            wrapper.querySelector('#set-ui-font-size-val').textContent = e.target.value + 'px';
-            document.documentElement.style.fontSize = e.target.value + 'px';
-        });
-
-        const accentInput = wrapper.querySelector('#set-accent');
-        accentInput?.addEventListener('input', (e) => {
-            this.app.themeManager?.setAccentColor(e.target.value);
-        });
-
-        const fontFamilyInput = wrapper.querySelector('#set-font-family');
+        // Font family
+        const fontFamilyInput = wrapper.querySelector('#editor-font-family');
         fontFamilyInput?.addEventListener('change', (e) => {
             document.documentElement.style.setProperty('--font-editor', e.target.value);
         });
 
-        const editorModeSelect = wrapper.querySelector('#set-editor-mode');
-        editorModeSelect?.addEventListener('change', (e) => {
-            this.app.setEditorMode(e.target.value);
-            const warning = wrapper.querySelector('#row-hypermark-warning');
-            if (warning) warning.style.display = e.target.value === 'hypermark' ? 'flex' : 'none';
-        });
-
-        const lineNumToggle = wrapper.querySelector('#set-line-numbers');
-        lineNumToggle?.addEventListener('change', (e) => {
-            localStorage.setItem('oxidian-line-numbers', e.target.checked ? 'true' : 'false');
+        // Line numbers
+        const lineNumbersToggle = wrapper.querySelector('#editor-line-numbers');
+        lineNumbersToggle?.addEventListener('change', (e) => {
             this.app.editor?.toggleLineNumbers?.(e.target.checked);
         });
+    }
 
-        // Encryption toggle
-        const encToggle = wrapper.querySelector('#set-encryption');
-        encToggle?.addEventListener('change', async (e) => {
-            const row = wrapper.querySelector('#row-change-password');
-            if (e.target.checked) {
-                const pwd = prompt('Set vault encryption password:');
-                if (!pwd) { e.target.checked = false; return; }
-                const confirmPwd = prompt('Confirm password:');
-                if (pwd !== confirmPwd) { alert('Passwords do not match'); e.target.checked = false; return; }
+    bindFilesLinksEvents(wrapper) {
+        // No special events needed yet
+    }
+
+    bindAppearanceEvents(wrapper) {
+        // Theme selector
+        wrapper.querySelectorAll('.theme-option').forEach(option => {
+            option.addEventListener('click', () => {
+                wrapper.querySelectorAll('.theme-option').forEach(o => o.classList.remove('active'));
+                option.classList.add('active');
+                const theme = option.dataset.theme;
+                this.settings.appearance.theme = theme;
+                this.app.themeManager?.applyTheme(theme);
+                this.saveAll(wrapper);
+            });
+        });
+
+        // Accent color
+        const accentInput = wrapper.querySelector('#appearance-accent-color');
+        accentInput?.addEventListener('change', (e) => {
+            this.app.themeManager?.setAccentColor(e.target.value);
+        });
+
+        // Color presets
+        wrapper.querySelectorAll('.color-preset').forEach(preset => {
+            preset.addEventListener('click', () => {
+                const color = preset.dataset.color;
+                accentInput.value = color;
+                this.app.themeManager?.setAccentColor(color);
+                this.saveAll(wrapper);
+            });
+        });
+
+        // Interface font size
+        const fontSizeSlider = wrapper.querySelector('#appearance-font-size');
+        const fontSizeValue = wrapper.querySelector('#appearance-font-size + .slider-container .slider-value');
+        fontSizeSlider?.addEventListener('input', (e) => {
+            fontSizeValue.textContent = e.target.value + 'px';
+            document.documentElement.style.fontSize = e.target.value + 'px';
+        });
+
+        // Zoom level
+        const zoomSlider = wrapper.querySelector('#appearance-zoom');
+        const zoomValue = wrapper.querySelector('#appearance-zoom + .slider-container .slider-value');
+        zoomSlider?.addEventListener('input', (e) => {
+            const zoom = parseFloat(e.target.value);
+            zoomValue.textContent = Math.round(zoom * 100) + '%';
+            document.body.style.zoom = zoom;
+        });
+
+        // CSS snippets
+        wrapper.querySelector('#btn-manage-css')?.addEventListener('click', () => {
+            // Open CSS snippets manager
+            this.showCSSSnippetsManager();
+        });
+    }
+
+    bindHotkeysEvents(wrapper) {
+        // Search functionality
+        const searchInput = wrapper.querySelector('#hotkeys-search');
+        searchInput?.addEventListener('input', (e) => {
+            this.filterHotkeys(e.target.value);
+        });
+
+        // Edit buttons
+        wrapper.addEventListener('click', (e) => {
+            if (e.target.classList.contains('hotkey-edit-btn')) {
+                const commandId = e.target.dataset.command;
+                this.editHotkey(commandId);
+            } else if (e.target.classList.contains('hotkey-remove-btn')) {
+                const commandId = e.target.dataset.command;
+                this.removeHotkey(commandId);
+            }
+        });
+    }
+
+    bindCorePluginsEvents(wrapper) {
+        // Plugin toggles
+        wrapper.querySelectorAll('[id^="core-plugin-"]').forEach(toggle => {
+            toggle.addEventListener('change', async (e) => {
+                const pluginId = e.target.id.replace('core-plugin-', '');
+                this.settings.core_plugins[pluginId] = e.target.checked;
+                
+                // Notify app about plugin state change
                 try {
-                    await invoke('setup_encryption', { password: pwd });
-                    row.style.display = 'flex';
-                } catch (err) { alert('Failed: ' + err); e.target.checked = false; }
-            } else {
-                if (!confirm('Disabling encryption will decrypt all vault files. Continue?')) {
-                    e.target.checked = true;
-                    return;
-                }
-                try {
-                    await invoke('disable_encryption');
-                    row.style.display = 'none';
+                    await invoke('toggle_core_plugin', { plugin: pluginId, enabled: e.target.checked });
                 } catch (err) {
-                    alert('Failed to disable encryption: ' + err);
-                    e.target.checked = true;
+                    console.warn('Could not toggle core plugin:', err);
                 }
-            }
-        });
-
-        // Change password
-        wrapper.querySelector('#btn-change-password')?.addEventListener('click', async () => {
-            const oldPwd = prompt('Current password:');
-            if (!oldPwd) return;
-            const newPwd = prompt('New password:');
-            if (!newPwd) return;
-            const confirmPwd = prompt('Confirm new password:');
-            if (newPwd !== confirmPwd) { alert('Passwords do not match'); return; }
-            try {
-                await invoke('change_password', { oldPassword: oldPwd, newPassword: newPwd });
-                alert('Password changed successfully');
-            } catch (err) { alert('Failed: ' + err); }
-        });
-
-        // Load plugins
-        this.loadPluginsList(wrapper);
-
-        // Load Plugin button
-        wrapper.querySelector('#btn-load-plugin')?.addEventListener('click', async () => {
-            try {
-                const { open } = window.__TAURI__.dialog;
-                const selected = await open({ directory: true, multiple: false, title: 'Select Obsidian Plugin Folder' });
-                if (!selected) return;
-
-                const path = typeof selected === 'string' ? selected : selected.path;
-
-                let manifest;
-                try {
-                    const sep = path.includes('\\') ? '\\' : '/';
-                    const manifestStr = await invoke('read_file_absolute', { path: path + sep + 'manifest.json' });
-                    manifest = JSON.parse(manifestStr);
-                } catch (e) {
-                    console.error('Plugin manifest error:', e);
-                    alert('No valid manifest.json found in selected folder. Make sure this is an Obsidian plugin.');
-                    return;
-                }
-
-                const pluginId = manifest.id;
-
-                try {
-                    await invoke('install_plugin', { sourcePath: path, pluginId: pluginId });
-                } catch (e) {
-                    console.error('Install error:', e);
-                    alert(`Plugin "${manifest.name}" found! Copy the folder to your vault's .obsidian/plugins/${pluginId}/ and restart.`);
-                    return;
-                }
-
-                alert(`Plugin "${manifest.name}" installed! Enable it in the list below.`);
-                this.loadPluginsList(wrapper);
-            } catch (err) {
-                alert('To install a plugin:\n1. Download the plugin (manifest.json + main.js)\n2. Place it in your vault\'s .obsidian/plugins/<plugin-id>/ folder\n3. Restart Oxidian or refresh the plugin list');
-            }
-        });
-
-        // Update settings
-        wrapper.querySelector('#set-update-check')?.addEventListener('change', (e) => {
-            localStorage.setItem('oxidian-update-check', e.target.checked ? 'true' : 'false');
-        });
-        wrapper.querySelector('#set-auto-install')?.addEventListener('change', (e) => {
-            localStorage.setItem('oxidian-auto-install-updates', e.target.checked ? 'true' : 'false');
-        });
-        wrapper.querySelector('#btn-check-update')?.addEventListener('click', async () => {
-            const statusEl = wrapper.querySelector('#update-status');
-            if (statusEl) statusEl.textContent = 'Checking for updates...';
-            if (this.app.updateManager) {
-                await this.app.updateManager.checkForUpdate(true);
-                if (statusEl && !this.app.updateManager.updateInfo) {
-                    statusEl.textContent = 'You\'re on the latest version!';
-                } else if (statusEl && this.app.updateManager.updateInfo) {
-                    statusEl.textContent = `Update available: v${this.app.updateManager.updateInfo.version}`;
-                }
-            }
-        });
-
-        // Load current version
-        (async () => {
-            try {
-                const ver = await invoke('get_current_version');
-                const el = wrapper.querySelector('#current-version-display');
-                if (el) el.textContent = 'v' + ver;
-            } catch {}
-        })();
-
-        // Auto-save on any change with validation
-        const saveDebounce = this.debounce(() => this.saveAll(wrapper), 500);
-        wrapper.querySelectorAll('input, select').forEach(el => {
-            el.addEventListener('change', saveDebounce);
-            el.addEventListener('input', saveDebounce);
-        });
-    }
-
-    async renderThemeGrid(wrapper) {
-        const grid = wrapper.querySelector('#theme-grid');
-        if (!grid) return;
-
-        const themeLabels = this.app.themeManager?.getBuiltInThemeLabels() || {
-            'system': 'System',
-            'dark': 'Dark',
-            'light': 'Light',
-            'high-contrast': 'High Contrast',
-            'nord': 'Nord',
-            'solarized': 'Solarized'
-        };
-
-        let customThemes = [];
-        try {
-            customThemes = await this.app.themeManager?.getCustomThemeNames() || [];
-        } catch {}
-
-        grid.innerHTML = '';
-
-        for (const [themeKey, themeLabel] of Object.entries(themeLabels)) {
-            const card = document.createElement('div');
-            card.className = 'theme-card' + (themeKey === this.settings.appearance.theme ? ' active' : '');
-
-            let previewClass = themeKey;
-            if (themeKey === 'system') {
-                const systemPref = this.app.themeManager?.getSystemPreferenceTheme() || 'dark';
-                previewClass = systemPref;
-                card.classList.add('system-theme');
-            }
-
-            card.innerHTML = `
-                <div class="theme-preview theme-preview-${previewClass}">
-                    ${themeKey === 'system' ? '<span class="system-indicator">⚙</span>' : ''}
-                </div>
-                <span>${themeLabel}</span>
-            `;
-
-            card.addEventListener('click', () => {
-                grid.querySelectorAll('.theme-card').forEach(c => c.classList.remove('active'));
-                card.classList.add('active');
-                this.settings.appearance.theme = themeKey;
-                this.app.themeManager?.applyTheme(themeKey);
-                this.saveAll(wrapper);
             });
-            grid.appendChild(card);
-        }
+        });
+    }
 
-        for (const name of customThemes) {
-            const card = document.createElement('div');
-            card.className = 'theme-card' + (name === this.settings.appearance.theme ? ' active' : '');
-            card.innerHTML = `
-                <div class="theme-preview theme-preview-custom">
-                    <span class="custom-indicator">◉</span>
-                </div>
-                <span>${name.charAt(0).toUpperCase() + name.slice(1)}</span>
-            `;
-            card.addEventListener('click', () => {
-                grid.querySelectorAll('.theme-card').forEach(c => c.classList.remove('active'));
-                card.classList.add('active');
-                this.settings.appearance.theme = name;
-                this.app.themeManager?.applyTheme(name);
-                this.saveAll(wrapper);
+    bindCommunityPluginsEvents(wrapper) {
+        // Safe mode toggle
+        const safeModeToggle = wrapper.querySelector('#community-safe-mode');
+        safeModeToggle?.addEventListener('change', (e) => {
+            const safeMode = !e.target.checked;
+            this.settings.community_plugins.safe_mode = safeMode;
+            
+            // Update UI state
+            const controls = wrapper.querySelector('.community-plugins-controls');
+            controls?.classList.toggle('disabled', safeMode);
+            
+            // Disable/enable controls
+            wrapper.querySelectorAll('.community-plugins-controls button, .community-plugins-controls input').forEach(el => {
+                el.disabled = safeMode;
             });
-            grid.appendChild(card);
-        }
-    }
-
-    async loadPluginsList(wrapper) {
-        const list = wrapper.querySelector('#plugins-list');
-        const loader = this.app.pluginLoader;
-
-        try {
-            const obsidianPlugins = await invoke('list_obsidian_plugins');
-            let legacyPlugins = [];
-            try { legacyPlugins = await invoke('list_plugins'); } catch {}
-
-            const hasAny = obsidianPlugins.length > 0 || legacyPlugins.length > 0;
-
-            if (!hasAny) {
-                list.innerHTML = `
-                    <p class="text-muted">No plugins installed.</p>
-                    <p class="text-muted" style="font-size:12px;margin-top:4px">
-                        Place Obsidian community plugins in <code>.obsidian/plugins/</code><br>
-                        or native plugins in <code>.oxidian/plugins/</code>
-                    </p>
-                `;
-                return;
-            }
-
-            list.innerHTML = '';
-
-            if (obsidianPlugins.length > 0) {
-                const header = document.createElement('div');
-                header.className = 'plugins-section-header';
-                header.innerHTML = '<h3 style="margin:0 0 8px;font-size:13px;color:var(--text-secondary)">Community Plugins (Obsidian-compatible)</h3>';
-                list.appendChild(header);
-
-                for (const p of obsidianPlugins) {
-                    const item = document.createElement('div');
-                    item.className = 'plugin-item';
-                    const isEnabled = loader ? loader.isEnabled(p.id) : false;
-                    item.innerHTML = `
-                        <div class="plugin-info">
-                            <span class="plugin-name">${this.esc(p.name)} <span class="plugin-version">v${this.esc(p.version)}</span></span>
-                            <span class="plugin-desc">${this.esc(p.description)}</span>
-                            <span class="plugin-author">by ${this.esc(p.author)}</span>
-                        </div>
-                        <div class="plugin-controls">
-                            <label class="toggle"><input type="checkbox" data-obsidian-plugin="${this.esc(p.id)}" ${isEnabled ? 'checked' : ''}><span class="toggle-slider"></span></label>
-                        </div>
-                    `;
-
-                    const toggle = item.querySelector(`[data-obsidian-plugin="${this.esc(p.id)}"]`);
-                    toggle?.addEventListener('change', async (e) => {
-                        if (loader) {
-                            await loader.togglePlugin(p.id, e.target.checked);
-                        }
-                    });
-
-                    if (loader && loader.isLoaded(p.id)) {
-                        const settingsTab = loader.getPluginSettingTab(p.id);
-                        if (settingsTab) {
-                            const settingsBtn = document.createElement('button');
-                            settingsBtn.className = 'btn-secondary btn-sm';
-                            settingsBtn.textContent = '⚙';
-                            settingsBtn.title = 'Plugin Settings';
-                            settingsBtn.style.marginLeft = '8px';
-                            settingsBtn.addEventListener('click', () => {
-                                this.showPluginSettings(p.id, p.name, settingsTab);
-                            });
-                            item.querySelector('.plugin-controls')?.appendChild(settingsBtn);
-                        }
-                    }
-
-                    list.appendChild(item);
-                }
-            }
-
-            if (legacyPlugins.length > 0) {
-                const header = document.createElement('div');
-                header.className = 'plugins-section-header';
-                header.innerHTML = '<h3 style="margin:12px 0 8px;font-size:13px;color:var(--text-secondary)">Native Plugins</h3>';
-                list.appendChild(header);
-
-                for (const p of legacyPlugins) {
-                    const item = document.createElement('div');
-                    item.className = 'plugin-item';
-                    const isEnabled = this.settings.plugins.enabled_plugins.includes(p.id);
-                    item.innerHTML = `
-                        <div class="plugin-info">
-                            <span class="plugin-name">${this.esc(p.name)} <span class="plugin-version">v${this.esc(p.version)}</span></span>
-                            <span class="plugin-desc">${this.esc(p.description)}</span>
-                            <span class="plugin-author">by ${this.esc(p.author)}</span>
-                        </div>
-                        <label class="toggle"><input type="checkbox" data-plugin="${this.esc(p.id)}" ${isEnabled ? 'checked' : ''}><span class="toggle-slider"></span></label>
-                    `;
-                    list.appendChild(item);
-                }
-            }
-        } catch (err) {
-            console.error('Failed to load plugins:', err);
-            list.innerHTML = '<p class="text-muted">Failed to load plugins</p>';
-        }
-    }
-
-    showPluginSettings(pluginId, pluginName, settingsTab) {
-        const existing = this.paneEl?.querySelector('.plugin-settings-panel');
-        if (existing) existing.remove();
-
-        const panel = document.createElement('div');
-        panel.className = 'plugin-settings-panel';
-        panel.innerHTML = `
-            <div class="plugin-settings-header">
-                <button class="btn-secondary btn-sm plugin-settings-back">← Back</button>
-                <h3>${this.esc(pluginName)} Settings</h3>
-            </div>
-            <div class="plugin-settings-content"></div>
-        `;
-
-        const content = panel.querySelector('.plugin-settings-content');
-        settingsTab.containerEl = content;
-
-        panel.querySelector('.plugin-settings-back')?.addEventListener('click', () => {
-            panel.remove();
         });
 
-        try {
-            settingsTab.display();
-        } catch (e) {
-            content.innerHTML = `<p class="text-muted">Failed to load plugin settings: ${e.message}</p>`;
-        }
+        // Plugin management buttons
+        wrapper.querySelector('#btn-browse-plugins')?.addEventListener('click', () => {
+            this.showPluginBrowser();
+        });
 
-        this.paneEl?.querySelector('.settings-content')?.appendChild(panel);
+        wrapper.querySelector('#btn-install-plugin')?.addEventListener('click', () => {
+            this.installPluginFromFolder();
+        });
+
+        wrapper.querySelector('#btn-reload-plugins')?.addEventListener('click', () => {
+            this.reloadPlugins();
+        });
+    }
+
+    bindAboutEvents(wrapper) {
+        // Link buttons
+        wrapper.querySelector('#btn-github')?.addEventListener('click', () => {
+            this.openExternal('https://github.com/your-username/oxidian');
+        });
+
+        wrapper.querySelector('#btn-docs')?.addEventListener('click', () => {
+            this.openExternal('https://oxidian.dev/docs');
+        });
+
+        wrapper.querySelector('#btn-community')?.addEventListener('click', () => {
+            this.openExternal('https://discord.gg/oxidian');
+        });
+    }
+
+    setupConditionalVisibility(wrapper) {
+        // Show/hide elements based on other settings
+        const conditionalElements = wrapper.querySelectorAll('[data-show-if], [data-show-if-value]');
+        
+        conditionalElements.forEach(element => {
+            const condition = element.dataset.showIf || element.dataset.showIfValue;
+            if (condition.includes(':')) {
+                // Conditional based on specific value
+                const [targetId, expectedValue] = condition.split(':');
+                const targetElement = wrapper.querySelector('#' + targetId);
+                
+                const updateVisibility = () => {
+                    const isVisible = targetElement && targetElement.value === expectedValue;
+                    element.style.display = isVisible ? '' : 'none';
+                };
+                
+                targetElement?.addEventListener('change', updateVisibility);
+                updateVisibility();
+            } else {
+                // Conditional based on boolean state
+                const targetElement = wrapper.querySelector('#' + condition);
+                
+                const updateVisibility = () => {
+                    const isVisible = targetElement && targetElement.checked;
+                    element.style.display = isVisible ? '' : 'none';
+                };
+                
+                targetElement?.addEventListener('change', updateVisibility);
+                updateVisibility();
+            }
+        });
     }
 
     async saveAll(wrapper) {
         if (!this.settings) return;
 
-        this.settings.general.language = wrapper.querySelector('#set-language')?.value || 'en';
-        this.settings.general.startup_behavior = wrapper.querySelector('#set-startup')?.value || 'welcome';
-        this.settings.editor.font_family = wrapper.querySelector('#set-font-family')?.value || '';
-        this.settings.editor.font_size = parseInt(wrapper.querySelector('#set-font-size')?.value) || 15;
-        this.settings.editor.line_height = parseFloat(wrapper.querySelector('#set-line-height')?.value) || 1.7;
-        this.settings.editor.tab_size = parseInt(wrapper.querySelector('#set-tab-size')?.value) || 4;
-        this.settings.editor.spell_check = wrapper.querySelector('#set-spellcheck')?.checked ?? true;
-        this.settings.editor.vim_mode = wrapper.querySelector('#set-vim')?.checked ?? false;
-        this.settings.appearance.accent_color = wrapper.querySelector('#set-accent')?.value || '#7f6df2';
-        this.settings.appearance.interface_font_size = parseInt(wrapper.querySelector('#set-ui-font-size')?.value) || 13;
-        this.settings.vault.encryption_enabled = wrapper.querySelector('#set-encryption')?.checked ?? false;
-        this.settings.vault.auto_backup = wrapper.querySelector('#set-backup')?.checked ?? false;
-
-        const pluginToggles = wrapper.querySelectorAll('[data-plugin]');
-        this.settings.plugins.enabled_plugins = [];
-        pluginToggles.forEach(el => {
-            if (el.checked) this.settings.plugins.enabled_plugins.push(el.dataset.plugin);
+        // Collect all settings from the form
+        const formData = new FormData();
+        wrapper.querySelectorAll('input, select, textarea').forEach(el => {
+            if (el.name || el.id) {
+                const key = el.name || el.id;
+                let value = el.type === 'checkbox' ? el.checked : el.value;
+                if (el.type === 'range' || el.type === 'number') {
+                    value = parseFloat(value);
+                }
+                formData.set(key, value);
+            }
         });
 
-        // Validate before saving
-        try {
-            const validation = await invoke('validate_settings', { settings: this.settings });
-            if (validation && !validation.valid) {
-                console.warn('Settings validation failed:', validation.errors);
-                this.app?.showErrorToast?.(`Invalid settings: ${validation.errors?.join(', ') || 'Unknown error'}`);
-                return;
-            }
-        } catch (err) {
-            // Validation command may not exist yet — proceed with save
-            console.debug('Settings validation skipped:', err);
-        }
+        // Update settings object
+        this.updateSettingsFromForm(formData);
 
         try {
             await invoke('save_settings', { settings: this.settings });
         } catch (err) {
             console.error('Failed to save settings:', err);
+            this.app?.showErrorToast?.('Failed to save settings: ' + err.message);
         }
     }
 
+    updateSettingsFromForm(formData) {
+        // General
+        this.settings.general.language = formData.get('general-language') || 'en';
+        this.settings.general.startup_behavior = formData.get('general-startup') || 'welcome';
+        this.settings.general.check_for_updates = formData.get('general-check-updates') === 'true';
+        this.settings.general.auto_update = formData.get('general-auto-update') === 'true';
+        this.settings.general.developer_mode = formData.get('general-dev-mode') === 'true';
+
+        // Editor
+        this.settings.editor.font_family = formData.get('editor-font-family') || '';
+        this.settings.editor.font_size = parseInt(formData.get('editor-font-size')) || 15;
+        this.settings.editor.line_height = parseFloat(formData.get('editor-line-height')) || 1.6;
+        this.settings.editor.tab_size = parseInt(formData.get('editor-tab-size')) || 4;
+        this.settings.editor.show_line_numbers = formData.get('editor-line-numbers') === 'true';
+        this.settings.editor.readable_line_length = formData.get('editor-readable-length') === 'true';
+        this.settings.editor.max_line_width = parseInt(formData.get('editor-max-width')) || 700;
+        this.settings.editor.default_edit_mode = formData.get('editor-default-mode') || 'source';
+        this.settings.editor.strict_line_breaks = formData.get('editor-strict-breaks') === 'true';
+        this.settings.editor.smart_indent = formData.get('editor-smart-indent') === 'true';
+        this.settings.editor.auto_pair_brackets = formData.get('editor-auto-pair-brackets') === 'true';
+        this.settings.editor.auto_pair_markdown = formData.get('editor-auto-pair-markdown') === 'true';
+        this.settings.editor.spell_check = formData.get('editor-spell-check') === 'true';
+        this.settings.editor.vim_mode = formData.get('editor-vim-mode') === 'true';
+        this.settings.editor.show_frontmatter = formData.get('editor-show-frontmatter') === 'true';
+        this.settings.editor.fold_heading = formData.get('editor-fold-heading') === 'true';
+        this.settings.editor.fold_indent = formData.get('editor-fold-indent') === 'true';
+
+        // Files & Links
+        this.settings.files_links.default_note_location = formData.get('files-default-location') || 'vault_root';
+        this.settings.files_links.new_note_location = formData.get('files-new-note-location') || '';
+        this.settings.files_links.new_link_format = formData.get('files-link-format') || 'shortest';
+        this.settings.files_links.use_markdown_links = formData.get('files-use-wikilinks') !== 'true';
+        this.settings.files_links.auto_update_internal_links = formData.get('files-auto-update-links') === 'true';
+        this.settings.files_links.detect_all_extensions = formData.get('files-detect-extensions') === 'true';
+        this.settings.files_links.attachment_folder = formData.get('files-attachment-folder') || 'attachments';
+        this.settings.files_links.always_update_links = formData.get('files-always-update') === 'true';
+        this.settings.files_links.confirm_file_deletion = formData.get('files-confirm-delete') === 'true';
+
+        // Appearance
+        this.settings.appearance.accent_color = formData.get('appearance-accent-color') || '#7f6df2';
+        this.settings.appearance.interface_font = formData.get('appearance-interface-font') || 'default';
+        this.settings.appearance.interface_font_size = parseInt(formData.get('appearance-font-size')) || 13;
+        this.settings.appearance.zoom_level = parseFloat(formData.get('appearance-zoom')) || 1.0;
+        this.settings.appearance.translucent = formData.get('appearance-translucent') === 'true';
+        this.settings.appearance.native_menus = formData.get('appearance-native-menus') === 'true';
+        this.settings.appearance.custom_css = formData.get('appearance-custom-css') === 'true';
+
+        // Community Plugins
+        this.settings.community_plugins.safe_mode = formData.get('community-safe-mode') !== 'true';
+        this.settings.community_plugins.plugin_updates = formData.get('community-plugin-updates') === 'true';
+    }
+
+    // Utility methods
     debounce(fn, ms) {
-        let t;
-        return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+        let timeout;
+        return (...args) => {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => fn(...args), ms);
+        };
     }
 
     esc(text) {
         const div = document.createElement('div');
         div.textContent = text || '';
         return div.innerHTML;
+    }
+
+    async openExternal(url) {
+        try {
+            await invoke('open_external', { url });
+        } catch (err) {
+            window.open(url, '_blank');
+        }
+    }
+
+    // Placeholder methods for advanced functionality
+    async editHotkey(commandId) {
+        console.log('Edit hotkey for command:', commandId);
+        // Implementation would show hotkey recording dialog
+    }
+
+    async removeHotkey(commandId) {
+        this.hotkeys.delete(commandId);
+        await this.saveHotkeys();
+        this.refreshHotkeys();
+    }
+
+    async saveHotkeys() {
+        try {
+            await invoke('save_hotkeys', { hotkeys: Object.fromEntries(this.hotkeys) });
+        } catch (err) {
+            console.error('Failed to save hotkeys:', err);
+        }
+    }
+
+    filterHotkeys(query) {
+        // Implementation would filter the hotkeys list
+    }
+
+    refreshHotkeys() {
+        // Implementation would refresh the hotkeys display
+    }
+
+    showCSSSnippetsManager() {
+        // Implementation would show CSS snippets manager dialog
+    }
+
+    showPluginBrowser() {
+        // Implementation would show community plugin browser
+    }
+
+    async installPluginFromFolder() {
+        // Implementation would handle plugin installation
+    }
+
+    async reloadPlugins() {
+        // Implementation would reload all plugins
+    }
+
+    async loadInstalledPlugins() {
+        // Implementation would load and display installed plugins
+    }
+
+    async loadSystemInfo() {
+        try {
+            const platform = await invoke('get_platform_info');
+            document.querySelector('#platform-info').textContent = platform.os || 'Unknown';
+            document.querySelector('#arch-info').textContent = platform.arch || 'Unknown';
+        } catch (err) {
+            console.warn('Could not load system info:', err);
+        }
+    }
+
+    initializeHotkeys() {
+        // Implementation would initialize hotkeys functionality
     }
 }
