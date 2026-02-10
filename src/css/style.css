@@ -205,9 +205,9 @@
     --transition-smooth: 250ms cubic-bezier(0.4, 0, 0.2, 1);
     --transition-spring: 350ms cubic-bezier(0.34, 1.56, 0.64, 1);
     --transition-theme: 200ms ease-in-out;
-    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2);
-    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.3);
-    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.45);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2), 0 1px 0 rgba(255, 255, 255, 0.03) inset;
+    --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.3), 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.45), 0 1px 0 rgba(255, 255, 255, 0.05) inset;
     --shadow-glow: 0 0 20px rgba(127, 109, 242, 0.15);
 }
 
@@ -507,6 +507,7 @@ input[type="color"]::-webkit-color-swatch {
     flex-direction: column;
     overflow: hidden;
     flex-shrink: 0;
+    box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.02), 1px 0 8px rgba(0, 0, 0, 0.1);
 }
 
 .sidebar-panel {
@@ -638,6 +639,8 @@ input[type="color"]::-webkit-color-swatch {
 .tree-item .name {
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
 }
 
 /* tree-folder-children display handled by grid animation below */
@@ -2663,6 +2666,8 @@ kbd:hover {
     align-items: center;
     justify-content: space-between;
     transition: background var(--transition);
+    min-width: 0;
+    overflow: hidden;
 }
 
 .command-palette-item:hover,
@@ -2673,6 +2678,10 @@ kbd:hover {
 .command-palette-name {
     color: var(--text-primary);
     font-size: 13px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
 }
 
 .command-palette-plugin {
@@ -4595,8 +4604,8 @@ body.focus-mode .hypermark-editor {
 /* ===== Enhanced Theme Grid ===== */
 .theme-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 10px;
     margin-top: 8px;
 }
 
@@ -4604,29 +4613,50 @@ body.focus-mode .hypermark-editor {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
-    padding: 16px 12px;
+    gap: 6px;
+    padding: 12px 10px;
     border: 2px solid var(--border-color);
     border-radius: var(--radius-md);
     cursor: pointer;
     transition: all var(--transition-smooth);
     background: var(--bg-surface);
     text-align: center;
-    min-height: 90px;
+    min-height: 76px;
     justify-content: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.theme-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 0%, rgba(127, 109, 242, 0.06), transparent 70%);
+    opacity: 0;
+    transition: opacity var(--transition-smooth);
+    pointer-events: none;
 }
 
 .theme-card:hover {
     border-color: var(--border-hover);
     background: var(--bg-hover);
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-md), 0 0 0 1px rgba(127, 109, 242, 0.08);
+}
+
+.theme-card:hover::before {
+    opacity: 1;
 }
 
 .theme-card.active {
     border-color: var(--text-accent);
-    background: var(--bg-active);
-    box-shadow: 0 0 0 2px var(--bg-selection);
+    background: color-mix(in srgb, var(--bg-surface) 92%, var(--text-accent));
+    box-shadow: 0 0 0 2px var(--bg-selection), 0 0 16px rgba(127, 109, 242, 0.2), var(--shadow-sm);
+}
+
+.theme-card.active::before {
+    opacity: 1;
+    background: radial-gradient(ellipse at 50% 0%, rgba(127, 109, 242, 0.1), transparent 70%);
 }
 
 .theme-card span {
@@ -4634,6 +4664,8 @@ body.focus-mode .hypermark-editor {
     color: var(--text-secondary);
     font-weight: 500;
     line-height: 1.2;
+    position: relative;
+    z-index: 1;
 }
 
 .theme-card.active span {
@@ -4794,13 +4826,143 @@ pre code {
     color: inherit;
 }
 
+/* ===== Screen Reader Only ===== */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* ===== Skip to Content Link ===== */
+.skip-link {
+    position: absolute;
+    top: -40px;
+    left: 0;
+    background: var(--text-accent);
+    color: #fff;
+    padding: 8px 16px;
+    z-index: 10000;
+    font-size: 14px;
+    transition: top 0.2s;
+}
+.skip-link:focus {
+    top: 0;
+}
+
+/* ===== Mobile Hamburger Menu ===== */
+.mobile-menu-btn {
+    display: none;
+    position: fixed;
+    top: 8px;
+    left: 8px;
+    z-index: 1100;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    padding: 6px;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+}
+.mobile-menu-btn:focus-visible {
+    outline: 2px solid var(--text-accent);
+    outline-offset: 2px;
+}
+
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+}
+
 /* ===== Responsive Design Improvements ===== */
 @media (max-width: 768px) {
     :root {
         --sidebar-width: 280px;
         --ribbon-width: 48px;
     }
-    
+
+    /* Show hamburger, hide ribbon & sidebar by default */
+    .mobile-menu-btn {
+        display: flex;
+    }
+
+    #ribbon {
+        position: fixed;
+        left: -var(--ribbon-width, 48px);
+        left: -48px;
+        top: 0;
+        bottom: 0;
+        z-index: 1001;
+        transition: left 0.25s ease;
+    }
+
+    #sidebar {
+        position: fixed;
+        left: -100%;
+        top: 0;
+        bottom: 0;
+        width: var(--sidebar-width, 280px);
+        z-index: 1000;
+        transition: left 0.25s ease;
+        background: var(--bg-primary);
+    }
+
+    #sidebar-resize {
+        display: none;
+    }
+
+    /* When sidebar is open */
+    body.sidebar-mobile-open .sidebar-overlay {
+        display: block;
+    }
+    body.sidebar-mobile-open #ribbon {
+        left: 0;
+    }
+    body.sidebar-mobile-open #sidebar {
+        left: 48px;
+    }
+    body.sidebar-mobile-open .mobile-menu-btn {
+        left: calc(48px + var(--sidebar-width, 280px) + 8px);
+    }
+
+    /* Content area takes full width */
+    #content-area {
+        width: 100vw !important;
+        margin-left: 0 !important;
+    }
+
+    /* Tab bar padding for hamburger */
+    #tab-bar {
+        padding-left: 44px;
+    }
+
+    /* Dialogs: max width = screen */
+    .dialog {
+        max-width: calc(100vw - 32px) !important;
+        margin: 16px;
+    }
+
+    .dialog-overlay {
+        align-items: flex-start;
+        padding-top: 10vh;
+    }
+
+    /* Settings scroll */
+    .dialog-lg {
+        max-height: 85vh;
+        overflow-y: auto;
+    }
+
     .theme-grid {
         grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
         gap: 8px;
@@ -4809,6 +4971,27 @@ pre code {
     .theme-card {
         min-height: 80px;
         padding: 12px 8px;
+    }
+
+    /* Welcome screen responsive */
+    .welcome-content {
+        padding: 24px 16px;
+    }
+    .welcome-shortcuts {
+        display: none;
+    }
+}
+
+@media (max-width: 375px) {
+    .dialog {
+        max-width: calc(100vw - 16px) !important;
+        margin: 8px;
+        padding: 16px !important;
+    }
+
+    #tab-bar {
+        padding-left: 44px;
+        overflow-x: auto;
     }
 }
 
@@ -5971,4 +6154,369 @@ body.ctrl-pressed a {
 .command-palette-item .recent-indicator {
     color: var(--text-accent);
     margin-right: 6px;
+}
+
+/* ===== UX Review 2026-02-10: Depth & Polish ===== */
+
+/* Light mode sidebar depth */
+:root[data-theme="light"] #sidebar {
+    box-shadow: inset -1px 0 0 rgba(0, 0, 0, 0.03), 1px 0 12px rgba(0, 0, 0, 0.04);
+}
+
+/* Light mode theme cards */
+:root[data-theme="light"] .theme-card:hover {
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08), 0 1px 0 rgba(255, 255, 255, 0.5) inset;
+}
+
+:root[data-theme="light"] .theme-card.active {
+    box-shadow: 0 0 0 2px rgba(108, 92, 231, 0.15), 0 0 16px rgba(108, 92, 231, 0.1), 0 2px 8px rgba(0, 0, 0, 0.06);
+    background: color-mix(in srgb, var(--bg-surface) 94%, var(--text-accent));
+}
+
+:root[data-theme="light"] .theme-card::before {
+    background: radial-gradient(ellipse at 50% 0%, rgba(108, 92, 231, 0.04), transparent 70%);
+}
+
+/* Tags section layered shade */
+#tags-section {
+    background: color-mix(in srgb, var(--bg-sidebar) 95%, var(--bg-ribbon));
+}
+
+/* Sidebar panel header subtle gradient */
+.sidebar-panel-header {
+    background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.02) 100%);
+}
+
+/* Remember panel empty state */
+#panel-remember .remember-dashboard:empty::after {
+    content: '📚 Open Remember Dashboard\\Awith Ctrl+Shift+R';
+    white-space: pre-line;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 32px 16px;
+    color: var(--text-muted);
+    font-size: 12px;
+    line-height: 1.6;
+    opacity: 0.7;
+    min-height: 120px;
+}
+
+/* Enhanced tab active glow */
+.tab.active::after {
+    box-shadow: 0 0 6px rgba(127, 109, 242, 0.3);
+}
+
+/* Settings nav active — enhanced glow */
+.settings-nav-item.active {
+    box-shadow: inset 3px 0 0 var(--text-accent), 0 0 8px rgba(127, 109, 242, 0.06);
+}
+
+/* Theme preview swatch hover scale */
+.theme-preview {
+    transition: transform var(--transition);
+}
+
+.theme-card:hover .theme-preview {
+    transform: scale(1.08);
+}
+
+/* ====================================================================
+   CSS POLISH SPRINT — 2026-02-10
+   Depth, Shadows, Micro-interactions, Light Mode
+   ==================================================================== */
+
+/* ===== 1. Settings Theme Picker — Redesign ===== */
+.theme-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 10px !important;
+}
+
+.theme-card {
+    width: auto !important;
+    min-height: 70px !important;
+    padding: 10px 8px !important;
+    transition: all var(--transition-smooth), transform 180ms ease, box-shadow 180ms ease !important;
+}
+
+.theme-card:hover {
+    transform: translateY(-3px) scale(1.02) !important;
+    box-shadow:
+        0 -1px 4px rgba(255,255,255,0.04),
+        0 6px 20px rgba(0,0,0,0.35) !important;
+    border-color: var(--text-muted) !important;
+}
+
+.theme-card.active {
+    border-color: var(--text-teal) !important;
+    box-shadow:
+        0 0 0 1px var(--text-teal),
+        0 0 12px rgba(148, 226, 213, 0.2),
+        0 4px 16px rgba(0,0,0,0.25) !important;
+}
+
+.theme-card.active span {
+    color: var(--text-teal) !important;
+}
+
+.theme-preview {
+    width: 48px !important;
+    height: 28px !important;
+    border-radius: 5px !important;
+}
+
+/* ===== 2. Sidebar — Depth ===== */
+#sidebar {
+    box-shadow: inset -6px 0 12px -6px rgba(0,0,0,0.2);
+}
+
+.tree-item {
+    transition: background var(--transition), color var(--transition),
+                transform 80ms ease, box-shadow var(--transition) !important;
+}
+
+.tree-item:hover {
+    background: color-mix(in srgb, var(--bg-hover) 100%, white 6%) !important;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03);
+}
+
+.tree-item.active {
+    background: color-mix(in srgb, var(--bg-active) 100%, white 8%) !important;
+    color: var(--text-primary) !important;
+    font-weight: 500;
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.04),
+        inset 0 -1px 0 rgba(0,0,0,0.15);
+}
+
+/* ===== 3. Tabs — Polish ===== */
+.tab {
+    transition: background var(--transition), color var(--transition),
+                box-shadow var(--transition) !important;
+}
+
+.tab:hover {
+    background: color-mix(in srgb, var(--bg-hover) 100%, white 4%) !important;
+    color: var(--text-primary) !important;
+}
+
+.tab:hover .tab-close {
+    opacity: 1 !important;
+    color: var(--text-muted);
+}
+
+.tab:hover .tab-close:hover {
+    background: rgba(243, 139, 168, 0.15) !important;
+    color: var(--text-red) !important;
+    transform: scale(1.1);
+}
+
+.tab.active {
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.04),
+        0 1px 0 var(--bg-primary);
+}
+
+.tab.active::after {
+    height: 2px;
+    background: linear-gradient(90deg, var(--text-accent), var(--text-teal)) !important;
+    box-shadow: 0 0 8px rgba(127, 109, 242, 0.3);
+}
+
+/* ===== 4. Editor Area — Subtle improvements ===== */
+.editor-textarea,
+.hypermark-editor {
+    letter-spacing: 0.015em !important;
+}
+
+.preview-content p,
+.hypermark-block.rendered p {
+    line-height: 1.75 !important;
+    margin-bottom: 12px !important;
+}
+
+.preview-content h1, .preview-content h2, .preview-content h3,
+.hypermark-block.rendered h1, .hypermark-block.rendered h2, .hypermark-block.rendered h3 {
+    margin-top: 28px !important;
+    margin-bottom: 10px !important;
+}
+
+/* Code blocks — layered depth */
+.preview-content pre,
+.hypermark-block.rendered pre {
+    background:
+        linear-gradient(180deg, rgba(255,255,255,0.02) 0%, transparent 20%),
+        var(--bg-secondary) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.04),
+        inset 0 -1px 0 rgba(0,0,0,0.2),
+        0 2px 8px rgba(0,0,0,0.15) !important;
+    border: 1px solid var(--border-color) !important;
+}
+
+/* ===== 5. Buttons — Gradient + Glow + Press ===== */
+.btn-primary,
+.welcome-btn.primary,
+.obsidian-button-cta,
+.frontmatter-save-btn,
+.embed-create-btn,
+.update-btn-install,
+.update-btn-restart {
+    background: linear-gradient(180deg,
+        color-mix(in srgb, var(--text-accent) 100%, white 12%),
+        var(--text-accent)) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.15),
+        0 2px 8px rgba(127, 109, 242, 0.25) !important;
+    transition: all var(--transition), transform 100ms ease !important;
+}
+
+.btn-primary:hover,
+.welcome-btn.primary:hover,
+.obsidian-button-cta:hover,
+.frontmatter-save-btn:hover,
+.embed-create-btn:hover,
+.update-btn-install:hover,
+.update-btn-restart:hover {
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.2),
+        0 4px 16px rgba(127, 109, 242, 0.35),
+        0 0 20px rgba(127, 109, 242, 0.15) !important;
+    transform: translateY(-1px) !important;
+}
+
+.btn-primary:active,
+.welcome-btn.primary:active,
+.obsidian-button-cta:active,
+.frontmatter-save-btn:active,
+.embed-create-btn:active,
+.update-btn-install:active,
+.update-btn-restart:active {
+    transform: translateY(1px) !important;
+    box-shadow:
+        inset 0 2px 4px rgba(0,0,0,0.2),
+        0 1px 2px rgba(127, 109, 242, 0.15) !important;
+    transition-duration: 60ms !important;
+}
+
+.btn-secondary,
+.obsidian-button,
+.frontmatter-cancel-btn,
+.update-btn-later {
+    transition: all var(--transition), transform 100ms ease !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.04),
+        0 1px 3px rgba(0,0,0,0.12) !important;
+}
+
+.btn-secondary:hover,
+.obsidian-button:hover,
+.frontmatter-cancel-btn:hover,
+.update-btn-later:hover {
+    transform: translateY(-1px) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.06),
+        0 3px 10px rgba(0,0,0,0.2) !important;
+}
+
+.btn-secondary:active,
+.obsidian-button:active,
+.frontmatter-cancel-btn:active,
+.update-btn-later:active {
+    transform: translateY(1px) !important;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.15) !important;
+    transition-duration: 60ms !important;
+}
+
+/* ===== 6. Light Mode — All Adjustments ===== */
+:root[data-theme="light"] #sidebar {
+    box-shadow: inset -6px 0 12px -6px rgba(0,0,0,0.06);
+}
+
+:root[data-theme="light"] .tree-item:hover {
+    background: color-mix(in srgb, var(--bg-hover) 100%, black 3%) !important;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.03);
+}
+
+:root[data-theme="light"] .tree-item.active {
+    background: color-mix(in srgb, var(--bg-active) 100%, black 4%) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.5),
+        inset 0 -1px 0 rgba(0,0,0,0.06);
+}
+
+:root[data-theme="light"] .tab:hover {
+    background: color-mix(in srgb, var(--bg-hover) 100%, black 2%) !important;
+}
+
+:root[data-theme="light"] .tab.active {
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.6),
+        0 1px 0 var(--bg-primary);
+}
+
+:root[data-theme="light"] .tab.active::after {
+    box-shadow: 0 0 6px rgba(108, 92, 231, 0.25);
+}
+
+:root[data-theme="light"] .theme-card:hover {
+    box-shadow:
+        0 -1px 3px rgba(255,255,255,0.5),
+        0 6px 20px rgba(0,0,0,0.1) !important;
+}
+
+:root[data-theme="light"] .theme-card.active {
+    border-color: var(--text-teal) !important;
+    box-shadow:
+        0 0 0 1px var(--text-teal),
+        0 0 10px rgba(0, 206, 201, 0.15),
+        0 4px 12px rgba(0,0,0,0.08) !important;
+}
+
+:root[data-theme="light"] .preview-content pre,
+:root[data-theme="light"] .hypermark-block.rendered pre {
+    background:
+        linear-gradient(180deg, rgba(0,0,0,0.01) 0%, transparent 20%),
+        var(--bg-secondary) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.6),
+        inset 0 -1px 0 rgba(0,0,0,0.04),
+        0 2px 6px rgba(0,0,0,0.06) !important;
+}
+
+:root[data-theme="light"] .btn-primary,
+:root[data-theme="light"] .welcome-btn.primary,
+:root[data-theme="light"] .obsidian-button-cta,
+:root[data-theme="light"] .frontmatter-save-btn {
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.2),
+        0 2px 8px rgba(108, 92, 231, 0.2) !important;
+}
+
+:root[data-theme="light"] .btn-primary:hover,
+:root[data-theme="light"] .welcome-btn.primary:hover,
+:root[data-theme="light"] .obsidian-button-cta:hover,
+:root[data-theme="light"] .frontmatter-save-btn:hover {
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.25),
+        0 4px 14px rgba(108, 92, 231, 0.25),
+        0 0 16px rgba(108, 92, 231, 0.1) !important;
+}
+
+:root[data-theme="light"] .btn-secondary,
+:root[data-theme="light"] .obsidian-button,
+:root[data-theme="light"] .frontmatter-cancel-btn {
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.7),
+        0 1px 3px rgba(0,0,0,0.06) !important;
+}
+
+:root[data-theme="light"] .btn-secondary:hover,
+:root[data-theme="light"] .obsidian-button:hover,
+:root[data-theme="light"] .frontmatter-cancel-btn:hover {
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.8),
+        0 3px 10px rgba(0,0,0,0.1) !important;
 }

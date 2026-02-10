@@ -23,6 +23,7 @@ import { FindReplace } from './find-replace.js';
 import { EmbedProcessor } from './embeds.js';
 import { FrontmatterProcessor } from './frontmatter.js';
 import { LinkHandler } from './link-handler.js';
+import { NavHistory } from './nav-history.js';
 
 // NEW OBSIDIAN CORE FEATURES
 import { LivePreview } from './live-preview.js';
@@ -34,6 +35,15 @@ import { Folding } from './folding.js';
 import { PropertiesPanel } from './properties-panel.js';
 import { HoverPreview } from './hover-preview.js';
 import { Canvas } from './canvas.js';
+import { CommandPalette } from './command-palette.js';
+import { BookmarksManager } from './bookmarks.js';
+import { DailyNotes } from './daily-notes.js';
+import { Remember } from './remember.js';
+import { RememberDashboard } from './remember-dashboard.js';
+import { RememberExtract } from './remember-extract.js';
+import { RememberSources } from './remember-sources.js';
+import { RememberCards } from './remember-cards.js';
+import { startReviewSession } from './remember-review.js';
 
 // DOM Safety Helpers
 function safeGetElement(id) {
@@ -91,6 +101,10 @@ class OxidianApp {
         this.propertiesPanel = null;
         this.hoverPreview = null;
         this.canvas = null;
+        this.navHistory = null;
+        this.commandPalette = null;
+        this.bookmarksManagerModule = null;
+        this.dailyNotes = null;
 
         // Feature state
         this.focusMode = false;
@@ -142,16 +156,47 @@ class OxidianApp {
         this.frontmatterProcessor = new FrontmatterProcessor(this);
         this.linkHandler = new LinkHandler(this);
 
-        // Initialize NEW OBSIDIAN CORE FEATURES
-        this.livePreview = new LivePreview(this);
-        this.wikilinksAutoComplete = new WikilinksAutoComplete(this);
-        this.tagAutoComplete = new TagAutoComplete(this);
-        this.dragDrop = new DragDrop(this);
-        this.multipleCursors = new MultipleCursors(this);
-        this.folding = new Folding(this);
-        this.propertiesPanel = new PropertiesPanel(this);
-        this.hoverPreview = new HoverPreview(this);
-        this.canvas = new Canvas(this);
+        // Initialize NEW OBSIDIAN CORE FEATURES (each wrapped in try/catch for stability)
+        const safeInitModule = (name, factory) => {
+            try {
+                return factory();
+            } catch (err) {
+                console.error(`[Oxidian] Failed to initialize module "${name}":`, err);
+                return null;
+            }
+        };
+
+        this.livePreview = safeInitModule('LivePreview', () => new LivePreview(this));
+        this.wikilinksAutoComplete = safeInitModule('WikilinksAutoComplete', () => new WikilinksAutoComplete(this));
+        this.tagAutoComplete = safeInitModule('TagAutoComplete', () => new TagAutoComplete(this));
+        this.dragDrop = safeInitModule('DragDrop', () => new DragDrop(this));
+        this.multipleCursors = safeInitModule('MultipleCursors', () => new MultipleCursors(this));
+        // DISABLED: Folding module is destructive — replaces content with fold markers, data loss risk on save
+        // this.folding = safeInitModule('Folding', () => new Folding(this));
+        this.folding = null;
+        this.propertiesPanel = safeInitModule('PropertiesPanel', () => new PropertiesPanel(this));
+        this.hoverPreview = safeInitModule('HoverPreview', () => new HoverPreview(this));
+        this.canvas = safeInitModule('Canvas', () => new Canvas(this));
+        this.navHistory = safeInitModule('NavHistory', () => new NavHistory(this));
+        this.commandPalette = safeInitModule('CommandPalette', () => new CommandPalette(this));
+        this.bookmarksManagerModule = safeInitModule('BookmarksManager', () => new BookmarksManager(this));
+        this.dailyNotes = safeInitModule('DailyNotes', () => new DailyNotes(this));
+        // PERF: Lazy-load Remember system — only init when Remember tab is opened
+        // This saves ~100+ IPC calls on startup (reading all Cards/ and Sources/)
+        this.remember = null;
+        this.rememberDashboard = null;
+        this.rememberExtract = null;
+        this.rememberSources = null;
+        this.rememberCards = null;
+        this._rememberInitialized = false;
+        this.rememberReview = {
+            startReview: (dueCards) => startReviewSession(this)
+        };
+
+        // PERF: File tree cache — avoids 12+ independent list_files IPC calls
+        this._fileTreeCache = null;
+        this._fileTreeCacheTime = 0;
+        this._fileTreeCacheTTL = 5000; // 5 seconds
 
         await this.themeManager.init();
 
@@ -170,9 +215,21 @@ class OxidianApp {
                     this.switchSidebarPanel(btn.dataset.panel);
                     const allRibbonBtns = document.querySelectorAll('.ribbon-btn[data-panel]');
                     if (allRibbonBtns) allRibbonBtns.forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
+                    btn.classList.add('active');
+
+                    // Remember panel: lazy-init then show dashboard
+                    if (btn.dataset.panel === 'remember') {
+                        this.initRemember().then(() => {
+                            if (this.rememberDashboard) {
+                                this.rememberDashboard.show();
+                            } else if (this.remember) {
+                                this.remember.refreshDashboard();
+                            }
+                        });
+                    }
+                });
             });
-        });
+        }
 
         document.querySelector('.ribbon-btn[data-action="graph"]')?.addEventListener('click', () => this.openGraphView());
         document.querySelector('.ribbon-btn[data-action="canvas"]')?.addEventListener('click', () => this.openCanvasView());
@@ -277,6 +334,52 @@ class OxidianApp {
 
         // Check for updates (non-blocking)
         this.updateManager.checkOnStartup();
+
+        // Hash-based routing
+        if (window.location.hash === '#remember') {
+            this.openRememberDashboard();
+        }
+        window.addEventListener('hashchange', () => {
+            if (window.location.hash === '#remember') {
+                this.openRememberDashboard();
+            }
+        });
+    }
+
+    // PERF FIX: Cached file tree — reduces 12+ IPC calls to 1 per 5s
+    async getFileTree() {
+        const now = Date.now();
+        if (this._fileTreeCache && (now - this._fileTreeCacheTime) < this._fileTreeCacheTTL) {
+            return this._fileTreeCache;
+        }
+        this._fileTreeCache = await invoke('list_files');
+        this._fileTreeCacheTime = now;
+        return this._fileTreeCache;
+    }
+
+    invalidateFileTreeCache() {
+        this._fileTreeCache = null;
+        this._fileTreeCacheTime = 0;
+    }
+
+    // PERF FIX: Lazy-init Remember system
+    async initRemember() {
+        if (this._rememberInitialized) return;
+        this._rememberInitialized = true;
+
+        const safeInitModule = (name, factory) => {
+            try { return factory(); } catch (err) {
+                console.error(`[Oxidian] Failed to initialize module "${name}":`, err);
+                return null;
+            }
+        };
+
+        console.log('[Oxidian] Lazy-loading Remember system...');
+        this.remember = safeInitModule('Remember', () => new Remember(this));
+        this.rememberDashboard = safeInitModule('RememberDashboard', () => new RememberDashboard(this));
+        this.rememberExtract = safeInitModule('RememberExtract', () => new RememberExtract(this));
+        this.rememberSources = safeInitModule('RememberSources', () => new RememberSources(this));
+        this.rememberCards = safeInitModule('RememberCards', () => new RememberCards(this));
     }
 
     async applySettings() {
@@ -338,6 +441,8 @@ class OxidianApp {
             this.showSettingsPane(pane);
         } else if (tab.type === 'canvas') {
             this.showCanvasPane(pane);
+        } else if (tab.type === 'remember') {
+            this.showRememberPane(pane);
         }
     }
 
@@ -383,6 +488,7 @@ class OxidianApp {
             this.currentFile = path;
             this.isDirty = false;
             this.addRecentFile(path);
+            this.navHistory?.push(path);
 
             await this.ensureEditorPane();
             this.editor.setContent(content);
@@ -441,6 +547,7 @@ class OxidianApp {
             const content = await invoke('read_note', { path });
             this.currentFile = path;
             this.isDirty = false;
+            this.navHistory?.push(path);
             await this.ensureEditorPane();
             this.editor.setContent(content);
             this.sidebar.setActive(path);
@@ -544,6 +651,11 @@ class OxidianApp {
     }
 
     async openDailyNote() {
+        // Use DailyNotes module if available (frontend-based, with Calendar folder)
+        if (this.dailyNotes) {
+            return this.dailyNotes.open();
+        }
+        // Fallback to Tauri backend command
         try {
             const path = await invoke('create_daily_note');
             await this.openFile(path);
@@ -1088,6 +1200,14 @@ class OxidianApp {
 
             try {
                 await invoke('rename_file', { oldPath: path, newPath });
+
+                // Auto-update internal [[links]] in all other notes
+                const oldNoteName = path.replace('.md', '').split('/').pop();
+                const newNoteName = newPath.replace('.md', '').split('/').pop();
+                if (oldNoteName !== newNoteName) {
+                    await this.updateInternalLinks(oldNoteName, newNoteName);
+                }
+
                 await this.sidebar.refresh();
                 // Update tab entry
                 const tab = this.tabManager.tabs.find(t => t.path === path);
@@ -1100,6 +1220,24 @@ class OxidianApp {
                     this.currentFile = newPath;
                     this.updateBreadcrumb(newPath);
                 }
+                // Update nav history
+                this.navHistory?.renamePath(path, newPath);
+                // Update bookmarks
+                const bmIdx = this.bookmarks.indexOf(path);
+                if (bmIdx >= 0) {
+                    this.bookmarks[bmIdx] = newPath;
+                    localStorage.setItem('oxidian-bookmarks', JSON.stringify(this.bookmarks));
+                    this.renderBookmarks();
+                }
+                // Update recent files
+                const rfIdx = this.recentFiles.indexOf(path);
+                if (rfIdx >= 0) {
+                    this.recentFiles[rfIdx] = newPath;
+                    localStorage.setItem('oxidian-recent', JSON.stringify(this.recentFiles));
+                    this.renderRecentFiles();
+                }
+                // Invalidate caches
+                this.invalidateAutoCompleteCaches();
             } catch (err) {
                 console.error('Rename failed:', err);
                 input.replaceWith(nameSpan);
@@ -1111,6 +1249,67 @@ class OxidianApp {
             if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
             if (e.key === 'Escape') { input.value = oldName; input.blur(); }
         });
+    }
+
+    // ===== Auto-Update Internal Links =====
+
+    /**
+     * After renaming a note, scan ALL .md files in the vault and replace
+     * [[oldName]] with [[newName]] (and [[oldName|alias]] → [[newName|alias]]).
+     */
+    async updateInternalLinks(oldName, newName) {
+        try {
+            const tree = await invoke('list_files');
+            const allFiles = [];
+            const walk = (nodes) => {
+                if (!Array.isArray(nodes)) return;
+                for (const node of nodes) {
+                    if (node.is_dir) {
+                        walk(node.children || []);
+                    } else if (node.path && node.path.endsWith('.md')) {
+                        allFiles.push(node.path);
+                    }
+                }
+            };
+            walk(tree);
+
+            // Regex to match [[oldName]] and [[oldName|display text]]
+            const escapedOld = oldName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const linkRegex = new RegExp(`\\[\\[${escapedOld}(\\|[^\\]]*)?\\]\\]`, 'g');
+
+            let updatedCount = 0;
+            for (const filePath of allFiles) {
+                try {
+                    const content = await invoke('read_note', { path: filePath });
+                    if (!linkRegex.test(content)) continue;
+
+                    // Reset regex lastIndex
+                    linkRegex.lastIndex = 0;
+                    const newContent = content.replace(linkRegex, (match, alias) => {
+                        return `[[${newName}${alias || ''}]]`;
+                    });
+
+                    if (newContent !== content) {
+                        await invoke('save_note', { path: filePath, content: newContent });
+                        updatedCount++;
+
+                        // If this file is currently open, refresh the editor content
+                        if (filePath === this.currentFile) {
+                            this.editor.setContent(newContent);
+                            this.isDirty = false;
+                        }
+                    }
+                } catch (fileErr) {
+                    console.warn(`[LinkUpdate] Failed to update links in ${filePath}:`, fileErr);
+                }
+            }
+
+            if (updatedCount > 0) {
+                console.log(`[LinkUpdate] Updated [[${oldName}]] → [[${newName}]] in ${updatedCount} file(s)`);
+            }
+        } catch (err) {
+            console.error('[LinkUpdate] Failed to update internal links:', err);
+        }
     }
 
     // ===== Tags =====
@@ -1168,6 +1367,23 @@ class OxidianApp {
         const ribbon = document.getElementById('ribbon');
         let isResizing = false;
 
+        // PERF FIX: Use named handlers so they could be removed if needed
+        const onSidebarResizeMove = (e) => {
+            if (!isResizing) return;
+            const ribbonW = ribbon.getBoundingClientRect().width;
+            const newWidth = Math.max(180, Math.min(500, e.clientX - ribbonW));
+            sidebar.style.width = `${newWidth}px`;
+        };
+
+        const onSidebarResizeUp = () => {
+            if (isResizing) {
+                isResizing = false;
+                handle.classList.remove('active');
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+            }
+        };
+
         handle.addEventListener('mousedown', (e) => {
             isResizing = true;
             handle.classList.add('active');
@@ -1176,21 +1392,8 @@ class OxidianApp {
             e.preventDefault();
         });
 
-        document.addEventListener('mousemove', (e) => {
-            if (!isResizing) return;
-            const ribbonW = ribbon.getBoundingClientRect().width;
-            const newWidth = Math.max(180, Math.min(500, e.clientX - ribbonW));
-            sidebar.style.width = `${newWidth}px`;
-        });
-
-        document.addEventListener('mouseup', () => {
-            if (isResizing) {
-                isResizing = false;
-                handle.classList.remove('active');
-                document.body.style.cursor = '';
-                document.body.style.userSelect = '';
-            }
-        });
+        document.addEventListener('mousemove', onSidebarResizeMove);
+        document.addEventListener('mouseup', onSidebarResizeUp);
     }
 
     initSplitResize(handle) {
@@ -1248,6 +1451,13 @@ class OxidianApp {
             e.preventDefault();
             this.showNewNoteDialog();
         } else if (ctrl && e.key === 'p') {
+            e.preventDefault();
+            if (this.commandPalette) {
+                this.commandPalette.show();
+            } else {
+                this.quickSwitcher.show();
+            }
+        } else if (ctrl && e.key === 'o') {
             e.preventDefault();
             this.quickSwitcher.show();
         } else if (ctrl && e.key === 't') {
@@ -1673,6 +1883,8 @@ class OxidianApp {
             { name: 'Quick Switcher', shortcut: 'Ctrl+P', action: () => this.quickSwitcher.show() },
             { name: 'Insert Template', shortcut: 'Ctrl+T', action: () => this.templateManager.showPicker() },
             { name: 'Toggle Backlinks Panel', action: () => this.toggleBacklinksPanel() },
+            { name: 'Remember: Open Dashboard', shortcut: 'Ctrl+Shift+R', action: () => this.openRememberDashboard() },
+            { name: 'Remember: Extract to Card', shortcut: 'Ctrl+Shift+E', action: () => this.extractToCard() },
         ];
 
         // Also include open files from sidebar
@@ -1931,6 +2143,27 @@ class OxidianApp {
         }
     }
 
+    // ===== Remember Integration =====
+
+    openRememberDashboard() {
+        try {
+            if (this.remember && this.remember.openDashboard) {
+                this.remember.openDashboard();
+            } else {
+                // Fallback: switch to remember sidebar panel
+                this.switchSidebarPanel('remember');
+            }
+        } catch (err) {
+            console.error('[Remember] Failed to open dashboard:', err);
+        }
+    }
+
+    extractToCard() {
+        if (this.rememberExtract) {
+            this.rememberExtract.extractSelection();
+        }
+    }
+
     escapeHtml(text) {
         const div = document.createElement('div');
         div.textContent = text;
@@ -1943,61 +2176,50 @@ class OxidianApp {
      * Attach all Obsidian core features to an editor pane
      */
     attachObsidianFeatures(pane, textarea, hypermarkEditor = null) {
-        try {
-            // 1. Initialize Properties Panel (at top of pane)
+        const safeAttach = (name, fn) => {
+            try { fn(); } catch (err) {
+                console.error(`[Oxidian] Failed to attach feature "${name}":`, err);
+            }
+        };
+
+        // 1. Properties Panel
+        safeAttach('PropertiesPanel', () => {
             if (this.propertiesPanel) {
                 this.propertiesPanel.init(pane);
-                if (textarea) {
-                    this.propertiesPanel.attachTo(textarea);
-                } else if (hypermarkEditor) {
-                    // For hypermark, we'll need to hook into its content changes
-                    // This is a simplified integration
-                }
+                if (textarea) this.propertiesPanel.attachTo(textarea);
             }
+        });
 
-            // 2. Initialize Drag & Drop for Editor
-            if (this.dragDrop && pane) {
-                this.dragDrop.initEditor(pane);
-            }
+        // 2. Drag & Drop
+        safeAttach('DragDrop', () => {
+            if (this.dragDrop && pane) this.dragDrop.initEditor(pane);
+        });
 
-            // Features that need a textarea
-            if (textarea) {
-                // 3. Wikilinks Auto-Complete
-                if (this.wikilinksAutoComplete) {
-                    this.wikilinksAutoComplete.attachTo(textarea);
-                }
+        if (textarea) {
+            // 3. Wikilinks Auto-Complete
+            safeAttach('WikilinksAutoComplete', () => {
+                if (this.wikilinksAutoComplete) this.wikilinksAutoComplete.attachTo(textarea);
+            });
 
-                // 4. Tag Auto-Complete
-                if (this.tagAutoComplete) {
-                    this.tagAutoComplete.attachTo(textarea);
-                }
+            // 4. Tag Auto-Complete
+            safeAttach('TagAutoComplete', () => {
+                if (this.tagAutoComplete) this.tagAutoComplete.attachTo(textarea);
+            });
 
-                // 5. Multiple Cursors
-                if (this.multipleCursors) {
-                    this.multipleCursors.attachTo(textarea);
-                }
+            // 5. Multiple Cursors
+            safeAttach('MultipleCursors', () => {
+                if (this.multipleCursors) this.multipleCursors.attachTo(textarea);
+            });
 
-                // 6. Folding
-                if (this.folding) {
-                    this.folding.attachTo(textarea);
-                    this.folding.initClickHandler();
-                }
-            }
-
-            // 7. Hover Preview (works on the pane container)
-            if (this.hoverPreview && pane) {
-                this.hoverPreview.init(pane);
-            }
-
-            // 8. Live Preview Mode (if enabled)
-            if (this.viewMode === 'live-preview' && this.livePreview && textarea) {
-                // The live preview is handled in the editor setup, but we could enhance it here
-            }
-
-            console.log('✅ Obsidian core features attached successfully');
-        } catch (err) {
-            console.error('Failed to attach Obsidian features:', err);
+            // 6. Folding — DISABLED for stability
         }
+
+        // 7. Hover Preview
+        safeAttach('HoverPreview', () => {
+            if (this.hoverPreview && pane) this.hoverPreview.init(pane);
+        });
+
+        console.log('✅ Obsidian core features attached');
     }
 
     /**
@@ -2038,20 +2260,63 @@ class OxidianApp {
     }
 
     /**
+     * Show Remember dashboard in a pane
+     */
+    showRememberPane(pane = 0) {
+        if (this.isDirty && this.currentFile) {
+            this.saveCurrentFile();
+        }
+
+        this.hideWelcome();
+        this.updateBreadcrumb('');
+
+        if (pane === 0 && !this.tabManager.splitActive) {
+            this.clearPanes();
+            const container = document.getElementById('pane-container');
+            const rememberDiv = document.createElement('div');
+            rememberDiv.className = 'pane remember-pane';
+            rememberDiv.id = 'left-pane';
+            container.insertBefore(rememberDiv, container.firstChild);
+            if (this.rememberDashboard) {
+                this.rememberDashboard.show();
+            } else if (this.remember) {
+                this.remember.refreshDashboard();
+            }
+        }
+    }
+
+    /**
      * Enhanced keyboard shortcuts for new features
      */
     handleNewFeatureShortcuts(e) {
         const ctrl = e.ctrlKey || e.metaKey;
         const shift = e.shiftKey;
         
-        // Fold All / Unfold All
-        if (ctrl && shift && e.key === '[') {
+        const alt = e.altKey;
+
+        // Remember Dashboard: Cmd+Shift+R
+        if (ctrl && shift && e.key === 'R') {
             e.preventDefault();
-            this.folding?.foldAll();
+            this.openRememberDashboard();
             return true;
-        } else if (ctrl && shift && e.key === ']') {
+        }
+
+        // Extract to Card: Cmd+Shift+E
+        if (ctrl && shift && e.key === 'E') {
             e.preventDefault();
-            this.folding?.unfoldAll();
+            this.extractToCard();
+            return true;
+        }
+
+        // Navigation history: Cmd+Alt+Left/Right
+        if (ctrl && alt && e.key === 'ArrowLeft') {
+            e.preventDefault();
+            this.navHistory?.goBack();
+            return true;
+        }
+        if (ctrl && alt && e.key === 'ArrowRight') {
+            e.preventDefault();
+            this.navHistory?.goForward();
             return true;
         }
 

@@ -84,6 +84,8 @@ import {
   oneDark
 } from './codemirror-bundle.js';
 
+import { highlightExtension } from './highlight-extension.js';
+
 /**
  * Custom Oxidian Dark Theme - matches the app's catppuccin-inspired theme
  */
@@ -327,6 +329,9 @@ export class CodeMirrorEditor {
       rectangularSelection(),
       highlightSelectionMatches(),
       search({ top: true }),
+      
+      // Highlight ==text== decoration
+      ...highlightExtension(),
       
       // *** FIX: Compartmentalized extensions ***
       this.lineNumberCompartment.of(

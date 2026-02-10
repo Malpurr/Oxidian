@@ -48,7 +48,7 @@ export class LinkHandler {
     }
 
     /**
-     * Handle Ctrl+Click events
+     * Handle Ctrl+Click events — opens links in a new tab
      */
     handleCtrlClick(event) {
         // Check if we're in an editor textarea
@@ -57,7 +57,7 @@ export class LinkHandler {
             const link = this.getLinkAtPosition(textarea, textarea.selectionStart);
             if (link) {
                 event.preventDefault();
-                this.navigateToLink(link);
+                this.navigateToLink(link, true);
             }
         }
 
@@ -67,7 +67,7 @@ export class LinkHandler {
             event.preventDefault();
             const link = this.extractLinkFromElement(linkElement);
             if (link) {
-                this.navigateToLink(link);
+                this.navigateToLink(link, true);
             }
         }
     }
@@ -243,18 +243,27 @@ export class LinkHandler {
     }
 
     /**
-     * Navigate to a link
+     * Navigate to a link.
+     * Ctrl/Cmd+Click opens in a NEW TAB instead of replacing current.
      */
-    async navigateToLink(link) {
+    async navigateToLink(link, openInNewTab = true) {
         try {
             switch (link.type) {
                 case 'wikilink':
-                    await this.app.navigateToNote(link.target);
+                    if (openInNewTab) {
+                        await this.openNoteInNewTab(link.target);
+                    } else {
+                        await this.app.navigateToNote(link.target);
+                    }
                     break;
                     
                 case 'markdown':
                     if (this.isInternalLink(link.target)) {
-                        await this.app.navigateToNote(link.target);
+                        if (openInNewTab) {
+                            await this.openNoteInNewTab(link.target);
+                        } else {
+                            await this.app.navigateToNote(link.target);
+                        }
                     } else {
                         this.openExternalLink(link.target);
                     }
@@ -266,9 +275,37 @@ export class LinkHandler {
             }
         } catch (error) {
             console.error('Failed to navigate to link:', error);
-            // Show user-friendly error
             this.showError(`Failed to open link: ${error.message}`);
         }
+    }
+
+    /**
+     * Open a note in a new tab. If the note doesn't exist, create it first.
+     */
+    async openNoteInNewTab(target) {
+        const { invoke } = window.__TAURI__.core;
+        let path = target;
+        if (!path.endsWith('.md')) path = target + '.md';
+
+        // Check if note exists, if not create it
+        try {
+            await invoke('read_note', { path });
+        } catch {
+            // Note doesn't exist — create it
+            try {
+                const content = `# ${target}\n\n`;
+                await invoke('save_note', { path, content });
+                this.app.sidebar?.refresh();
+                this.app.invalidateAutoCompleteCaches?.();
+            } catch (createErr) {
+                console.error('Failed to create note:', createErr);
+                this.showError(`Failed to create note "${target}": ${createErr.message || createErr}`);
+                return;
+            }
+        }
+
+        // Open in new tab: directly create the tab and load it
+        await this.app.openFile(path);
     }
 
     /**

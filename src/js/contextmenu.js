@@ -94,6 +94,18 @@ export class ContextMenu {
             { label: 'Code', shortcut: 'Ctrl+`', action: () => this.app.editor.wrapSelection('`', '`') },
             { label: 'Link', shortcut: 'Ctrl+K', action: () => this.app.editor.wrapSelection('[[', ']]') },
         ];
+
+        // Add "Extract to Card" if text is selected
+        const selection = window.getSelection()?.toString()?.trim();
+        if (selection) {
+            items.push({ separator: true });
+            items.push({
+                label: '🧠 Extract to Card',
+                shortcut: 'Ctrl+Shift+E',
+                action: () => this.app.extractToCard()
+            });
+        }
+
         this.show(e.clientX, e.clientY, items);
     }
 

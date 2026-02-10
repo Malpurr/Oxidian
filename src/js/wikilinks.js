@@ -141,9 +141,21 @@ export class WikilinksAutoComplete {
         }
         
         try {
-            const files = await invoke('list_files');
-            this.allNotes = files
-                .filter(file => file.path.endsWith('.md'))
+            const tree = await invoke('list_files');
+            // list_files returns a tree structure — flatten it
+            const flatFiles = [];
+            const walk = (nodes) => {
+                if (!Array.isArray(nodes)) return;
+                for (const node of nodes) {
+                    if (node.is_dir) {
+                        walk(node.children || []);
+                    } else if (node.path && node.path.endsWith('.md')) {
+                        flatFiles.push(node);
+                    }
+                }
+            };
+            walk(tree);
+            this.allNotes = flatFiles
                 .map(file => ({
                     name: file.path.replace('.md', '').split('/').pop(),
                     path: file.path,

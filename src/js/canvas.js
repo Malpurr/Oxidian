@@ -127,18 +127,34 @@ export class Canvas {
         document.getElementById('canvas-fit')?.addEventListener('click', () => this.fitToScreen());
         document.getElementById('canvas-save')?.addEventListener('click', () => this.saveCanvas());
 
-        // Canvas interactions
+        // Canvas interactions — mousedown on canvas for deselect/pan
         this.canvas.addEventListener('mousedown', (e) => this.onCanvasMouseDown(e));
-        this.canvas.addEventListener('mousemove', (e) => this.onCanvasMouseMove(e));
-        this.canvas.addEventListener('mouseup', (e) => this.onCanvasMouseUp(e));
         this.canvas.addEventListener('wheel', (e) => this.onCanvasWheel(e));
         this.canvas.addEventListener('dblclick', (e) => this.onCanvasDoubleClick(e));
+
+        // mousemove/mouseup on document so drag works even when pointer leaves canvas/node
+        this._boundMouseMove = (e) => this.onCanvasMouseMove(e);
+        this._boundMouseUp = (e) => this.onCanvasMouseUp(e);
+        document.addEventListener('mousemove', this._boundMouseMove);
+        document.addEventListener('mouseup', this._boundMouseUp);
+
+        // Touch support for mobile/tablet
+        this._boundTouchMove = (e) => {
+            if (this.draggedNode) {
+                e.preventDefault();
+                this.onCanvasMouseMove(e.touches[0]);
+            }
+        };
+        this._boundTouchEnd = (e) => this.onCanvasMouseUp(e);
+        document.addEventListener('touchmove', this._boundTouchMove, { passive: false });
+        document.addEventListener('touchend', this._boundTouchEnd);
 
         // Window resize
         window.addEventListener('resize', () => this.resizeCanvas());
 
-        // Keyboard shortcuts
-        document.addEventListener('keydown', (e) => this.onKeyDown(e));
+        // Keyboard shortcuts (store bound handler for cleanup)
+        this._boundKeyDown = (e) => this.onKeyDown(e);
+        document.addEventListener('keydown', this._boundKeyDown);
     }
 
     resizeCanvas() {
@@ -397,8 +413,16 @@ export class Canvas {
     }
 
     bindNodeEvents(element, node) {
-        // Make draggable
-        element.addEventListener('mousedown', (e) => this.onNodeMouseDown(e, node));
+        // Make draggable (mouse + touch), but not when interacting with inputs
+        element.addEventListener('mousedown', (e) => {
+            if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
+            this.onNodeMouseDown(e, node);
+        });
+        element.addEventListener('touchstart', (e) => {
+            if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
+            e.preventDefault();
+            this.onNodeMouseDown(e.touches[0], node);
+        }, { passive: false });
         
         // Connect button
         const connectBtn = element.querySelector('.canvas-node-connect');
@@ -444,6 +468,11 @@ export class Canvas {
 
     onCanvasMouseUp(e) {
         this.draggedNode = null;
+        // Also cancel any in-progress connection
+        if (this.isConnecting) {
+            this.isConnecting = false;
+            this.connectionStart = null;
+        }
     }
 
     onCanvasWheel(e) {
@@ -465,7 +494,7 @@ export class Canvas {
     }
 
     onNodeMouseDown(e, node) {
-        e.stopPropagation();
+        if (e.stopPropagation) e.stopPropagation();
         
         this.selectedNode = node;
         this.draggedNode = node;
@@ -594,6 +623,26 @@ export class Canvas {
 
     destroy() {
         this.stopRenderLoop();
+        if (this._boundKeyDown) {
+            document.removeEventListener('keydown', this._boundKeyDown);
+            this._boundKeyDown = null;
+        }
+        if (this._boundMouseMove) {
+            document.removeEventListener('mousemove', this._boundMouseMove);
+            this._boundMouseMove = null;
+        }
+        if (this._boundMouseUp) {
+            document.removeEventListener('mouseup', this._boundMouseUp);
+            this._boundMouseUp = null;
+        }
+        if (this._boundTouchMove) {
+            document.removeEventListener('touchmove', this._boundTouchMove);
+            this._boundTouchMove = null;
+        }
+        if (this._boundTouchEnd) {
+            document.removeEventListener('touchend', this._boundTouchEnd);
+            this._boundTouchEnd = null;
+        }
         this.nodes.clear();
         this.connections.clear();
         this.selectedNode = null;

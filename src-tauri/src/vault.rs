@@ -1,5 +1,6 @@
 use std::fs;
 use std::path::Path;
+use std::sync::LazyLock;
 use walkdir::WalkDir;
 use serde::Serialize;
 
@@ -165,10 +166,17 @@ pub fn rename_file(vault_path: &str, old_path: &str, new_path: &str) -> Result<(
     fs::rename(&old_full, &new_full).map_err(|e| format!("Failed to rename: {}", e))
 }
 
+static TAG_RE: LazyLock<regex::Regex> = LazyLock::new(|| {
+    regex::Regex::new(r"(?:^|\s)#([a-zA-Z][a-zA-Z0-9_/-]*)").unwrap()
+});
+
+static WIKI_LINK_RE: LazyLock<regex::Regex> = LazyLock::new(|| {
+    regex::Regex::new(r"\[\[([^\]]+)\]\]").unwrap()
+});
+
 /// Extract all tags (#tag) from content
 pub fn extract_tags(content: &str) -> Vec<String> {
-    let re = regex::Regex::new(r"(?:^|\s)#([a-zA-Z][a-zA-Z0-9_/-]*)").unwrap();
-    let mut tags: Vec<String> = re.captures_iter(content)
+    let mut tags: Vec<String> = TAG_RE.captures_iter(content)
         .map(|c| c[1].to_string())
         .collect();
     tags.sort();
@@ -178,8 +186,7 @@ pub fn extract_tags(content: &str) -> Vec<String> {
 
 /// Extract all wiki-links [[target]] from content
 pub fn extract_wiki_links(content: &str) -> Vec<String> {
-    let re = regex::Regex::new(r"\[\[([^\]]+)\]\]").unwrap();
-    let mut links: Vec<String> = re.captures_iter(content)
+    let mut links: Vec<String> = WIKI_LINK_RE.captures_iter(content)
         .map(|c| c[1].to_string())
         .collect();
     links.sort();

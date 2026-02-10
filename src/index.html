@@ -6,62 +6,72 @@
     <title>Oxidian</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/obsidian-features.css">
+    <link rel="stylesheet" href="css/remember.css">
 </head>
 <body>
     <div id="app">
         <div id="main-layout">
+            <!-- Mobile Hamburger Button -->
+            <button id="mobile-menu-btn" class="mobile-menu-btn" aria-label="Toggle sidebar menu" aria-expanded="false" aria-controls="sidebar">
+                <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
+            <!-- Mobile Sidebar Overlay -->
+            <div id="sidebar-overlay" class="sidebar-overlay" aria-hidden="true"></div>
             <!-- Ribbon (narrow icon strip, far left) -->
-            <nav id="ribbon">
+            <nav id="ribbon" role="navigation" aria-label="Main navigation">
                 <div class="ribbon-top">
                     <button class="ribbon-btn active" data-panel="explorer" title="File Explorer">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
+                        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
                     </button>
                     <button class="ribbon-btn" data-panel="search" title="Search">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
                     </button>
                     <button class="ribbon-btn" data-panel="bookmarks" title="Bookmarks">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>
+                        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>
                     </button>
                     <button class="ribbon-btn" data-panel="outline" title="Outline">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="6" y1="12" x2="21" y2="12"/><line x1="6" y1="18" x2="21" y2="18"/><circle cx="3" cy="12" r="1" fill="currentColor"/><circle cx="3" cy="18" r="1" fill="currentColor"/></svg>
+                        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="6" y1="12" x2="21" y2="12"/><line x1="6" y1="18" x2="21" y2="18"/><circle cx="3" cy="12" r="1" fill="currentColor"/><circle cx="3" cy="18" r="1" fill="currentColor"/></svg>
                     </button>
                     <button class="ribbon-btn" data-panel="recent" title="Recent Files">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                     </button>
                     <button class="ribbon-btn" data-action="graph" title="Graph View">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><circle cx="18" cy="6" r="3"/><path d="M8.5 7.5L15.5 16.5M15.5 7.5L8.5 16.5"/></svg>
+                        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><circle cx="18" cy="6" r="3"/><path d="M8.5 7.5L15.5 16.5M15.5 7.5L8.5 16.5"/></svg>
+                    </button>
+                    <button class="ribbon-btn" data-panel="remember" title="Remember">
+                        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C9 2 6.5 4 6 7c-1.5.5-3 2-3 4 0 2.5 2 4.5 4.5 4.5h.5c0 2 1.5 3.5 3.5 3.5h1c2 0 3.5-1.5 3.5-3.5h.5c2.5 0 4.5-2 4.5-4.5 0-2-1.5-3.5-3-4C17.5 4 15 2 12 2z"/><path d="M12 2v17"/><path d="M8 9h8"/><path d="M9 13h6"/></svg>
                     </button>
                     <button class="ribbon-btn" data-action="canvas" title="Canvas View">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><rect x="7" y="7" width="3" height="3"/><rect x="14" y="7" width="3" height="3"/><rect x="7" y="14" width="3" height="3"/><rect x="14" y="14" width="3" height="3"/></svg>
+                        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><rect x="7" y="7" width="3" height="3"/><rect x="14" y="7" width="3" height="3"/><rect x="7" y="14" width="3" height="3"/><rect x="14" y="14" width="3" height="3"/></svg>
                     </button>
                 </div>
                 <div class="ribbon-bottom">
                     <button class="ribbon-btn" data-action="daily" title="Daily Note">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                     </button>
                     <button class="ribbon-btn" data-action="focus" title="Focus Mode (Ctrl+Shift+D)">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/></svg>
+                        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/></svg>
                     </button>
                     <button class="ribbon-btn" data-action="settings" title="Settings">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+                        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
                     </button>
                 </div>
             </nav>
 
             <!-- Sidebar Panel -->
-            <aside id="sidebar">
+            <aside id="sidebar" role="complementary" aria-label="Sidebar panels">
                 <div id="panel-explorer" class="sidebar-panel active">
                     <div class="sidebar-panel-header">
                         <span class="panel-title">EXPLORER</span>
                         <div class="sidebar-actions">
                             <button class="icon-btn" id="btn-new-note" title="New Note">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
                             </button>
                             <button class="icon-btn" id="btn-new-folder" title="New Folder">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+                                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
                             </button>
                             <button class="icon-btn" id="btn-refresh" title="Refresh">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+                                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
                             </button>
                         </div>
                     </div>
@@ -79,7 +89,8 @@
                         <span class="panel-title">SEARCH</span>
                     </div>
                     <div class="search-input-wrap">
-                        <input type="text" id="search-input" placeholder="Search notes..." autocomplete="off">
+                        <label for="search-input" class="sr-only">Search notes</label>
+                        <input type="text" id="search-input" placeholder="Search notes..." autocomplete="off" aria-label="Search notes">
                     </div>
                     <div id="search-results"></div>
                 </div>
@@ -89,7 +100,7 @@
                         <span class="panel-title">BOOKMARKS</span>
                         <div class="sidebar-actions">
                             <button class="icon-btn" id="btn-bookmark-current" title="Bookmark current note">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                             </button>
                         </div>
                     </div>
@@ -103,12 +114,19 @@
                     <div id="outline-list" class="empty-panel-message">Open a note to see its outline</div>
                 </div>
 
+                <div id="panel-remember" class="sidebar-panel">
+                    <div class="sidebar-panel-header">
+                        <span class="panel-title">🧠 REMEMBER</span>
+                    </div>
+                    <div id="remember-dashboard" class="remember-dashboard"></div>
+                </div>
+
                 <div id="panel-recent" class="sidebar-panel">
                     <div class="sidebar-panel-header">
                         <span class="panel-title">RECENT FILES</span>
                         <div class="sidebar-actions">
                             <button class="icon-btn" id="btn-clear-recent" title="Clear recent files">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                             </button>
                         </div>
                     </div>
@@ -120,7 +138,7 @@
             <div id="sidebar-resize" class="resize-handle"></div>
 
             <!-- Main Content Area -->
-            <div id="content-area">
+            <main id="content-area" role="main" aria-label="Editor content">
                 <div id="tab-bar">
                     <div id="tab-list"></div>
                     <button id="tab-new-btn" title="New Tab (Ctrl+N)">+</button>
@@ -133,15 +151,15 @@
                     <div id="breadcrumb-path"></div>
                     <div id="view-toolbar">
                         <button class="view-toolbar-btn" id="btn-view-mode" title="Toggle View Mode (Ctrl+E)">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                             <span class="view-mode-label">Live Preview</span>
                         </button>
                         <button class="view-toolbar-btn" id="btn-backlinks" title="Toggle Backlinks">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+                            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
                         </button>
                         <div class="view-toolbar-dropdown-wrap">
                             <button class="view-toolbar-btn" id="btn-more-options" title="More Options">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+                                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
                             </button>
                             <div id="more-options-menu" class="dropdown-menu hidden">
                                 <div class="dropdown-item" data-action="open-in-new-pane">Open in new pane</div>
@@ -165,7 +183,7 @@
                         <div class="panel-header">
                             <span class="panel-title">BACKLINKS</span>
                             <button class="icon-btn" id="btn-close-backlinks" title="Close">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                             </button>
                         </div>
                         <div class="backlinks-panel-list"></div>
@@ -179,11 +197,11 @@
                         <p>Your open-source note-taking companion</p>
                         <div class="welcome-actions">
                             <button id="btn-welcome-daily" class="welcome-btn primary">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                                 Open Today's Daily Note
                             </button>
                             <button id="btn-welcome-new" class="welcome-btn">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
                                 Create New Note
                             </button>
                         </div>
@@ -198,18 +216,20 @@
                             <div class="shortcut"><kbd>Ctrl+,</kbd> Settings</div>
                             <div class="shortcut"><kbd>Ctrl+T</kbd> Insert Template</div>
                             <div class="shortcut"><kbd>Ctrl+Shift+D</kbd> Focus Mode</div>
+                            <div class="shortcut"><kbd>Ctrl+Shift+R</kbd> Remember Dashboard</div>
+                            <div class="shortcut"><kbd>Ctrl+Shift+E</kbd> Extract to Card</div>
                             <div class="shortcut"><kbd>/</kbd> Slash Commands</div>
                         </div>
                     </div>
                 </div>
-            </div>
+            </main>
         </div>
 
         <!-- Status Bar -->
-        <footer id="statusbar">
+        <footer id="statusbar" role="contentinfo" aria-label="Status bar">
             <div class="status-left">
                 <span id="status-backlinks">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+                    <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
                     <span id="backlink-count">0 backlinks</span>
                 </span>
             </div>
@@ -226,10 +246,11 @@
     </div>
 
     <!-- New Note Dialog -->
-    <div id="new-note-dialog" class="dialog-overlay hidden">
+    <div id="new-note-dialog" class="dialog-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="new-note-dialog-title">
         <div class="dialog">
-            <h3>New Note</h3>
-            <input type="text" id="new-note-name" placeholder="Note name..." autocomplete="off">
+            <h3 id="new-note-dialog-title">New Note</h3>
+            <label for="new-note-name" class="sr-only">Note name</label>
+            <input type="text" id="new-note-name" placeholder="Note name..." autocomplete="off" aria-label="Note name">
             <div class="dialog-actions">
                 <button id="btn-dialog-cancel" class="btn-secondary">Cancel</button>
                 <button id="btn-dialog-create" class="btn-primary">Create</button>
@@ -238,11 +259,12 @@
     </div>
 
     <!-- Password Prompt Dialog (for encrypted vaults) -->
-    <div id="password-dialog" class="dialog-overlay hidden">
+    <div id="password-dialog" class="dialog-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="password-dialog-title">
         <div class="dialog">
-            <h3>🔒 Unlock Vault</h3>
+            <h3 id="password-dialog-title">🔒 Unlock Vault</h3>
             <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 14px;">Your vault is encrypted. Enter your password to unlock.</p>
-            <input type="password" id="vault-password-input" placeholder="Enter vault password..." autocomplete="off">
+            <label for="vault-password-input" class="sr-only">Vault password</label>
+            <input type="password" id="vault-password-input" placeholder="Enter vault password..." autocomplete="off" aria-label="Vault password">
             <div id="password-error" style="color: var(--text-red); font-size: 12px; margin-bottom: 8px; display: none;">Incorrect password</div>
             <div class="dialog-actions">
                 <button id="btn-unlock-vault" class="btn-primary">Unlock</button>
@@ -254,10 +276,11 @@
     <div id="onboarding-screen" class="onboarding-overlay hidden"></div>
 
     <!-- New Folder Dialog -->
-    <div id="new-folder-dialog" class="dialog-overlay hidden">
+    <div id="new-folder-dialog" class="dialog-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="new-folder-dialog-title">
         <div class="dialog">
-            <h3>📁 New Folder</h3>
-            <input type="text" id="new-folder-name" placeholder="Folder name..." autocomplete="off">
+            <h3 id="new-folder-dialog-title">📁 New Folder</h3>
+            <label for="new-folder-name" class="sr-only">Folder name</label>
+            <input type="text" id="new-folder-name" placeholder="Folder name..." autocomplete="off" aria-label="Folder name">
             <div class="dialog-actions">
                 <button id="btn-folder-cancel" class="btn-secondary">Cancel</button>
                 <button id="btn-folder-create" class="btn-primary">Create</button>
@@ -269,15 +292,15 @@
     <div id="context-menu" class="context-menu hidden"></div>
 
     <!-- Settings Dialog (legacy, hidden — settings now opens as tab) -->
-    <div id="settings-dialog" class="dialog-overlay hidden">
+    <div id="settings-dialog" class="dialog-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="settings-dialog-title">
         <div class="dialog dialog-lg">
-            <h3>Settings</h3>
+            <h3 id="settings-dialog-title">Settings</h3>
             <div class="settings-group">
-                <label>Editor Font Family</label>
+                <label for="setting-font-family">Editor Font Family</label>
                 <input type="text" id="setting-font-family" value="JetBrains Mono, Fira Code, Consolas, monospace">
             </div>
             <div class="settings-group">
-                <label>Editor Font Size</label>
+                <label for="setting-font-size">Editor Font Size</label>
                 <input type="range" id="setting-font-size" min="12" max="24" value="15">
                 <span id="setting-font-size-val">15px</span>
             </div>
@@ -286,6 +309,46 @@
             </div>
         </div>
     </div>
+
+    <!-- Skip to content link -->
+    <a href="#content-area" class="skip-link">Skip to content</a>
+
+    <script>
+        // Mobile sidebar toggle
+        document.addEventListener('DOMContentLoaded', () => {
+            const menuBtn = document.getElementById('mobile-menu-btn');
+            const overlay = document.getElementById('sidebar-overlay');
+            
+            const toggleMobileSidebar = () => {
+                const isOpen = document.body.classList.toggle('sidebar-mobile-open');
+                menuBtn.setAttribute('aria-expanded', isOpen);
+                overlay.setAttribute('aria-hidden', !isOpen);
+            };
+            
+            const closeMobileSidebar = () => {
+                document.body.classList.remove('sidebar-mobile-open');
+                menuBtn.setAttribute('aria-expanded', 'false');
+                overlay.setAttribute('aria-hidden', 'true');
+            };
+            
+            menuBtn?.addEventListener('click', toggleMobileSidebar);
+            overlay?.addEventListener('click', closeMobileSidebar);
+            
+            // Escape closes mobile sidebar
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    if (document.body.classList.contains('sidebar-mobile-open')) {
+                        closeMobileSidebar();
+                        menuBtn.focus();
+                    }
+                    // Close any visible dialog
+                    document.querySelectorAll('.dialog-overlay:not(.hidden)').forEach(d => {
+                        d.classList.add('hidden');
+                    });
+                }
+            });
+        });
+    </script>
 
     <script>
         // Password unlock handler (before modules load)
@@ -325,6 +388,19 @@
     </script>
     <script src="js/obsidian-api.js" type="module"></script>
     <script src="js/plugin-loader.js" type="module"></script>
+    <script src="js/command-palette.js" type="module"></script>
+    <script src="js/bookmarks.js" type="module"></script>
+    <script src="js/daily-notes.js" type="module"></script>
+    <script src="js/nav-history.js" type="module"></script>
+    <script src="js/remember.js" type="module"></script>
+    <script src="js/remember-sources.js" type="module"></script>
+    <script src="js/remember-cards.js" type="module"></script>
+    <script src="js/remember-review.js" type="module"></script>
+    <script src="js/remember-stats.js" type="module"></script>
+    <script src="js/remember-dashboard.js" type="module"></script>
+    <script src="js/remember-connections.js" type="module"></script>
+    <script src="js/remember-extract.js" type="module"></script>
+    <script src="js/remember-import.js" type="module"></script>
     <script src="js/app.js" type="module"></script>
 </body>
 </html>

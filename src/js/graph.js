@@ -103,9 +103,29 @@ export class GraphView {
             }
             this.draw();
             iterations++;
+            // PERF FIX: Stop animation loop once simulation has settled
+            if (iterations >= maxIterations && !this.dragging && !this.isPanning) {
+                this.animId = null;
+                return; // Stop — no more CPU usage when idle
+            }
             this.animId = requestAnimationFrame(tick);
         };
         tick();
+    }
+
+    // PERF FIX: Resume animation on interaction (drag/pan triggers redraw)
+    _ensureAnimating() {
+        if (!this.animId) {
+            const redraw = () => {
+                this.draw();
+                if (this.dragging || this.isPanning) {
+                    this.animId = requestAnimationFrame(redraw);
+                } else {
+                    this.animId = null;
+                }
+            };
+            this.animId = requestAnimationFrame(redraw);
+        }
     }
 
     simulateStep(alpha) {
@@ -229,6 +249,7 @@ export class GraphView {
             this.isPanning = true;
         }
         this.lastMouse = { x: e.clientX, y: e.clientY };
+        this._ensureAnimating();
     }
 
     onMouseMove(e) {
@@ -264,6 +285,7 @@ export class GraphView {
         e.preventDefault();
         const factor = e.deltaY > 0 ? 0.92 : 1.08;
         this.scale = Math.max(0.2, Math.min(4, this.scale * factor));
+        this._ensureAnimating();
     }
 
     onDblClick(e) {

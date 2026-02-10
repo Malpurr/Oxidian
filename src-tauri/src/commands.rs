@@ -48,13 +48,25 @@ pub fn save_note(state: State<AppState>, path: String, content: String) -> Resul
     let mut search = state.search_index.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     search.index_note(&vault_path, &path, &content)?;
 
+    // Update metadata cache
+    if let Ok(mut cache) = state.meta_cache.lock() {
+        cache.update_file(&path, &content);
+    }
+
     Ok(())
 }
 
 #[tauri::command]
 pub fn delete_note(state: State<AppState>, path: String) -> Result<(), String> {
     let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
-    vault::delete_note(&vault_path, &path)
+    vault::delete_note(&vault_path, &path)?;
+
+    // Remove from metadata cache
+    if let Ok(mut cache) = state.meta_cache.lock() {
+        cache.remove_file(&path);
+    }
+
+    Ok(())
 }
 
 #[tauri::command]
@@ -111,6 +123,11 @@ pub fn set_vault_path(state: State<AppState>, path: String) -> Result<(), String
     let mut search = state.search_index.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
     search.reindex_vault(&path)?;
 
+    // Rebuild metadata cache for new vault
+    if let Ok(mut cache) = state.meta_cache.lock() {
+        cache.rebuild(&path);
+    }
+
     Ok(())
 }
 
@@ -128,14 +145,22 @@ pub fn rename_file(state: State<AppState>, old_path: String, new_path: String) -
 
 #[tauri::command]
 pub fn get_tags(state: State<AppState>) -> Result<Vec<String>, String> {
-    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
-    Ok(vault::collect_all_tags(&vault_path))
+    let mut cache = state.meta_cache.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+    if cache.is_stale(30) {
+        let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+        cache.rebuild(&vault_path);
+    }
+    Ok(cache.all_tags())
 }
 
 #[tauri::command]
 pub fn get_backlinks(state: State<AppState>, note_path: String) -> Result<Vec<String>, String> {
-    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
-    Ok(vault::find_backlinks(&vault_path, &note_path))
+    let mut cache = state.meta_cache.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+    if cache.is_stale(30) {
+        let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+        cache.rebuild(&vault_path);
+    }
+    Ok(cache.find_backlinks(&note_path))
 }
 
 #[derive(Debug, Serialize)]
@@ -158,25 +183,26 @@ pub struct GraphData {
 
 #[tauri::command]
 pub fn get_graph_data(state: State<AppState>) -> Result<GraphData, String> {
-    let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
-    let files = vault::build_file_tree(&vault_path);
+    let mut cache = state.meta_cache.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+    if cache.is_stale(30) {
+        let vault_path = state.vault_path.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
+        cache.rebuild(&vault_path);
+    }
 
     let mut nodes = Vec::new();
     let mut edges = Vec::new();
 
-    fn collect_files(file_nodes: &[vault::FileNode], result: &mut Vec<(String, String)>) {
-        for node in file_nodes {
-            if node.is_dir {
-                collect_files(&node.children, result);
-            } else {
-                let name = node.name.trim_end_matches(".md").to_string();
-                result.push((node.path.clone(), name));
-            }
-        }
-    }
-
-    let mut all_files = Vec::new();
-    collect_files(&files, &mut all_files);
+    // Build name lookup: path → stem name
+    let all_files: Vec<(String, String)> = cache.entries.keys()
+        .map(|path| {
+            let name = std::path::Path::new(path)
+                .file_stem()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .to_string();
+            (path.clone(), name)
+        })
+        .collect();
 
     for (path, name) in &all_files {
         nodes.push(GraphNode {
@@ -186,11 +212,12 @@ pub fn get_graph_data(state: State<AppState>) -> Result<GraphData, String> {
     }
 
     for (path, _) in &all_files {
-        if let Ok(content) = vault::read_note(&vault_path, path) {
-            let links = vault::extract_wiki_links(&content);
+        if let Some((_, links)) = cache.entries.get(path) {
             for link in links {
+                // Strip display text from [[target|display]]
+                let target = link.split('|').next().unwrap_or(link);
                 if let Some((target_path, _)) = all_files.iter().find(|(_, name)| {
-                    name == &link || link.ends_with(&format!("/{}", name))
+                    name == target || target.ends_with(&format!("/{}", name))
                 }) {
                     edges.push(GraphEdge {
                         source: path.clone(),
