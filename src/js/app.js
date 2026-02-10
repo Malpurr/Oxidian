@@ -1043,7 +1043,7 @@ class OxidianApp {
         this.tabManager.openTab('__settings__', 'Settings', 'settings');
     }
 
-    showSettingsPane(pane = 0) {
+    async showSettingsPane(pane = 0) {
         if (this.isDirty && this.currentFile) {
             this.saveCurrentFile();
         }
@@ -1051,21 +1051,33 @@ class OxidianApp {
         this.hideWelcome();
         this.updateBreadcrumb('');
 
-        if (pane === 0 && !this.tabManager.splitActive) {
-            this.clearPanes();
+        try {
+            if (pane === 0 && !this.tabManager.splitActive) {
+                this.clearPanes();
+                const container = document.getElementById('pane-container');
+                const settingsDiv = document.createElement('div');
+                settingsDiv.className = 'pane settings-pane';
+                settingsDiv.id = 'left-pane';
+                container.insertBefore(settingsDiv, container.firstChild);
+                await this.settingsPage.show(settingsDiv);
+            } else {
+                const paneId = pane === 0 ? 'left-pane' : 'right-pane';
+                let paneEl = document.getElementById(paneId);
+                if (paneEl) {
+                    paneEl.innerHTML = '';
+                    paneEl.className = 'pane settings-pane';
+                    await this.settingsPage.show(paneEl);
+                }
+            }
+        } catch (err) {
+            console.error('Failed to show settings:', err);
             const container = document.getElementById('pane-container');
-            const settingsDiv = document.createElement('div');
-            settingsDiv.className = 'pane settings-pane';
-            settingsDiv.id = 'left-pane';
-            container.insertBefore(settingsDiv, container.firstChild);
-            this.settingsPage.show(settingsDiv);
-        } else {
-            const paneId = pane === 0 ? 'left-pane' : 'right-pane';
-            let paneEl = document.getElementById(paneId);
-            if (paneEl) {
-                paneEl.innerHTML = '';
-                paneEl.className = 'pane settings-pane';
-                this.settingsPage.show(paneEl);
+            const leftPane = document.getElementById('left-pane') || container?.firstChild;
+            if (leftPane) {
+                leftPane.innerHTML = `<div style="padding:40px;color:var(--text-secondary);">
+                    <h2 style="color:var(--text-primary);margin-bottom:16px;">⚙️ Settings</h2>
+                    <p>Settings could not be loaded. Error: ${err?.message || err}</p>
+                </div>`;
             }
         }
     }
