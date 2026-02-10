@@ -135,26 +135,31 @@ class OxidianApp {
     }
 
     async init() {
-        // Initialize components
-        this.editor = new Editor(this);
-        this.contextMenu = new ContextMenu(this);
-        this.tabManager = new TabManager(this);
-        this.sidebar = new Sidebar(this);
-        this.search = new Search(this);
-        this.themeManager = new ThemeManager(this);
-        this.slashMenu = new SlashMenu(this);
-        this.settingsPage = new SettingsPage(this);
-        this.onboarding = new Onboarding(this);
-        this.updateManager = new UpdateManager(this);
-        this.backlinksManager = new BacklinksManager(this);
-        this.templateManager = new TemplateManager(this);
-        this.quickSwitcher = new QuickSwitcher(this);
-        this.calloutProcessor = new CalloutProcessor();
-        this.mermaidRenderer = new MermaidRenderer();
-        this.findReplace = new FindReplace(this);
-        this.embedProcessor = new EmbedProcessor(this);
-        this.frontmatterProcessor = new FrontmatterProcessor(this);
-        this.linkHandler = new LinkHandler(this);
+        // Initialize components (each wrapped for stability)
+        const safeInit = (name, factory) => {
+            try { return factory(); }
+            catch (err) { console.error(`[Oxidian] Init "${name}" failed:`, err); return null; }
+        };
+
+        this.editor = safeInit('Editor', () => new Editor(this));
+        this.contextMenu = safeInit('ContextMenu', () => new ContextMenu(this));
+        this.tabManager = safeInit('TabManager', () => new TabManager(this));
+        this.sidebar = safeInit('Sidebar', () => new Sidebar(this));
+        this.search = safeInit('Search', () => new Search(this));
+        this.themeManager = safeInit('ThemeManager', () => new ThemeManager(this));
+        this.slashMenu = safeInit('SlashMenu', () => new SlashMenu(this));
+        this.settingsPage = safeInit('SettingsPage', () => new SettingsPage(this));
+        this.onboarding = safeInit('Onboarding', () => new Onboarding(this));
+        this.updateManager = safeInit('UpdateManager', () => new UpdateManager(this));
+        this.backlinksManager = safeInit('BacklinksManager', () => new BacklinksManager(this));
+        this.templateManager = safeInit('TemplateManager', () => new TemplateManager(this));
+        this.quickSwitcher = safeInit('QuickSwitcher', () => new QuickSwitcher(this));
+        this.calloutProcessor = safeInit('CalloutProcessor', () => new CalloutProcessor());
+        this.mermaidRenderer = safeInit('MermaidRenderer', () => new MermaidRenderer());
+        this.findReplace = safeInit('FindReplace', () => new FindReplace(this));
+        this.embedProcessor = safeInit('EmbedProcessor', () => new EmbedProcessor(this));
+        this.frontmatterProcessor = safeInit('FrontmatterProcessor', () => new FrontmatterProcessor(this));
+        this.linkHandler = safeInit('LinkHandler', () => new LinkHandler(this));
 
         // Initialize NEW OBSIDIAN CORE FEATURES (each wrapped in try/catch for stability)
         const safeInitModule = (name, factory) => {
@@ -198,10 +203,10 @@ class OxidianApp {
         this._fileTreeCacheTime = 0;
         this._fileTreeCacheTTL = 5000; // 5 seconds
 
-        await this.themeManager.init();
+        try { await this.themeManager?.init(); } catch(e) { console.error('[Oxidian] themeManager.init failed:', e); }
 
         // Load and apply settings
-        await this.applySettings();
+        try { await this.applySettings(); } catch(e) { console.error('[Oxidian] applySettings failed:', e); }
 
         // Global navigation
         window.navigateToNote = (target) => this.navigateToNote(target);
@@ -258,11 +263,11 @@ class OxidianApp {
 
         // Bookmarks
         document.getElementById('btn-bookmark-current')?.addEventListener('click', () => this.toggleBookmark());
-        this.renderBookmarks();
+        try { this.renderBookmarks(); } catch(e) { console.error('[Oxidian] renderBookmarks failed:', e); }
 
         // Recent files
         document.getElementById('btn-clear-recent')?.addEventListener('click', () => { this.recentFiles = []; localStorage.setItem('oxidian-recent', '[]'); this.renderRecentFiles(); });
-        this.renderRecentFiles();
+        try { this.renderRecentFiles(); } catch(e) { console.error('[Oxidian] renderRecentFiles failed:', e); }
 
         // Sidebar buttons
         document.getElementById('btn-new-note')?.addEventListener('click', () => this.showNewNoteDialog());
@@ -293,7 +298,7 @@ class OxidianApp {
         document.addEventListener('keydown', (e) => this.handleKeyboard(e));
 
         // Sidebar resize
-        this.initSidebarResize();
+        try { this.initSidebarResize(); } catch(e) { console.error('[Oxidian] initSidebarResize failed:', e); }
 
         // Window close handler — save dirty files before exit
         window.addEventListener('beforeunload', (e) => {
@@ -309,17 +314,18 @@ class OxidianApp {
         });
 
         // Check for first launch / onboarding
-        const firstLaunch = await this.onboarding.shouldShow();
-        if (firstLaunch) {
-            this.onboarding.show();
-        } else {
-            // Check if vault is encrypted and needs unlocking
-            await this.checkVaultLock();
-        }
+        try {
+            const firstLaunch = await this.onboarding?.shouldShow();
+            if (firstLaunch) {
+                this.onboarding.show();
+            } else {
+                await this.checkVaultLock();
+            }
+        } catch(e) { console.error('[Oxidian] onboarding check failed:', e); }
 
         // Load initial data
-        await this.sidebar.refresh();
-        await this.loadTags();
+        try { await this.sidebar?.refresh(); } catch(e) { console.error('[Oxidian] sidebar refresh failed:', e); }
+        try { await this.loadTags(); } catch(e) { console.error('[Oxidian] loadTags failed:', e); }
         
         // Initialize File Explorer drag & drop after sidebar is loaded
         this.initFileExplorerDragDrop();
@@ -2234,7 +2240,19 @@ class OxidianApp {
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    window.oxidianApp = new OxidianApp();
-    window.app = window.oxidianApp; // Backward compatibility
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        window.oxidianApp = new OxidianApp();
+        window.app = window.oxidianApp; // Backward compatibility
+    } catch(e) {
+        console.error('[Oxidian] FATAL: App initialization failed:', e);
+        // Show error on welcome screen so user knows something broke
+        const ws = document.getElementById('welcome-screen');
+        if (ws) {
+            const errDiv = document.createElement('div');
+            errDiv.style.cssText = 'color:#f38ba8;font-size:12px;margin-top:16px;padding:12px;background:rgba(243,139,168,0.1);border-radius:8px;text-align:left;max-width:400px;margin-left:auto;margin-right:auto;';
+            errDiv.textContent = 'Init error: ' + e.message + '. Check DevTools console (Ctrl+Shift+I).';
+            ws.querySelector('.welcome-content')?.appendChild(errDiv);
+        }
+    }
 });
