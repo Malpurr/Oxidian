@@ -1,4 +1,5 @@
 // Oxidian — Search Component
+// Search logic via Rust invoke(), UI/rendering stays JS.
 const { invoke } = window.__TAURI__.core;
 
 export class Search {
@@ -12,7 +13,6 @@ export class Search {
     }
 
     init() {
-        // *** FIX: Null safety checks ***
         if (!this.input || !this.results) {
             console.error('Search input or results container not found');
             return;
@@ -20,17 +20,19 @@ export class Search {
 
         this.input.addEventListener('input', () => {
             clearTimeout(this.searchTimeout);
-            // *** FIX: Improved debouncing - shorter delay for better UX ***
             this.searchTimeout = setTimeout(() => {
                 const query = this.input.value.trim();
                 if (query.length >= 2) {
                     this.performSearch(query).catch(err => {
                         console.error('Search error:', err);
                     });
-                } else {
+                } else if (query.length === 0) {
                     this.results.innerHTML = '';
+                } else {
+                    // 1 char: show suggestions
+                    this.showSuggestions(query);
                 }
-            }, 200); // Reduced from 250ms to 200ms
+            }, 200);
         });
 
         this.input.addEventListener('keydown', (e) => {
@@ -45,7 +47,6 @@ export class Search {
         });
     }
 
-    /** Show the search panel in sidebar */
     show() {
         this.app.switchSidebarPanel('search');
         setTimeout(() => {
@@ -58,39 +59,59 @@ export class Search {
         this.input.value = query;
     }
 
+    /**
+     * Full-text search via Rust backend.
+     */
     async performSearch(query) {
-        // *** FIX: Null safety check ***
         if (!this.results) return;
-        
+
         try {
-            const results = await invoke('search_notes', { query });
+            // Detect tag search: queries starting with # use tag search
+            let results;
+            if (query.startsWith('#')) {
+                const tag = query.slice(1);
+                results = await invoke('search_by_tag', { tag });
+            } else {
+                results = await invoke('search_vault', { query, options: {} });
+            }
             this.renderResults(results);
         } catch (err) {
             console.error('Search failed:', err);
-            
-            // *** FIX: Better error handling and user feedback ***
             this.app?.showErrorToast?.(`Search failed: ${err.message || err}`);
-            
-            const errDiv = document.createElement('div');
-            errDiv.className = 'search-result-item';
-            errDiv.style.color = 'var(--text-error, #dc2626)';
-            errDiv.style.padding = '8px 12px';
-            errDiv.innerHTML = `
-                <div style="font-weight: 500;">Search Error</div>
-                <div style="font-size: 0.9em; opacity: 0.8;">${this.escapeHtml(err.message || err.toString())}</div>
-            `;
-            this.results.innerHTML = '';
-            this.results.appendChild(errDiv);
+            this.renderError(err);
+        }
+    }
+
+    /**
+     * Fuzzy search for quick results.
+     */
+    async performFuzzySearch(query) {
+        if (!this.results) return;
+        try {
+            const results = await invoke('fuzzy_search', { query });
+            this.renderResults(results);
+        } catch (err) {
+            console.error('Fuzzy search failed:', err);
+        }
+    }
+
+    /**
+     * Show search suggestions for short prefixes.
+     */
+    async showSuggestions(prefix) {
+        if (!this.results) return;
+        try {
+            const suggestions = await invoke('search_suggest', { prefix });
+            this.renderSuggestions(suggestions);
+        } catch (err) {
+            // Silently ignore suggestion errors
         }
     }
 
     renderResults(results) {
-        // *** FIX: Null safety check ***
         if (!this.results) return;
-        
         this.results.innerHTML = '';
 
-        // *** FIX: Ensure results is an array ***
         if (!Array.isArray(results)) {
             console.warn('Invalid search results data');
             results = [];
@@ -106,34 +127,58 @@ export class Search {
         }
 
         for (const result of results) {
-            // *** FIX: Skip invalid results ***
-            if (!result || !result.path) {
-                console.warn('Invalid search result:', result);
-                continue;
-            }
-            
+            if (!result || !result.path) continue;
+
             try {
                 const item = document.createElement('div');
                 item.className = 'search-result-item';
-
                 item.innerHTML = `
                     <div class="search-result-title">${this.escapeHtml(result.title || result.path)}</div>
                     <div class="search-result-path">${this.escapeHtml(result.path)}</div>
                     <div class="search-result-snippet">${this.escapeHtml(result.snippet || '')}</div>
                 `;
-
                 item.addEventListener('click', () => {
                     if (this.app?.openFile) {
                         this.app.openFile(result.path);
                     }
                 });
-
                 this.results.appendChild(item);
             } catch (err) {
                 console.error('Failed to render search result:', err, result);
-                // Continue with other results
             }
         }
+    }
+
+    renderSuggestions(suggestions) {
+        if (!this.results) return;
+        this.results.innerHTML = '';
+
+        if (!Array.isArray(suggestions) || suggestions.length === 0) return;
+
+        for (const suggestion of suggestions) {
+            const item = document.createElement('div');
+            item.className = 'search-result-item search-suggestion';
+            item.textContent = suggestion;
+            item.addEventListener('click', () => {
+                this.input.value = suggestion;
+                this.performSearch(suggestion);
+            });
+            this.results.appendChild(item);
+        }
+    }
+
+    renderError(err) {
+        if (!this.results) return;
+        const errDiv = document.createElement('div');
+        errDiv.className = 'search-result-item';
+        errDiv.style.color = 'var(--text-error, #dc2626)';
+        errDiv.style.padding = '8px 12px';
+        errDiv.innerHTML = `
+            <div style="font-weight: 500;">Search Error</div>
+            <div style="font-size: 0.9em; opacity: 0.8;">${this.escapeHtml(err.message || err.toString())}</div>
+        `;
+        this.results.innerHTML = '';
+        this.results.appendChild(errDiv);
     }
 
     escapeHtml(text) {

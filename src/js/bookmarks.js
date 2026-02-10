@@ -1,6 +1,7 @@
 // Oxidian — Bookmarks / Favoriten Module
-// Enhances the existing bookmarks panel with star toggle, context menu integration,
-// and persistent storage. Works with the bookmarks infrastructure already in app.js.
+// UI-only: star toggle, context menu integration, bookmark panel
+// All data/logic via Rust invoke()
+const { invoke } = window.__TAURI__.core;
 
 export class BookmarksManager {
     constructor(app) {
@@ -9,9 +10,61 @@ export class BookmarksManager {
         this._initStarButton();
     }
 
+    // --- Data Layer (all via Rust) ---
+
+    async listBookmarks() {
+        try {
+            return await invoke('list_bookmarks');
+        } catch (err) {
+            console.error('Failed to list bookmarks:', err);
+            return [];
+        }
+    }
+
+    async addBookmark(path) {
+        try {
+            await invoke('add_bookmark', { path });
+            this.refresh();
+        } catch (err) {
+            console.error('Failed to add bookmark:', err);
+        }
+    }
+
+    async removeBookmark(path) {
+        try {
+            await invoke('remove_bookmark', { path });
+            this.refresh();
+        } catch (err) {
+            console.error('Failed to remove bookmark:', err);
+        }
+    }
+
+    async reorderBookmarks(paths) {
+        try {
+            await invoke('reorder_bookmarks', { paths });
+        } catch (err) {
+            console.error('Failed to reorder bookmarks:', err);
+        }
+    }
+
+    async toggleBookmark(path) {
+        const bookmarks = await this.listBookmarks();
+        if (bookmarks.includes(path)) {
+            await this.removeBookmark(path);
+        } else {
+            await this.addBookmark(path);
+        }
+    }
+
+    async isBookmarked(path) {
+        const bookmarks = await this.listBookmarks();
+        return bookmarks.includes(path);
+    }
+
+    // --- UI Layer (DOM, events) ---
+
     /**
      * Add "Toggle Bookmark" to the file-tree context menu entries.
-     * Listens for right-click on sidebar file items.
      */
     _initContextMenuIntegration() {
         const fileTree = document.getElementById('file-tree');
@@ -23,16 +76,14 @@ export class BookmarksManager {
             const path = item.dataset.path;
             if (!path || !path.endsWith('.md')) return;
 
-            // Defer — let the existing contextMenu build first, then inject our item
-            setTimeout(() => {
+            setTimeout(async () => {
                 const menu = document.getElementById('context-menu') || document.querySelector('.context-menu');
                 if (!menu) return;
 
-                // Avoid duplicates
                 if (menu.querySelector('[data-action="toggle-bookmark"]')) return;
 
-                const isBookmarked = (this.app.bookmarks || []).includes(path);
-                const label = isBookmarked ? 'Remove Bookmark' : 'Add to Bookmarks';
+                const bookmarked = await this.isBookmarked(path);
+                const label = bookmarked ? 'Remove Bookmark' : 'Add to Bookmarks';
 
                 const sep = document.createElement('div');
                 sep.className = 'context-menu-sep';
@@ -43,7 +94,7 @@ export class BookmarksManager {
                 bmItem.dataset.action = 'toggle-bookmark';
                 bmItem.innerHTML = `<span class="icon">⭐</span> ${label}`;
                 bmItem.addEventListener('click', () => {
-                    this.app.toggleBookmark(path);
+                    this.toggleBookmark(path);
                     this.app.contextMenu?.hide();
                 });
                 menu.appendChild(bmItem);
@@ -52,21 +103,15 @@ export class BookmarksManager {
     }
 
     /**
-     * Wire up the existing star button (#btn-bookmark-current) in the sidebar header
-     * to also show visual feedback.
+     * Wire up the star button (#btn-bookmark-current) in the sidebar header.
      */
     _initStarButton() {
         const btn = document.getElementById('btn-bookmark-current');
         if (!btn) return;
 
-        // Update star icon state whenever the current file changes
-        const origOpenFile = this.app.openFile.bind(this.app);
-        const self = this;
-
-        // Use a MutationObserver on breadcrumb to detect file changes
         const bc = document.getElementById('breadcrumb-path');
         if (bc) {
-            const observer = new MutationObserver(() => self._updateStarState());
+            const observer = new MutationObserver(() => this._updateStarState());
             observer.observe(bc, { childList: true, subtree: true });
         }
 
@@ -76,29 +121,28 @@ export class BookmarksManager {
     /**
      * Update the star button's active state based on current file.
      */
-    _updateStarState() {
+    async _updateStarState() {
         const btn = document.getElementById('btn-bookmark-current');
         if (!btn) return;
 
-        const isBookmarked = this.app.currentFile && (this.app.bookmarks || []).includes(this.app.currentFile);
-        btn.classList.toggle('active', !!isBookmarked);
-        btn.title = isBookmarked ? 'Remove bookmark' : 'Bookmark current note';
+        const bookmarked = this.app.currentFile ? await this.isBookmarked(this.app.currentFile) : false;
+        btn.classList.toggle('active', bookmarked);
+        btn.title = bookmarked ? 'Remove bookmark' : 'Bookmark current note';
 
-        // Update icon fill
         const svg = btn.querySelector('svg');
         if (svg) {
             const path = svg.querySelector('path');
             if (path) {
-                path.setAttribute('fill', isBookmarked ? 'currentColor' : 'none');
+                path.setAttribute('fill', bookmarked ? 'currentColor' : 'none');
             }
         }
     }
 
     /**
-     * Override renderBookmarks to also update star state.
+     * Refresh bookmark panel and star state.
      */
     refresh() {
-        this.app.renderBookmarks();
+        this.app.renderBookmarks?.();
         this._updateStarState();
     }
 }

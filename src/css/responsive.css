@@ -1,0 +1,267 @@
+/* ===== Oxidian — Responsive Styles ===== */
+
+/* ===== Focus Visible (keyboard vs mouse) ===== */
+*:focus {
+  outline: none;
+}
+
+*:focus-visible {
+  outline: 2px solid var(--text-accent, #7f6df2);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* ===== Tablet — max 768px ===== */
+@media (max-width: 768px) {
+  /* Sidebar becomes overlay */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 500;
+    width: 280px;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.4);
+  }
+
+  .sidebar.is-open {
+    transform: translateX(0);
+  }
+
+  /* Sidebar backdrop */
+  .sidebar-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 499;
+    background: rgba(0, 0, 0, 0.5);
+  }
+
+  .sidebar-backdrop.is-visible {
+    display: block;
+  }
+
+  /* Ribbon shrinks */
+  .ribbon {
+    width: 40px;
+    min-width: 40px;
+  }
+
+  .ribbon-btn {
+    width: 32px;
+    height: 32px;
+    padding: 6px;
+  }
+
+  /* Sidebar resize handle hidden */
+  .sidebar-resize-handle {
+    display: none;
+  }
+
+  /* Tab bar scrollable */
+  .tab-bar {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    flex-shrink: 0;
+  }
+
+  .tab-bar::-webkit-scrollbar {
+    height: 3px;
+  }
+
+  .tab {
+    min-width: 100px;
+    flex-shrink: 0;
+  }
+
+  /* Editor padding */
+  .editor-container {
+    padding: 16px 12px;
+  }
+
+  /* Right panel overlay */
+  .right-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 500;
+    width: 300px;
+    max-width: 85vw;
+    transform: translateX(100%);
+    transition: transform 0.25s ease;
+    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.4);
+  }
+
+  .right-panel[aria-hidden="false"],
+  .right-panel:not([hidden]) {
+    transform: translateX(0);
+  }
+
+  /* Settings single column */
+  .settings-modal-body {
+    flex-direction: column;
+  }
+
+  .settings-nav {
+    flex-direction: row;
+    overflow-x: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border-color, #2a2a3c);
+    min-width: unset;
+    width: 100%;
+  }
+
+  .settings-page .settings-body {
+    flex-direction: column;
+  }
+
+  .settings-page .settings-nav {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-right: none;
+    border-bottom: 1px solid var(--border-color, #2a2a3c);
+  }
+
+  /* Command Palette wider */
+  .command-palette,
+  .quick-switcher {
+    width: 95vw;
+    max-width: 95vw;
+  }
+
+  /* Graph/Canvas touch targets */
+  .graph-node,
+  .canvas-node,
+  .canvas-handle {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+/* ===== Mobile — max 480px ===== */
+@media (max-width: 480px) {
+  /* Hide ribbon, use hamburger */
+  .ribbon {
+    display: none;
+  }
+
+  /* Sidebar full width */
+  .sidebar {
+    width: 100vw;
+  }
+
+  /* Tab bar compact */
+  .tab {
+    min-width: 80px;
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+
+  .tab-close {
+    width: 16px;
+    height: 16px;
+    font-size: 12px;
+  }
+
+  /* Editor full-bleed */
+  .editor-container {
+    padding: 12px 8px;
+    font-size: 14px;
+  }
+
+  /* Status bar compact */
+  .status-bar {
+    font-size: 11px;
+    padding: 2px 8px;
+  }
+
+  .status-bar-left,
+  .status-bar-right {
+    gap: 6px;
+  }
+
+  /* Modals full-width */
+  .command-palette,
+  .quick-switcher {
+    width: 100vw;
+    max-width: 100vw;
+    border-radius: 0;
+    top: 0;
+    margin-top: 0;
+  }
+
+  .modal-overlay {
+    align-items: flex-start;
+  }
+
+  /* Settings full-screen */
+  .settings-modal {
+    width: 100vw;
+    height: 100vh;
+    max-width: 100vw;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+
+  /* Right panel full width */
+  .right-panel {
+    width: 100vw;
+  }
+
+  /* Font adjustments */
+  .sidebar-title {
+    font-size: 13px;
+  }
+
+  .tree-item .name {
+    font-size: 13px;
+  }
+
+  /* Touch-friendly buttons */
+  button,
+  .tree-item,
+  .sidebar-action-btn,
+  .ribbon-btn,
+  .tab,
+  .command-palette-results [role="option"],
+  .quick-switcher-results [role="option"] {
+    min-height: 44px;
+  }
+
+  /* Graph larger touch targets */
+  .graph-node {
+    min-width: 48px;
+    min-height: 48px;
+  }
+}
+
+/* ===== Print ===== */
+@media print {
+  .ribbon,
+  .sidebar,
+  .tab-bar,
+  .status-bar,
+  .right-panel,
+  .modal-overlay,
+  .toast-container,
+  .skip-link {
+    display: none !important;
+  }
+
+  .main-content {
+    margin: 0;
+    padding: 0;
+  }
+
+  .editor-container {
+    padding: 0;
+    max-width: 100%;
+  }
+}

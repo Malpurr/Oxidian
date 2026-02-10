@@ -1,4 +1,6 @@
 // Oxidian — Sidebar / File Tree Component
+// UI-only: DOM rendering, drag/drop, context menu, expand/collapse
+// All data/logic via Rust invoke()
 const { invoke } = window.__TAURI__.core;
 
 export class Sidebar {
@@ -9,26 +11,104 @@ export class Sidebar {
         this.openFolders = new Set();
     }
 
+    // --- Data Layer (all via Rust) ---
+
     async refresh() {
         try {
-            const files = await invoke('list_files');
-            this.render(files);
+            const tree = await invoke('scan_vault', { path: this.app.vaultPath || '' });
+            this.render(tree.children || []);
         } catch (err) {
-            console.error('Failed to list files:', err);
-            // *** FIX: Show error to user and render empty state ***
+            console.error('Failed to scan vault:', err);
             this.app?.showErrorToast?.(`Failed to load file list: ${err.message || err}`);
-            this.render([]); // Render empty state instead of leaving UI broken
+            this.render([]);
         }
     }
 
+    async createFile(path) {
+        try {
+            await invoke('create_file', { path });
+            await this.refresh();
+            return true;
+        } catch (err) {
+            console.error('Failed to create file:', err);
+            this.app?.showErrorToast?.(`Failed to create file: ${err.message || err}`);
+            return false;
+        }
+    }
+
+    async createFolder(path) {
+        try {
+            await invoke('create_folder', { path });
+            await this.refresh();
+            return true;
+        } catch (err) {
+            console.error('Failed to create folder:', err);
+            this.app?.showErrorToast?.(`Failed to create folder: ${err.message || err}`);
+            return false;
+        }
+    }
+
+    async renameFile(oldPath, newPath) {
+        try {
+            await invoke('rename_file', { oldPath, newPath });
+            await this.refresh();
+            return true;
+        } catch (err) {
+            console.error('Failed to rename file:', err);
+            this.app?.showErrorToast?.(`Failed to rename: ${err.message || err}`);
+            return false;
+        }
+    }
+
+    async deleteNote(path) {
+        try {
+            await invoke('delete_note', { path });
+            await this.refresh();
+            return true;
+        } catch (err) {
+            console.error('Failed to delete note:', err);
+            this.app?.showErrorToast?.(`Failed to delete: ${err.message || err}`);
+            return false;
+        }
+    }
+
+    async moveEntry(oldPath, newPath) {
+        try {
+            await invoke('move_entry', { oldPath, newPath });
+            await this.refresh();
+            return true;
+        } catch (err) {
+            console.error('Failed to move entry:', err);
+            this.app?.showErrorToast?.(`Failed to move: ${err.message || err}`);
+            return false;
+        }
+    }
+
+    async getRecentFiles() {
+        try {
+            return await invoke('get_recent_files');
+        } catch (err) {
+            console.error('Failed to get recent files:', err);
+            return [];
+        }
+    }
+
+    async addRecentFile(path) {
+        try {
+            await invoke('add_recent_file', { path });
+        } catch (err) {
+            console.error('Failed to add recent file:', err);
+        }
+    }
+
+    // --- UI Layer (DOM rendering, events) ---
+
     render(nodes, depth = 0) {
-        // *** FIX: Null safety check ***
         if (!this.container) {
             console.warn('Sidebar container not found');
             return document.createDocumentFragment();
         }
-        
-        // *** FIX: Ensure nodes is an array ***
+
         if (!Array.isArray(nodes)) {
             console.warn('Invalid nodes data for sidebar render');
             nodes = [];
@@ -41,8 +121,8 @@ export class Sidebar {
         const fragment = document.createDocumentFragment();
 
         for (const node of nodes) {
-            if (!node) continue; // Skip null/undefined nodes
-            
+            if (!node) continue;
+
             try {
                 if (node.is_dir) {
                     fragment.appendChild(this.createFolderNode(node, depth));
@@ -51,7 +131,6 @@ export class Sidebar {
                 }
             } catch (err) {
                 console.error('Failed to create tree node:', err, node);
-                // Continue with other nodes instead of breaking
             }
         }
 
@@ -90,7 +169,7 @@ export class Sidebar {
         const childContainer = document.createElement('div');
         childContainer.className = `tree-folder-children ${isOpen ? 'open' : ''}`;
 
-        for (const child of node.children) {
+        for (const child of (node.children || [])) {
             if (child.is_dir) {
                 childContainer.appendChild(this.createFolderNode(child, depth + 1));
             } else {
@@ -107,14 +186,12 @@ export class Sidebar {
                 childContainer.classList.remove('open');
                 item.querySelector('.chevron').classList.remove('open');
                 iconEl?.classList.remove('folder-open');
-                // Update icon to closed folder
                 if (iconEl) iconEl.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>';
             } else {
                 this.openFolders.add(node.path);
                 childContainer.classList.add('open');
                 item.querySelector('.chevron').classList.add('open');
                 iconEl?.classList.add('folder-open');
-                // Update icon to open folder (with minus line)
                 if (iconEl) iconEl.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/><line x1="9" y1="13" x2="15" y2="13"/></svg>';
             }
         });
@@ -141,7 +218,6 @@ export class Sidebar {
         const icon = this.getFileIconSvg(node.name);
         const displayName = node.name.replace('.md', '');
 
-        // Spacer for chevron alignment
         item.innerHTML = `<span class="chevron" style="visibility:hidden"><svg width="10" height="10" viewBox="0 0 24 24"></svg></span><span class="icon">${icon}</span><span class="name">${this.escapeHtml(displayName)}</span>`;
 
         item.addEventListener('click', (e) => {
@@ -157,27 +233,21 @@ export class Sidebar {
     }
 
     getFileIconSvg(name) {
-        // Daily notes (date-named files)
         if (/^\d{4}-\d{2}-\d{2}\.md$/.test(name)) {
             return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>';
         }
-        // Image files
         if (/\.(png|jpe?g|gif|svg|webp|bmp)$/i.test(name)) {
             return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>';
         }
-        // PDF files
         if (/\.pdf$/i.test(name)) {
             return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/></svg>';
         }
-        // JSON/config files
         if (/\.(json|yaml|yml|toml|ini|conf)$/i.test(name)) {
             return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>';
         }
-        // Canvas/excalidraw
         if (/\.canvas$/i.test(name)) {
             return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="8" height="8" rx="1"/><rect x="14" y="14" width="8" height="8" rx="1"/><path d="M10 6h4M6 10v4M18 10v4M10 18h4"/></svg>';
         }
-        // Default markdown/note file
         return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>';
     }
 

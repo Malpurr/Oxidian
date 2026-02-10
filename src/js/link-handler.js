@@ -1,22 +1,18 @@
 // Oxidian — Link Handler Module
 // Handles Ctrl+Click navigation for wikilinks and external links
 
+const { invoke } = window.__TAURI__.core;
+
 export class LinkHandler {
     constructor(app) {
         this.app = app;
         this.isCtrlPressed = false;
         this.currentHoverElement = null;
-        this.linkDetectionRegex = {
-            wikilink: /\[\[([^\]]+)\]\]/g,
-            markdown: /\[([^\]]+)\]\(([^)]+)\)/g,
-            url: /(https?:\/\/[^\s]+)/g
-        };
         
         this.init();
     }
 
     init() {
-        // Track Ctrl key state
         document.addEventListener('keydown', (e) => {
             if (e.ctrlKey || e.metaKey) {
                 this.isCtrlPressed = true;
@@ -31,37 +27,32 @@ export class LinkHandler {
             }
         });
 
-        // Handle clicks on editor
         document.addEventListener('click', (e) => {
             if (this.isCtrlPressed) {
                 this.handleCtrlClick(e);
             }
         });
 
-        // Handle mouse move for cursor changes
         document.addEventListener('mousemove', (e) => {
             this.handleMouseMove(e);
         });
 
-        // Handle clicks on preview links
         this.attachPreviewLinkHandlers();
     }
 
     /**
      * Handle Ctrl+Click events — opens links in a new tab
      */
-    handleCtrlClick(event) {
-        // Check if we're in an editor textarea
+    async handleCtrlClick(event) {
         const textarea = document.querySelector('.editor-textarea');
         if (event.target === textarea) {
-            const link = this.getLinkAtPosition(textarea, textarea.selectionStart);
+            const link = await this.getLinkAtPosition(textarea, textarea.selectionStart);
             if (link) {
                 event.preventDefault();
                 this.navigateToLink(link, true);
             }
         }
 
-        // Check if we're clicking on a preview link
         const linkElement = event.target.closest('a, .hl-wikilink');
         if (linkElement) {
             event.preventDefault();
@@ -75,13 +66,12 @@ export class LinkHandler {
     /**
      * Handle mouse movement for cursor changes
      */
-    handleMouseMove(event) {
+    async handleMouseMove(event) {
         if (!this.isCtrlPressed) {
             this.currentHoverElement = null;
             return;
         }
 
-        // Check if we're over a textarea
         const textarea = document.querySelector('.editor-textarea');
         if (event.target === textarea) {
             const rect = textarea.getBoundingClientRect();
@@ -89,7 +79,7 @@ export class LinkHandler {
             const y = event.clientY - rect.top;
             
             const position = this.getTextPositionFromCoordinates(textarea, x, y);
-            const link = this.getLinkAtPosition(textarea, position);
+            const link = await this.getLinkAtPosition(textarea, position);
             
             if (link && link !== this.currentHoverElement) {
                 this.currentHoverElement = link;
@@ -102,7 +92,6 @@ export class LinkHandler {
             }
         }
 
-        // Check preview links
         const linkElement = event.target.closest('a, .hl-wikilink');
         if (linkElement) {
             linkElement.style.cursor = 'pointer';
@@ -119,12 +108,10 @@ export class LinkHandler {
      * Get text position from mouse coordinates in textarea
      */
     getTextPositionFromCoordinates(textarea, x, y) {
-        // This is a simplified approach - in reality, this requires more complex calculations
-        // involving line height, character width, etc.
         const style = window.getComputedStyle(textarea);
         const lineHeight = parseInt(style.lineHeight) || 20;
         const fontSize = parseInt(style.fontSize) || 14;
-        const approximateCharWidth = fontSize * 0.6; // Rough approximation
+        const approximateCharWidth = fontSize * 0.6;
         
         const lines = textarea.value.split('\n');
         const approximateLine = Math.floor(y / lineHeight);
@@ -136,7 +123,7 @@ export class LinkHandler {
         
         let position = 0;
         for (let i = 0; i < approximateLine; i++) {
-            position += lines[i].length + 1; // +1 for newline
+            position += lines[i].length + 1;
         }
         
         position += Math.min(approximateCol, lines[approximateLine]?.length || 0);
@@ -144,75 +131,17 @@ export class LinkHandler {
     }
 
     /**
-     * Get link at a specific text position
+     * Get link at a specific text position via Rust
      */
-    getLinkAtPosition(textarea, position) {
+    async getLinkAtPosition(textarea, position) {
         const content = textarea.value;
-        const links = this.findAllLinks(content);
-        
-        for (const link of links) {
-            if (position >= link.start && position <= link.end) {
-                return link;
-            }
+        try {
+            const link = await invoke('get_link_at_position', { text: content, offset: position });
+            return link;
+        } catch (err) {
+            console.error('Failed to get link at position:', err);
+            return null;
         }
-        
-        return null;
-    }
-
-    /**
-     * Find all links in content
-     */
-    findAllLinks(content) {
-        const links = [];
-        
-        // Find wikilinks
-        let match;
-        this.linkDetectionRegex.wikilink.lastIndex = 0;
-        while ((match = this.linkDetectionRegex.wikilink.exec(content)) !== null) {
-            links.push({
-                type: 'wikilink',
-                text: match[0],
-                target: match[1],
-                start: match.index,
-                end: match.index + match[0].length
-            });
-        }
-        
-        // Find markdown links
-        this.linkDetectionRegex.markdown.lastIndex = 0;
-        while ((match = this.linkDetectionRegex.markdown.exec(content)) !== null) {
-            links.push({
-                type: 'markdown',
-                text: match[0],
-                title: match[1],
-                target: match[2],
-                start: match.index,
-                end: match.index + match[0].length
-            });
-        }
-        
-        // Find plain URLs
-        this.linkDetectionRegex.url.lastIndex = 0;
-        while ((match = this.linkDetectionRegex.url.exec(content)) !== null) {
-            // Skip if this URL is already part of a markdown link
-            const isPartOfMarkdownLink = links.some(link => 
-                link.type === 'markdown' && 
-                match.index >= link.start && 
-                match.index + match[0].length <= link.end
-            );
-            
-            if (!isPartOfMarkdownLink) {
-                links.push({
-                    type: 'url',
-                    text: match[0],
-                    target: match[1],
-                    start: match.index,
-                    end: match.index + match[0].length
-                });
-            }
-        }
-        
-        return links.sort((a, b) => a.start - b.start);
     }
 
     /**
@@ -283,15 +212,21 @@ export class LinkHandler {
      * Open a note in a new tab. If the note doesn't exist, create it first.
      */
     async openNoteInNewTab(target) {
-        const { invoke } = window.__TAURI__.core;
         let path = target;
         if (!path.endsWith('.md')) path = target + '.md';
 
-        // Check if note exists, if not create it
+        try {
+            const resolvedPath = await invoke('resolve_link', { vaultPath: path, link: target });
+            if (resolvedPath) {
+                path = resolvedPath;
+            }
+        } catch {
+            // resolve_link not available or failed, use original path
+        }
+
         try {
             await invoke('read_note', { path });
         } catch {
-            // Note doesn't exist — create it
             try {
                 const content = `# ${target}\n\n`;
                 await invoke('save_note', { path, content });
@@ -304,7 +239,6 @@ export class LinkHandler {
             }
         }
 
-        // Open in new tab: directly create the tab and load it
         await this.app.openFile(path);
     }
 
@@ -323,10 +257,8 @@ export class LinkHandler {
      */
     openExternalLink(url) {
         if (window.__TAURI__) {
-            // Tauri environment - open in default browser
             window.__TAURI__.shell.open(url);
         } else {
-            // Regular web environment
             window.open(url, '_blank');
         }
     }
@@ -349,7 +281,7 @@ export class LinkHandler {
      * Show link tooltip
      */
     showLinkTooltip(link, x, y) {
-        this.hideLinkTooltip(); // Remove existing tooltip
+        this.hideLinkTooltip();
         
         const tooltip = document.createElement('div');
         tooltip.className = 'link-tooltip';
@@ -372,7 +304,6 @@ export class LinkHandler {
         
         tooltip.textContent = `Ctrl+Click to ${tooltipText}`;
         
-        // Position tooltip
         tooltip.style.position = 'fixed';
         tooltip.style.left = x + 10 + 'px';
         tooltip.style.top = y - 30 + 'px';
@@ -380,7 +311,6 @@ export class LinkHandler {
         
         document.body.appendChild(tooltip);
         
-        // Auto-hide after 3 seconds
         setTimeout(() => this.hideLinkTooltip(), 3000);
     }
 
@@ -398,7 +328,6 @@ export class LinkHandler {
      * Show error message
      */
     showError(message) {
-        // Create temporary error message
         const error = document.createElement('div');
         error.className = 'link-error-toast';
         error.textContent = message;
@@ -420,7 +349,6 @@ export class LinkHandler {
      * Attach handlers to preview links
      */
     attachPreviewLinkHandlers() {
-        // This will be called when the preview is updated
         document.addEventListener('DOMContentLoaded', () => {
             this.updatePreviewLinkHandlers();
         });
@@ -433,7 +361,6 @@ export class LinkHandler {
         const preview = document.querySelector('.preview-content');
         if (!preview) return;
         
-        // Handle wikilinks in preview
         preview.querySelectorAll('a[href^="wikilink:"]').forEach(link => {
             link.addEventListener('click', (e) => {
                 if (this.isCtrlPressed || e.ctrlKey || e.metaKey) {
@@ -444,7 +371,6 @@ export class LinkHandler {
             });
         });
         
-        // Handle external links in preview
         preview.querySelectorAll('a[href^="http"]').forEach(link => {
             link.addEventListener('click', (e) => {
                 if (this.isCtrlPressed || e.ctrlKey || e.metaKey) {
@@ -460,7 +386,6 @@ export class LinkHandler {
      */
     destroy() {
         this.hideLinkTooltip();
-        // Remove event listeners if needed
     }
 }
 

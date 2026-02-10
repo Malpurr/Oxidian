@@ -1,158 +1,23 @@
 // Oxidian — File Templates Module
-// Ctrl+T opens a template picker. Templates live in "templates/" folder in the vault.
-// Supports placeholder replacement: {{date}}, {{time}}, {{title}}
-
+// UI-only: template picker dialog, keyboard nav, filter
+// All template scanning and application via Rust invoke()
 const { invoke } = window.__TAURI__.core;
 
 export class TemplateManager {
     constructor(app) {
         this.app = app;
-
-        // Built-in templates (used to seed templates/ folder)
-        this.builtinTemplates = [
-            {
-                name: 'Daily Note',
-                filename: 'Daily Note.md',
-                content: `# {{title}}
-
-📅 **Date:** {{date}}
-⏰ **Time:** {{time}}
-
----
-
-## 📝 Notes
-
-
-## ✅ Tasks
-- [ ] 
-
-## 💡 Ideas
-
-
-## 📖 Journal
-
-`
-            },
-            {
-                name: 'Meeting Notes',
-                filename: 'Meeting Notes.md',
-                content: `# Meeting: {{title}}
-
-📅 **Date:** {{date}}  
-⏰ **Time:** {{time}}  
-👥 **Attendees:** 
-
----
-
-## 📋 Agenda
-1. 
-
-## 📝 Notes
-
-
-## ✅ Action Items
-- [ ] 
-
-## 📌 Decisions Made
-
-
-## 📅 Next Meeting
-
-`
-            },
-            {
-                name: 'Project Plan',
-                filename: 'Project Plan.md',
-                content: `# Project: {{title}}
-
-📅 **Created:** {{date}}  
-🎯 **Status:** Planning  
-👤 **Owner:** 
-
----
-
-## 🎯 Objectives
-
-
-## 📋 Requirements
-- [ ] 
-
-## 📅 Timeline
-| Phase | Start | End | Status |
-|-------|-------|-----|--------|
-| Planning | {{date}} | | 🔵 Active |
-| Development | | | ⚪ Pending |
-| Testing | | | ⚪ Pending |
-| Launch | | | ⚪ Pending |
-
-## 📝 Notes
-
-
-## 🔗 Related Notes
-
-`
-            }
-        ];
     }
 
     /**
-     * Ensure the templates/ folder exists with default templates.
-     */
-    async ensureTemplatesFolder() {
-        try {
-            await invoke('create_folder', { path: 'templates' });
-        } catch {
-            // folder may already exist
-        }
-
-        // Seed built-in templates if they don't exist
-        for (const tpl of this.builtinTemplates) {
-            const path = `templates/${tpl.filename}`;
-            try {
-                await invoke('read_note', { path });
-                // already exists, skip
-            } catch {
-                try {
-                    await invoke('save_note', { path, content: tpl.content });
-                } catch (e) {
-                    console.error(`Failed to seed template ${tpl.filename}:`, e);
-                }
-            }
-        }
-    }
-
-    /**
-     * Get all available templates from the templates/ folder.
+     * Get all available templates from Rust backend.
      */
     async getTemplates() {
         try {
-            const files = await invoke('list_files');
-            const templateFolder = files.find(f => f.is_dir && (f.name === 'templates' || f.path === 'templates'));
-            if (!templateFolder) return [];
-
-            return (templateFolder.children || [])
-                .filter(f => !f.is_dir && f.path.endsWith('.md'))
-                .map(f => ({
-                    name: f.name.replace(/\.md$/, ''),
-                    path: f.path
-                }));
-        } catch {
+            return await invoke('list_templates', { vaultPath: this.app.vaultPath || '' });
+        } catch (err) {
+            console.error('Failed to list templates:', err);
             return [];
         }
-    }
-
-    /**
-     * Apply placeholder replacements to template content.
-     */
-    replacePlaceholders(content, title) {
-        const now = new Date();
-        const date = now.toISOString().split('T')[0]; // YYYY-MM-DD
-        const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-
-        return content
-            .replace(/\{\{date\}\}/g, date)
-            .replace(/\{\{time\}\}/g, time)
-            .replace(/\{\{title\}\}/g, title || 'Untitled');
     }
 
     /**
@@ -163,7 +28,6 @@ export class TemplateManager {
         const existing = document.getElementById('template-picker-overlay');
         if (existing) { existing.remove(); return; }
 
-        await this.ensureTemplatesFolder();
         const templates = await this.getTemplates();
 
         const overlay = document.createElement('div');
@@ -267,22 +131,23 @@ export class TemplateManager {
     }
 
     /**
-     * Create a new note from a template.
+     * Create a new note from a template via Rust backend.
      */
     async createFromTemplate(template, noteName) {
         if (!noteName) noteName = 'Untitled';
-        if (!noteName.endsWith('.md')) noteName += '.md';
 
         try {
-            const templateContent = await invoke('read_note', { path: template.path });
-            const title = noteName.replace(/\.md$/, '');
-            const content = this.replacePlaceholders(templateContent, title);
+            const result = await invoke('apply_template', {
+                templatePath: template.path,
+                title: noteName
+            });
 
-            await invoke('save_note', { path: noteName, content });
-            await this.app.openFile(noteName);
-            await this.app.sidebar.refresh();
+            const path = result.path || result;
+            await this.app.openFile(path);
+            await this.app.sidebar?.refresh();
         } catch (err) {
             console.error('Failed to create from template:', err);
+            this.app.showErrorToast?.(`Failed to apply template: ${err.message || err}`);
         }
     }
 

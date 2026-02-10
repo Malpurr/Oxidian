@@ -1,4 +1,4 @@
-// Oxidian — Graph View (Canvas-based force-directed layout)
+// Oxidian — Graph View (Canvas-based, layout computed in Rust)
 const { invoke } = window.__TAURI__.core;
 
 export class GraphView {
@@ -10,11 +10,10 @@ export class GraphView {
         this.ctx = this.canvas.getContext('2d');
         this.nodes = [];
         this.edges = [];
+        this.nodeMap = {};
         this.animId = null;
         this.dragging = null;
         this.hoveredNode = null;
-        this.offsetX = 0;
-        this.offsetY = 0;
         this.scale = 1;
         this.panX = 0;
         this.panY = 0;
@@ -39,7 +38,10 @@ export class GraphView {
     }
 
     bindEvents() {
-        this._resizeObserver = new ResizeObserver(() => this.resize());
+        this._resizeObserver = new ResizeObserver(() => {
+            this.resize();
+            this.draw();
+        });
         this._resizeObserver.observe(this.container);
 
         this.canvas.addEventListener('mousedown', (e) => this.onMouseDown(e));
@@ -49,135 +51,42 @@ export class GraphView {
         this.canvas.addEventListener('dblclick', (e) => this.onDblClick(e));
     }
 
-    async load() {
+    /**
+     * Load graph data with pre-computed layout from Rust (Fruchterman-Reingold).
+     * Returns { nodes: [{id, label, x, y, radius, color, tags}], edges: [{source, target}] }
+     */
+    async load(filter) {
         try {
-            const data = await invoke('get_graph_data');
-            this.initFromData(data);
-            this.startSimulation();
+            const vaultPath = this.app.vaultPath || '';
+            const data = await invoke('compute_graph', { vaultPath, filter: filter || null });
+            this.setGraphData(data);
+            this.draw();
         } catch (err) {
             console.error('Failed to load graph data:', err);
         }
     }
 
-    initFromData(data) {
-        const cx = this.width / 2;
-        const cy = this.height / 2;
+    /**
+     * Set pre-positioned graph data from Rust. No JS layout computation.
+     */
+    setGraphData(data) {
+        this.nodes = (data.nodes || []).map(n => ({
+            id: n.id,
+            label: n.label,
+            x: n.x,
+            y: n.y,
+            radius: n.radius || 6,
+            color: n.color || '#7f6df2',
+            tags: n.tags || [],
+        }));
 
-        this.nodes = data.nodes.map((n, i) => {
-            const angle = (2 * Math.PI * i) / data.nodes.length;
-            const r = Math.min(this.width, this.height) * 0.3;
-            return {
-                id: n.id,
-                name: n.name,
-                x: cx + r * Math.cos(angle) + (Math.random() - 0.5) * 40,
-                y: cy + r * Math.sin(angle) + (Math.random() - 0.5) * 40,
-                vx: 0,
-                vy: 0,
-                radius: 6,
-            };
-        });
+        this.nodeMap = {};
+        this.nodes.forEach(n => this.nodeMap[n.id] = n);
 
-        const nodeMap = {};
-        this.nodes.forEach(n => nodeMap[n.id] = n);
-
-        this.edges = [];
-        for (const e of data.edges) {
-            const s = nodeMap[e.source];
-            const t = nodeMap[e.target];
-            if (s && t) {
-                this.edges.push({ source: s, target: t });
-                // Increase radius for connected nodes
-                s.radius = Math.min(12, s.radius + 0.5);
-                t.radius = Math.min(12, t.radius + 0.5);
-            }
-        }
-    }
-
-    startSimulation() {
-        let iterations = 0;
-        const maxIterations = 300;
-
-        const tick = () => {
-            if (iterations < maxIterations) {
-                this.simulateStep(0.9 - (iterations / maxIterations) * 0.8);
-            }
-            this.draw();
-            iterations++;
-            // PERF FIX: Stop animation loop once simulation has settled
-            if (iterations >= maxIterations && !this.dragging && !this.isPanning) {
-                this.animId = null;
-                return; // Stop — no more CPU usage when idle
-            }
-            this.animId = requestAnimationFrame(tick);
-        };
-        tick();
-    }
-
-    // PERF FIX: Resume animation on interaction (drag/pan triggers redraw)
-    _ensureAnimating() {
-        if (!this.animId) {
-            const redraw = () => {
-                this.draw();
-                if (this.dragging || this.isPanning) {
-                    this.animId = requestAnimationFrame(redraw);
-                } else {
-                    this.animId = null;
-                }
-            };
-            this.animId = requestAnimationFrame(redraw);
-        }
-    }
-
-    simulateStep(alpha) {
-        const repulsion = 800;
-        const attraction = 0.005;
-        const centerPull = 0.01;
-        const damping = 0.85;
-        const cx = this.width / 2;
-        const cy = this.height / 2;
-
-        // Repulsion between all nodes
-        for (let i = 0; i < this.nodes.length; i++) {
-            for (let j = i + 1; j < this.nodes.length; j++) {
-                const a = this.nodes[i];
-                const b = this.nodes[j];
-                let dx = b.x - a.x;
-                let dy = b.y - a.y;
-                let dist = Math.sqrt(dx * dx + dy * dy) || 1;
-                let force = (repulsion * alpha) / (dist * dist);
-                let fx = (dx / dist) * force;
-                let fy = (dy / dist) * force;
-                a.vx -= fx;
-                a.vy -= fy;
-                b.vx += fx;
-                b.vy += fy;
-            }
-        }
-
-        // Attraction along edges
-        for (const edge of this.edges) {
-            let dx = edge.target.x - edge.source.x;
-            let dy = edge.target.y - edge.source.y;
-            let dist = Math.sqrt(dx * dx + dy * dy) || 1;
-            let force = dist * attraction * alpha;
-            let fx = (dx / dist) * force;
-            let fy = (dy / dist) * force;
-            edge.source.vx += fx;
-            edge.source.vy += fy;
-            edge.target.vx -= fx;
-            edge.target.vy -= fy;
-        }
-
-        // Center pull + velocity update
-        for (const node of this.nodes) {
-            if (this.dragging === node) continue;
-            node.vx += (cx - node.x) * centerPull * alpha;
-            node.vy += (cy - node.y) * centerPull * alpha;
-            node.vx *= damping;
-            node.vy *= damping;
-            node.x += node.vx;
-            node.y += node.vy;
-        }
+        this.edges = (data.edges || []).map(e => ({
+            source: this.nodeMap[e.source],
+            target: this.nodeMap[e.target],
+        })).filter(e => e.source && e.target);
     }
 
     draw() {
@@ -202,12 +111,13 @@ export class GraphView {
             const isHovered = node === this.hoveredNode;
             ctx.beginPath();
             ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
-            ctx.fillStyle = isHovered ? '#8b7cf3' : '#7f6df2';
+            ctx.fillStyle = isHovered ? this._lighten(node.color) : node.color;
             ctx.fill();
             if (isHovered) {
-                ctx.strokeStyle = '#a99df5';
+                ctx.strokeStyle = this._lighten(node.color);
                 ctx.lineWidth = 2;
                 ctx.stroke();
+                ctx.lineWidth = 1;
             }
         }
 
@@ -217,10 +127,23 @@ export class GraphView {
         for (const node of this.nodes) {
             const isHovered = node === this.hoveredNode;
             ctx.fillStyle = isHovered ? '#dcddde' : 'rgba(220, 221, 222, 0.7)';
-            ctx.fillText(node.name, node.x, node.y + node.radius + 14);
+            ctx.fillText(node.label, node.x, node.y + node.radius + 14);
         }
 
         ctx.restore();
+    }
+
+    _lighten(hex) {
+        // Simple lighten for hover — shift towards white
+        try {
+            const r = parseInt(hex.slice(1, 3), 16);
+            const g = parseInt(hex.slice(3, 5), 16);
+            const b = parseInt(hex.slice(5, 7), 16);
+            const f = 0.3;
+            return `rgb(${Math.round(r + (255 - r) * f)}, ${Math.round(g + (255 - g) * f)}, ${Math.round(b + (255 - b) * f)})`;
+        } catch {
+            return '#a99df5';
+        }
     }
 
     getNodeAt(mx, my) {
@@ -249,7 +172,6 @@ export class GraphView {
             this.isPanning = true;
         }
         this.lastMouse = { x: e.clientX, y: e.clientY };
-        this._ensureAnimating();
     }
 
     onMouseMove(e) {
@@ -262,17 +184,20 @@ export class GraphView {
             const dy = (e.clientY - this.lastMouse.y) / this.scale;
             this.dragging.x += dx;
             this.dragging.y += dy;
-            this.dragging.vx = 0;
-            this.dragging.vy = 0;
             this.lastMouse = { x: e.clientX, y: e.clientY };
+            this.draw();
         } else if (this.isPanning) {
             this.panX += e.clientX - this.lastMouse.x;
             this.panY += e.clientY - this.lastMouse.y;
             this.lastMouse = { x: e.clientX, y: e.clientY };
+            this.draw();
         } else {
             const node = this.getNodeAt(mx, my);
-            this.hoveredNode = node;
-            this.canvas.style.cursor = node ? 'pointer' : 'grab';
+            if (node !== this.hoveredNode) {
+                this.hoveredNode = node;
+                this.canvas.style.cursor = node ? 'pointer' : 'grab';
+                this.draw();
+            }
         }
     }
 
@@ -285,7 +210,7 @@ export class GraphView {
         e.preventDefault();
         const factor = e.deltaY > 0 ? 0.92 : 1.08;
         this.scale = Math.max(0.2, Math.min(4, this.scale * factor));
-        this._ensureAnimating();
+        this.draw();
     }
 
     onDblClick(e) {

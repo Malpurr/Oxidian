@@ -1,4 +1,6 @@
 // Oxidian — Settings Page (opens as a tab)
+// UI-only: rendering, form handling, theme preview
+// All data/logic via Rust invoke()
 const { invoke } = window.__TAURI__.core;
 
 export class SettingsPage {
@@ -10,21 +12,18 @@ export class SettingsPage {
 
     async load() {
         try {
-            this.settings = await invoke('get_settings');
+            this.settings = await invoke('load_settings');
         } catch (err) {
             console.error('Failed to load settings:', err);
-            this.settings = this.defaultSettings();
+            // Fallback: Rust should provide defaults, but if invoke fails entirely use minimal defaults
+            this.settings = {
+                general: { vault_path: '', language: 'en', startup_behavior: 'welcome' },
+                editor: { font_family: 'JetBrains Mono, Fira Code, Consolas, monospace', font_size: 15, line_height: 1.7, tab_size: 4, spell_check: true, vim_mode: false },
+                appearance: { theme: 'dark', accent_color: '#7f6df2', interface_font_size: 13 },
+                vault: { encryption_enabled: false, auto_backup: false },
+                plugins: { enabled_plugins: [] },
+            };
         }
-    }
-
-    defaultSettings() {
-        return {
-            general: { vault_path: '', language: 'en', startup_behavior: 'welcome' },
-            editor: { font_family: 'JetBrains Mono, Fira Code, Consolas, monospace', font_size: 15, line_height: 1.7, tab_size: 4, spell_check: true, vim_mode: false },
-            appearance: { theme: 'dark', accent_color: '#7f6df2', interface_font_size: 13 },
-            vault: { encryption_enabled: false, auto_backup: false },
-            plugins: { enabled_plugins: [] },
-        };
     }
 
     async show(container) {
@@ -308,18 +307,15 @@ export class SettingsPage {
         // Load plugins
         this.loadPluginsList(wrapper);
 
-        // Load Plugin button — open file picker to install a plugin folder
+        // Load Plugin button
         wrapper.querySelector('#btn-load-plugin')?.addEventListener('click', async () => {
             try {
                 const { open } = window.__TAURI__.dialog;
                 const selected = await open({ directory: true, multiple: false, title: 'Select Obsidian Plugin Folder' });
                 if (!selected) return;
 
-                // Read manifest from selected folder
-                const { readTextFile, copyFile, mkdir, exists } = window.__TAURI__.fs;
                 const path = typeof selected === 'string' ? selected : selected.path;
-                
-                // Try to get plugin id from manifest
+
                 let manifest;
                 try {
                     const sep = path.includes('\\') ? '\\' : '/';
@@ -331,9 +327,8 @@ export class SettingsPage {
                     return;
                 }
 
-                // Copy plugin to vault's .obsidian/plugins/
                 const pluginId = manifest.id;
-                
+
                 try {
                     await invoke('install_plugin', { sourcePath: path, pluginId: pluginId });
                 } catch (e) {
@@ -345,7 +340,6 @@ export class SettingsPage {
                 alert(`Plugin "${manifest.name}" installed! Enable it in the list below.`);
                 this.loadPluginsList(wrapper);
             } catch (err) {
-                // If dialog API not available, show manual instructions
                 alert('To install a plugin:\n1. Download the plugin (manifest.json + main.js)\n2. Place it in your vault\'s .obsidian/plugins/<plugin-id>/ folder\n3. Restart Oxidian or refresh the plugin list');
             }
         });
@@ -379,7 +373,7 @@ export class SettingsPage {
             } catch {}
         })();
 
-        // Auto-save on any change
+        // Auto-save on any change with validation
         const saveDebounce = this.debounce(() => this.saveAll(wrapper), 500);
         wrapper.querySelectorAll('input, select').forEach(el => {
             el.addEventListener('change', saveDebounce);
@@ -399,35 +393,32 @@ export class SettingsPage {
             'nord': 'Nord',
             'solarized': 'Solarized'
         };
-        
+
         let customThemes = [];
-        try { 
+        try {
             customThemes = await this.app.themeManager?.getCustomThemeNames() || [];
         } catch {}
 
         grid.innerHTML = '';
 
-        // Built-in themes with proper labels
         for (const [themeKey, themeLabel] of Object.entries(themeLabels)) {
             const card = document.createElement('div');
             card.className = 'theme-card' + (themeKey === this.settings.appearance.theme ? ' active' : '');
-            
-            // Special handling for system theme
+
             let previewClass = themeKey;
             if (themeKey === 'system') {
-                // Show current system preference in preview
                 const systemPref = this.app.themeManager?.getSystemPreferenceTheme() || 'dark';
                 previewClass = systemPref;
                 card.classList.add('system-theme');
             }
-            
+
             card.innerHTML = `
                 <div class="theme-preview theme-preview-${previewClass}">
                     ${themeKey === 'system' ? '<span class="system-indicator">⚙</span>' : ''}
                 </div>
                 <span>${themeLabel}</span>
             `;
-            
+
             card.addEventListener('click', () => {
                 grid.querySelectorAll('.theme-card').forEach(c => c.classList.remove('active'));
                 card.classList.add('active');
@@ -438,7 +429,6 @@ export class SettingsPage {
             grid.appendChild(card);
         }
 
-        // Custom themes
         for (const name of customThemes) {
             const card = document.createElement('div');
             card.className = 'theme-card' + (name === this.settings.appearance.theme ? ' active' : '');
@@ -464,9 +454,7 @@ export class SettingsPage {
         const loader = this.app.pluginLoader;
 
         try {
-            // Load Obsidian-compatible plugins
             const obsidianPlugins = await invoke('list_obsidian_plugins');
-            // Load legacy plugins
             let legacyPlugins = [];
             try { legacyPlugins = await invoke('list_plugins'); } catch {}
 
@@ -485,7 +473,6 @@ export class SettingsPage {
 
             list.innerHTML = '';
 
-            // Obsidian-compatible plugins section
             if (obsidianPlugins.length > 0) {
                 const header = document.createElement('div');
                 header.className = 'plugins-section-header';
@@ -507,7 +494,6 @@ export class SettingsPage {
                         </div>
                     `;
 
-                    // Wire toggle
                     const toggle = item.querySelector(`[data-obsidian-plugin="${this.esc(p.id)}"]`);
                     toggle?.addEventListener('change', async (e) => {
                         if (loader) {
@@ -515,7 +501,6 @@ export class SettingsPage {
                         }
                     });
 
-                    // Settings button if plugin has a settings tab
                     if (loader && loader.isLoaded(p.id)) {
                         const settingsTab = loader.getPluginSettingTab(p.id);
                         if (settingsTab) {
@@ -535,7 +520,6 @@ export class SettingsPage {
                 }
             }
 
-            // Legacy plugins section
             if (legacyPlugins.length > 0) {
                 const header = document.createElement('div');
                 header.className = 'plugins-section-header';
@@ -564,7 +548,6 @@ export class SettingsPage {
     }
 
     showPluginSettings(pluginId, pluginName, settingsTab) {
-        // Show plugin settings in a modal-like panel
         const existing = this.paneEl?.querySelector('.plugin-settings-panel');
         if (existing) existing.remove();
 
@@ -610,15 +593,27 @@ export class SettingsPage {
         this.settings.vault.encryption_enabled = wrapper.querySelector('#set-encryption')?.checked ?? false;
         this.settings.vault.auto_backup = wrapper.querySelector('#set-backup')?.checked ?? false;
 
-        // Collect enabled plugins
         const pluginToggles = wrapper.querySelectorAll('[data-plugin]');
         this.settings.plugins.enabled_plugins = [];
         pluginToggles.forEach(el => {
             if (el.checked) this.settings.plugins.enabled_plugins.push(el.dataset.plugin);
         });
 
+        // Validate before saving
         try {
-            await invoke('save_settings', { newSettings: this.settings });
+            const validation = await invoke('validate_settings', { settings: this.settings });
+            if (validation && !validation.valid) {
+                console.warn('Settings validation failed:', validation.errors);
+                this.app?.showErrorToast?.(`Invalid settings: ${validation.errors?.join(', ') || 'Unknown error'}`);
+                return;
+            }
+        } catch (err) {
+            // Validation command may not exist yet — proceed with save
+            console.debug('Settings validation skipped:', err);
+        }
+
+        try {
+            await invoke('save_settings', { settings: this.settings });
         } catch (err) {
             console.error('Failed to save settings:', err);
         }

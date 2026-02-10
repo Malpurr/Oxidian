@@ -1,5 +1,7 @@
 // Oxidian — Frontmatter Processor
-// Handles YAML frontmatter parsing and rendering
+// Handles YAML frontmatter parsing (via Rust) and rendering
+
+const { invoke } = window.__TAURI__.core;
 
 export class FrontmatterProcessor {
     constructor(app) {
@@ -11,167 +13,34 @@ export class FrontmatterProcessor {
      * @param {string} content - The markdown content
      * @returns {Object} { frontmatter, content, hasfrontmatter }
      */
-    parseFrontmatter(content) {
-        if (!content.startsWith('---\n')) {
-            return {
-                frontmatter: {},
-                content: content,
-                hasfrontmatter: false
-            };
-        }
-
-        const lines = content.split('\n');
-        let endIndex = -1;
-        
-        // Find the closing ---
-        for (let i = 1; i < lines.length; i++) {
-            if (lines[i].trim() === '---') {
-                endIndex = i;
-                break;
-            }
-        }
-
-        if (endIndex === -1) {
-            return {
-                frontmatter: {},
-                content: content,
-                hasfrontmatter: false
-            };
-        }
-
-        const frontmatterYaml = lines.slice(1, endIndex).join('\n');
-        const contentWithoutFrontmatter = lines.slice(endIndex + 1).join('\n');
-
-        let frontmatter = {};
+    async parseFrontmatter(content) {
         try {
-            frontmatter = this.parseYaml(frontmatterYaml);
+            const result = await invoke('parse_frontmatter', { content });
+            return result;
         } catch (error) {
-            console.error('Failed to parse frontmatter YAML:', error);
-            // Return invalid frontmatter as text
+            console.error('Failed to parse frontmatter:', error);
             return {
-                frontmatter: { _error: error.message, _raw: frontmatterYaml },
-                content: contentWithoutFrontmatter,
-                hasFoundmatter: true,
-                error: error.message
+                frontmatter: {},
+                content: content,
+                hasfrontmatter: false
             };
         }
-
-        return {
-            frontmatter,
-            content: contentWithoutFrontmatter,
-            hasFoundmatter: true
-        };
-    }
-
-    /**
-     * Simple YAML parser for basic frontmatter
-     * This is a simplified parser - for production use a proper YAML library
-     */
-    parseYaml(yamlString) {
-        const result = {};
-        const lines = yamlString.split('\n');
-
-        for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed || trimmed.startsWith('#')) continue;
-
-            // Handle simple key: value pairs
-            const colonIndex = trimmed.indexOf(':');
-            if (colonIndex === -1) continue;
-
-            const key = trimmed.substring(0, colonIndex).trim();
-            let value = trimmed.substring(colonIndex + 1).trim();
-
-            // Remove quotes
-            if ((value.startsWith('"') && value.endsWith('"')) ||
-                (value.startsWith("'") && value.endsWith("'"))) {
-                value = value.slice(1, -1);
-            }
-
-            // Handle arrays (simple format: [item1, item2, item3])
-            if (value.startsWith('[') && value.endsWith(']')) {
-                const arrayContent = value.slice(1, -1);
-                if (arrayContent.trim()) {
-                    result[key] = arrayContent.split(',').map(item => item.trim().replace(/^["']|["']$/g, ''));
-                } else {
-                    result[key] = [];
-                }
-                continue;
-            }
-
-            // Handle multi-line arrays (- item format)
-            if (value === '' && key) {
-                // Look ahead for array items
-                const arrayItems = [];
-                let nextLineIndex = lines.indexOf(line) + 1;
-                
-                while (nextLineIndex < lines.length) {
-                    const nextLine = lines[nextLineIndex].trim();
-                    if (nextLine.startsWith('- ')) {
-                        arrayItems.push(nextLine.substring(2).trim());
-                        nextLineIndex++;
-                    } else if (nextLine === '' || nextLine.startsWith('#')) {
-                        nextLineIndex++;
-                    } else {
-                        break;
-                    }
-                }
-                
-                if (arrayItems.length > 0) {
-                    result[key] = arrayItems;
-                    continue;
-                }
-            }
-
-            // Handle booleans
-            if (value === 'true') value = true;
-            else if (value === 'false') value = false;
-            // Handle numbers
-            else if (/^\d+$/.test(value)) value = parseInt(value, 10);
-            else if (/^\d+\.\d+$/.test(value)) value = parseFloat(value);
-
-            result[key] = value;
-        }
-
-        return result;
     }
 
     /**
      * Convert frontmatter object back to YAML string
      */
-    stringifyFrontmatter(frontmatter) {
+    async stringifyFrontmatter(frontmatter) {
         if (!frontmatter || Object.keys(frontmatter).length === 0) {
             return '';
         }
 
-        const lines = [];
-        for (const [key, value] of Object.entries(frontmatter)) {
-            if (key.startsWith('_')) continue; // Skip internal properties
-
-            if (Array.isArray(value)) {
-                if (value.length === 0) {
-                    lines.push(`${key}: []`);
-                } else if (value.every(item => typeof item === 'string' && !item.includes('\n'))) {
-                    // Inline array format
-                    const quotedItems = value.map(item => 
-                        item.includes(' ') || item.includes(':') || item.includes('#') ? `"${item}"` : item
-                    );
-                    lines.push(`${key}: [${quotedItems.join(', ')}]`);
-                } else {
-                    // Multi-line array format
-                    lines.push(`${key}:`);
-                    for (const item of value) {
-                        lines.push(`  - ${typeof item === 'string' && (item.includes(' ') || item.includes(':') || item.includes('#')) ? `"${item}"` : item}`);
-                    }
-                }
-            } else if (typeof value === 'string' && (value.includes('\n') || value.includes(':') || value.includes('#') || value.includes(' '))) {
-                lines.push(`${key}: "${value}"`);
-            } else {
-                lines.push(`${key}: ${value}`);
-            }
+        try {
+            return await invoke('stringify_frontmatter', { data: frontmatter });
+        } catch (error) {
+            console.error('Failed to stringify frontmatter:', error);
+            return '';
         }
-
-        return lines.join('\n');
     }
 
     /**
@@ -235,10 +104,10 @@ export class FrontmatterProcessor {
     /**
      * Process markdown content to render frontmatter in preview
      */
-    processContent(content) {
-        const parsed = this.parseFrontmatter(content);
+    async processContent(content) {
+        const parsed = await this.parseFrontmatter(content);
         
-        if (!parsed.hasFoundmatter) {
+        if (!parsed.hasFoundmatter && !parsed.hasfrontmatter) {
             return content;
         }
 
@@ -252,11 +121,10 @@ export class FrontmatterProcessor {
     isValidDate(value) {
         if (typeof value !== 'string') return false;
         
-        // Check common date formats
         const datePatterns = [
-            /^\d{4}-\d{2}-\d{2}$/,           // YYYY-MM-DD
-            /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/, // YYYY-MM-DDTHH:MM
-            /^\d{2}\/\d{2}\/\d{4}$/,         // MM/DD/YYYY
+            /^\d{4}-\d{2}-\d{2}$/,
+            /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/,
+            /^\d{2}\/\d{2}\/\d{4}$/,
         ];
 
         return datePatterns.some(pattern => pattern.test(value)) && !isNaN(Date.parse(value));
@@ -281,8 +149,8 @@ export class FrontmatterProcessor {
     /**
      * Show frontmatter edit dialog
      */
-    showFrontmatterEditor(content) {
-        const parsed = this.parseFrontmatter(content);
+    async showFrontmatterEditor(content) {
+        const parsed = await this.parseFrontmatter(content);
         
         const dialog = document.createElement('div');
         dialog.className = 'frontmatter-editor-overlay';
@@ -300,15 +168,20 @@ export class FrontmatterProcessor {
         const editor = document.createElement('div');
         editor.className = 'frontmatter-editor-content';
         
-        // Create form fields for common properties
         const commonFields = this.createCommonFields(parsed.frontmatter);
         
-        // YAML source editor
+        let yamlString = '';
+        try {
+            yamlString = await this.stringifyFrontmatter(parsed.frontmatter);
+        } catch (e) {
+            console.error('Failed to stringify for editor:', e);
+        }
+
         const yamlEditor = document.createElement('div');
         yamlEditor.className = 'frontmatter-yaml-section';
         yamlEditor.innerHTML = `
             <h4>YAML Source</h4>
-            <textarea class="frontmatter-yaml-editor" rows="8" placeholder="---">${this.stringifyFrontmatter(parsed.frontmatter)}</textarea>
+            <textarea class="frontmatter-yaml-editor" rows="8" placeholder="---">${yamlString}</textarea>
             <div class="frontmatter-yaml-info">Advanced users: Edit YAML directly</div>
         `;
         
@@ -326,16 +199,13 @@ export class FrontmatterProcessor {
         container.appendChild(footer);
         dialog.appendChild(container);
         
-        // Event listeners
         dialog.querySelector('.frontmatter-cancel-btn').onclick = () => dialog.remove();
         dialog.querySelector('.frontmatter-save-btn').onclick = () => this.saveFrontmatter(dialog, content);
         
-        // Close on outside click
         dialog.onclick = (e) => {
             if (e.target === dialog) dialog.remove();
         };
         
-        // Close on Escape
         const handleKeydown = (e) => {
             if (e.key === 'Escape') {
                 dialog.remove();
@@ -346,7 +216,6 @@ export class FrontmatterProcessor {
         
         document.body.appendChild(dialog);
         
-        // Focus first input
         const firstInput = dialog.querySelector('input, textarea');
         if (firstInput) firstInput.focus();
     }
@@ -410,20 +279,17 @@ export class FrontmatterProcessor {
     /**
      * Save frontmatter changes
      */
-    saveFrontmatter(dialog, originalContent) {
+    async saveFrontmatter(dialog, originalContent) {
         try {
-            // Get values from form
             const frontmatter = {};
-            const formData = new FormData();
             
             dialog.querySelectorAll('input, select').forEach(input => {
                 const name = input.name;
                 let value = input.value.trim();
                 
-                if (!value) return; // Skip empty values
+                if (!value) return;
                 
                 if (input.dataset.type === 'tags' || input.dataset.type === 'list') {
-                    // Convert comma-separated to array
                     frontmatter[name] = value.split(',').map(item => item.trim()).filter(item => item);
                 } else if (input.type === 'date') {
                     frontmatter[name] = value;
@@ -432,29 +298,29 @@ export class FrontmatterProcessor {
                 }
             });
 
-            // Also get YAML source
             const yamlSource = dialog.querySelector('.frontmatter-yaml-editor').value.trim();
             if (yamlSource) {
                 try {
-                    const yamlData = this.parseYaml(yamlSource);
-                    Object.assign(frontmatter, yamlData);
+                    const yamlData = await invoke('parse_frontmatter', { content: '---\n' + yamlSource + '\n---\n' });
+                    if (yamlData.frontmatter) {
+                        Object.assign(frontmatter, yamlData.frontmatter);
+                    }
                 } catch (yamlError) {
                     alert('YAML source contains errors. Please fix or clear it.');
                     return;
                 }
             }
 
-            // Build new content
-            const parsed = this.parseFrontmatter(originalContent);
+            const parsed = await this.parseFrontmatter(originalContent);
             let newContent = '';
             
             if (Object.keys(frontmatter).length > 0) {
-                newContent = '---\n' + this.stringifyFrontmatter(frontmatter) + '\n---\n';
+                const yamlString = await this.stringifyFrontmatter(frontmatter);
+                newContent = '---\n' + yamlString + '\n---\n';
             }
             
             newContent += parsed.content;
 
-            // Update editor
             this.app.editor.setContent(newContent);
             this.app.markDirty();
             

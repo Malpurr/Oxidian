@@ -1,82 +1,28 @@
 // Oxidian — Enhanced Backlinks Module
-// Scans all notes for [[wiki-links]] pointing to the current note,
-// shows count in statusbar, and provides a rich panel with context snippets.
+// Loads backlinks from Rust backend and renders them in a panel.
 
 const { invoke } = window.__TAURI__.core;
 
 export class BacklinksManager {
     constructor(app) {
         this.app = app;
-        this.cache = new Map(); // path → { links: Set<target>, content: string }
         this.currentBacklinks = [];
     }
 
     /**
-     * Build/refresh the backlink index by scanning all vault files.
-     * Returns a Map<targetName, Array<{source, snippets}>>
-     */
-    async buildIndex() {
-        this.cache.clear();
-        try {
-            const files = await invoke('list_files');
-            const mdFiles = this._collectMdFiles(files);
-            const wikiLinkRe = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g;
-
-            for (const filePath of mdFiles) {
-                try {
-                    const content = await invoke('read_note', { path: filePath });
-                    const links = new Set();
-                    let match;
-                    while ((match = wikiLinkRe.exec(content)) !== null) {
-                        links.add(match[1].trim());
-                    }
-                    this.cache.set(filePath, { links, content });
-                } catch {
-                    // skip unreadable files
-                }
-            }
-        } catch (err) {
-            console.error('BacklinksManager: failed to build index', err);
-        }
-    }
-
-    /**
-     * Find all backlinks for a given note path.
+     * Get all backlinks for a given note path via Rust.
      * Returns Array<{ source: string, snippets: string[] }>
      */
     async getBacklinks(notePath) {
-        // Rebuild index if empty (first call or after refresh)
-        if (this.cache.size === 0) {
-            await this.buildIndex();
+        try {
+            const results = await invoke('get_backlinks', { filePath: notePath });
+            this.currentBacklinks = results;
+            return results;
+        } catch (err) {
+            console.error('BacklinksManager: failed to get backlinks', err);
+            this.currentBacklinks = [];
+            return [];
         }
-
-        const noteName = notePath.replace(/\.md$/, '').split('/').pop();
-        const results = [];
-
-        for (const [sourcePath, { links, content }] of this.cache) {
-            if (sourcePath === notePath) continue;
-            if (!links.has(noteName) && !links.has(notePath) && !links.has(notePath.replace(/\.md$/, ''))) continue;
-
-            // Extract context snippets (lines containing the link)
-            const snippets = [];
-            const lines = content.split('\n');
-            const linkRe = new RegExp(`\\[\\[${this._escapeRegex(noteName)}(\\|[^\\]]+)?\\]\\]`, 'gi');
-            for (let i = 0; i < lines.length; i++) {
-                if (linkRe.test(lines[i])) {
-                    // Grab surrounding context (1 line before, the line, 1 line after)
-                    const start = Math.max(0, i - 1);
-                    const end = Math.min(lines.length - 1, i + 1);
-                    const snippet = lines.slice(start, end + 1).join('\n').trim();
-                    if (snippet) snippets.push(snippet);
-                }
-                linkRe.lastIndex = 0;
-            }
-
-            results.push({ source: sourcePath, snippets });
-        }
-
-        this.currentBacklinks = results;
-        return results;
     }
 
     /**
@@ -125,13 +71,12 @@ export class BacklinksManager {
             header.addEventListener('click', () => this.app.openFile(source));
             item.appendChild(header);
 
-            if (snippets.length > 0) {
+            if (snippets && snippets.length > 0) {
                 const snippetContainer = document.createElement('div');
                 snippetContainer.className = 'backlink-snippets';
                 snippets.slice(0, 3).forEach(s => {
                     const snippetEl = document.createElement('div');
                     snippetEl.className = 'backlink-snippet';
-                    // Highlight the wiki-link in the snippet
                     const highlighted = s.replace(/\[\[([^\]]+)\]\]/g, '<mark>$1</mark>');
                     snippetEl.innerHTML = highlighted;
                     snippetEl.addEventListener('click', () => this.app.openFile(source));
@@ -145,32 +90,13 @@ export class BacklinksManager {
     }
 
     /**
-     * Invalidate cache so next call rebuilds the index.
+     * Invalidate is now a no-op since Rust manages the index.
      */
     invalidate() {
-        this.cache.clear();
+        // Rust backend handles index invalidation
     }
 
     // --- Helpers ---
-
-    _collectMdFiles(fileNodes) {
-        const result = [];
-        const walk = (nodes) => {
-            for (const node of nodes) {
-                if (node.is_dir) {
-                    walk(node.children || []);
-                } else if (node.path && node.path.endsWith('.md')) {
-                    result.push(node.path);
-                }
-            }
-        };
-        walk(fileNodes);
-        return result;
-    }
-
-    _escapeRegex(str) {
-        return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    }
 
     _escapeHtml(text) {
         const div = document.createElement('div');

@@ -1,0 +1,135 @@
+use std::fs;
+use std::path::Path;
+use tantivy::collector::TopDocs;
+use tantivy::query::QueryParser;
+use tantivy::schema::*;
+use tantivy::{doc, Index, IndexWriter, ReloadPolicy};
+use walkdir::WalkDir;
+use serde::Serialize;
+
+#[derive(Debug, Serialize)]
+pub struct SearchResult {
+    pub path: String,
+    pub title: String,
+    pub snippet: String,
+    pub score: f32,
+}
+
+pub struct SearchIndex {
+    index: Index,
+    #[allow(dead_code)]
+    schema: Schema,
+    path_field: Field,
+    title_field: Field,
+    body_field: Field,
+    writer: Option<IndexWriter>,
+}
+
+impl SearchIndex {
+    pub fn new(vault_path: &str) -> Result<Self, String> {
+        let mut schema_builder = Schema::builder();
+        let path_field = schema_builder.add_text_field("path", STRING | STORED);
+        let title_field = schema_builder.add_text_field("title", TEXT | STORED);
+        let body_field = schema_builder.add_text_field("body", TEXT | STORED);
+        let schema = schema_builder.build();
+        let index_path = Path::new(vault_path).join(".search_index");
+        fs::create_dir_all(&index_path).map_err(|e| format!("Failed to create index dir: {}", e))?;
+        let lock_file = index_path.join(".tantivy-writer.lock");
+        if lock_file.exists() { let _ = fs::remove_file(&lock_file); }
+        let index = Index::create_in_dir(&index_path, schema.clone())
+            .or_else(|_| Index::open_in_dir(&index_path))
+            .map_err(|e| format!("Failed to create/open index: {}", e))?;
+        let writer = index.writer(15_000_000).map_err(|e| format!("Failed to create index writer: {}", e))?;
+        Ok(SearchIndex { index, schema, path_field, title_field, body_field, writer: Some(writer) })
+    }
+
+    pub fn reindex_vault(&mut self, vault_path: &str) -> Result<(), String> {
+        self.writer = None;
+        let index_path = Path::new(vault_path).join(".search_index");
+        let lock_file = index_path.join(".tantivy-writer.lock");
+        if lock_file.exists() { let _ = fs::remove_file(&lock_file); }
+        let mut writer: IndexWriter = self.index.writer(50_000_000).map_err(|e| format!("Failed to create index writer: {}", e))?;
+        writer.delete_all_documents().map_err(|e| format!("Failed to clear index: {}", e))?;
+        for entry in WalkDir::new(vault_path).into_iter()
+            .filter_entry(|e| { if e.depth() == 0 { return true; } let name = e.file_name().to_string_lossy(); !(e.file_type().is_dir() && name.starts_with('.')) })
+            .filter_map(|e| e.ok())
+        {
+            let path = entry.path();
+            if path.extension().map(|e| e == "md").unwrap_or(false) {
+                if let Ok(content) = fs::read_to_string(path) {
+                    let relative = path.strip_prefix(vault_path).unwrap_or(path).to_string_lossy().to_string();
+                    let title = path.file_stem().unwrap_or_default().to_string_lossy().to_string();
+                    writer.add_document(doc!(self.path_field => relative, self.title_field => title, self.body_field => content))
+                        .map_err(|e| format!("Failed to add document: {}", e))?;
+                }
+            }
+        }
+        writer.commit().map_err(|e| format!("Failed to commit index: {}", e))?;
+        drop(writer);
+        self.writer = Some(self.index.writer(15_000_000).map_err(|e| format!("Failed to re-create persistent writer: {}", e))?);
+        Ok(())
+    }
+
+    pub fn index_note(&mut self, _vault_path: &str, relative_path: &str, content: &str) -> Result<(), String> {
+        if self.writer.is_none() {
+            self.writer = Some(self.index.writer(15_000_000).map_err(|e| format!("Failed to re-create writer: {}", e))?);
+        }
+        let writer = self.writer.as_mut().ok_or_else(|| "Index writer not available".to_string())?;
+        let path_term = tantivy::Term::from_field_text(self.path_field, relative_path);
+        writer.delete_term(path_term);
+        let title = Path::new(relative_path).file_stem().unwrap_or_default().to_string_lossy().to_string();
+        writer.add_document(doc!(self.path_field => relative_path.to_string(), self.title_field => title, self.body_field => content.to_string()))
+            .map_err(|e| format!("Failed to add document: {}", e))?;
+        writer.commit().map_err(|e| format!("Failed to commit index: {}", e))?;
+        Ok(())
+    }
+
+    pub fn search(&self, query_str: &str, limit: usize) -> Result<Vec<SearchResult>, String> {
+        let query_str = query_str.trim_start_matches('#').trim();
+        if query_str.is_empty() { return Ok(vec![]); }
+        let query_str: String = query_str.chars().map(|c| if "[]{}()~^\":\\!+-".contains(c) { ' ' } else { c }).collect();
+        let query_str = query_str.trim();
+        if query_str.is_empty() { return Ok(vec![]); }
+        let reader = self.index.reader_builder().reload_policy(ReloadPolicy::OnCommitWithDelay).try_into()
+            .map_err(|e| format!("Failed to create reader: {}", e))?;
+        let searcher = reader.searcher();
+        let query_parser = QueryParser::for_index(&self.index, vec![self.title_field, self.body_field]);
+        let query = query_parser.parse_query(query_str).map_err(|e| format!("Failed to parse query: {}", e))?;
+        let top_docs = searcher.search(&query, &TopDocs::with_limit(limit)).map_err(|e| format!("Search failed: {}", e))?;
+        let mut results = Vec::new();
+        for (score, doc_address) in top_docs {
+            let doc: tantivy::TantivyDocument = searcher.doc(doc_address).map_err(|e| format!("Failed to retrieve doc: {}", e))?;
+            let path = doc.get_first(self.path_field).and_then(|v| v.as_str()).unwrap_or("").to_string();
+            let title = doc.get_first(self.title_field).and_then(|v| v.as_str()).unwrap_or("").to_string();
+            let body = doc.get_first(self.body_field).and_then(|v| v.as_str()).unwrap_or("").to_string();
+            let snippet = create_snippet(&body, query_str, 150);
+            results.push(SearchResult { path, title, snippet, score });
+        }
+        Ok(results)
+    }
+}
+
+fn create_snippet(body: &str, query: &str, max_len: usize) -> String {
+    let lower_query = query.to_lowercase();
+    let query_terms: Vec<&str> = lower_query.split_whitespace().collect();
+    let mut best_char_pos: usize = 0;
+    let body_lower_chars: Vec<char> = body.to_lowercase().chars().collect();
+    'outer: for term in &query_terms {
+        let term_chars: Vec<char> = term.chars().collect();
+        if term_chars.is_empty() { continue; }
+        for i in 0..body_lower_chars.len().saturating_sub(term_chars.len() - 1) {
+            if body_lower_chars[i..].starts_with(&term_chars) { best_char_pos = i; break 'outer; }
+        }
+    }
+    let body_chars: Vec<char> = body.chars().collect();
+    let total_chars = body_chars.len();
+    let start_char = best_char_pos.saturating_sub(max_len / 2);
+    let end_char = (start_char + max_len).min(total_chars);
+    let start_byte: usize = body.char_indices().nth(start_char).map(|(i, _)| i).unwrap_or(0);
+    let end_byte: usize = if end_char >= total_chars { body.len() } else { body.char_indices().nth(end_char).map(|(i, _)| i).unwrap_or(body.len()) };
+    let mut snippet = String::new();
+    if start_char > 0 { snippet.push_str("..."); }
+    snippet.push_str(&body[start_byte..end_byte].replace('\n', " "));
+    if end_char < total_chars { snippet.push_str("..."); }
+    snippet
+}

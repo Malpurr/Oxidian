@@ -27,7 +27,6 @@ export class WikilinksAutoComplete {
         textarea.addEventListener('keydown', (e) => this.onKeyDown(e));
         textarea.addEventListener('blur', () => this.hidePopup());
         
-        // Also handle clicks to hide popup
         textarea.addEventListener('click', () => {
             if (this.isActive && !this.isAtWikilink(textarea)) {
                 this.hidePopup();
@@ -42,21 +41,18 @@ export class WikilinksAutoComplete {
         const pos = textarea.selectionStart;
         const text = textarea.value;
         
-        // Check if we just typed '[[' 
         if (text.substring(pos - 2, pos) === '[[') {
             this.triggerPos = pos - 2;
             await this.showWikilinkPopup(textarea);
             return;
         }
         
-        // If popup is open, update filter
         if (this.isActive) {
             const query = this.getCurrentQuery(text, pos);
             if (query === null) {
-                // We're no longer in a wikilink
                 this.hidePopup();
             } else {
-                this.updateFilter(query);
+                await this.updateFilter(query);
             }
         }
     }
@@ -90,7 +86,6 @@ export class WikilinksAutoComplete {
     }
 
     getCurrentQuery(text, pos) {
-        // Find the [[ before cursor
         let startPos = -1;
         for (let i = pos - 1; i >= 0; i--) {
             if (text.substring(i, i + 2) === '[[') {
@@ -98,17 +93,13 @@ export class WikilinksAutoComplete {
                 break;
             }
             if (text[i] === '\n' || text[i] === ']') {
-                // Line break or closing bracket - not in wikilink
                 return null;
             }
         }
         
         if (startPos === -1) return null;
         
-        // Extract query between [[ and cursor
         const query = text.substring(startPos + 2, pos);
-        
-        // Make sure we haven't closed the wikilink
         if (query.includes(']]')) return null;
         
         return query;
@@ -134,7 +125,6 @@ export class WikilinksAutoComplete {
 
     async loadAllNotes() {
         const now = Date.now();
-        // Cache for 5 seconds
         if (this._notesCache && (now - this._cacheTime) < 5000) {
             this.allNotes = this._notesCache;
             return;
@@ -142,7 +132,6 @@ export class WikilinksAutoComplete {
         
         try {
             const tree = await invoke('list_files');
-            // list_files returns a tree structure — flatten it
             const flatFiles = [];
             const walk = (nodes) => {
                 if (!Array.isArray(nodes)) return;
@@ -171,14 +160,25 @@ export class WikilinksAutoComplete {
         }
     }
 
-    updateFilter(query) {
+    async updateFilter(query) {
         if (!query) {
             this.filteredNotes = [...this.allNotes];
         } else {
-            const lowerQuery = query.toLowerCase();
-            this.filteredNotes = this.allNotes.filter(note => 
-                note.name.toLowerCase().includes(lowerQuery)
-            );
+            try {
+                const results = await invoke('fuzzy_match_files', { query });
+                this.filteredNotes = results.map(r => ({
+                    name: r.path.replace('.md', '').split('/').pop(),
+                    path: r.path,
+                    fullPath: r.path
+                }));
+            } catch (err) {
+                console.error('Failed to fuzzy match files:', err);
+                // Fallback to simple local filter
+                const lowerQuery = query.toLowerCase();
+                this.filteredNotes = this.allNotes.filter(note =>
+                    note.name.toLowerCase().includes(lowerQuery)
+                );
+            }
         }
         
         this.selectedIndex = 0;
@@ -208,7 +208,6 @@ export class WikilinksAutoComplete {
         
         document.body.appendChild(this.popup);
         
-        // Add click handlers
         this.popup.addEventListener('mousedown', (e) => {
             const item = e.target.closest('.wikilink-item');
             if (item) {
@@ -258,7 +257,6 @@ export class WikilinksAutoComplete {
             item.classList.toggle('selected', index === this.selectedIndex);
         });
         
-        // Scroll selected item into view
         const selectedItem = items[this.selectedIndex];
         if (selectedItem) {
             selectedItem.scrollIntoView({ block: 'nearest' });
@@ -268,12 +266,10 @@ export class WikilinksAutoComplete {
     positionPopup(textarea) {
         if (!this.popup) return;
         
-        // Get cursor position
         const rect = textarea.getBoundingClientRect();
         const textareaStyle = window.getComputedStyle(textarea);
         const lineHeight = parseInt(textareaStyle.lineHeight) || 20;
         
-        // Calculate rough cursor position (simplified)
         const pos = textarea.selectionStart;
         const textBefore = textarea.value.substring(0, pos);
         const lines = textBefore.split('\n');
@@ -287,7 +283,6 @@ export class WikilinksAutoComplete {
         this.popup.style.left = `${left}px`;
         this.popup.style.zIndex = '10000';
         
-        // Make sure it's visible
         const popupRect = this.popup.getBoundingClientRect();
         if (popupRect.bottom > window.innerHeight) {
             this.popup.style.top = `${rect.top - popupRect.height - 5}px`;
@@ -301,10 +296,8 @@ export class WikilinksAutoComplete {
         const pos = this.currentTextarea.selectionStart;
         const text = this.currentTextarea.value;
         
-        // Find the [[ before cursor
         let startPos = this.triggerPos;
         if (startPos === -1) {
-            // Fallback: search backwards
             for (let i = pos - 1; i >= 0; i--) {
                 if (text.substring(i, i + 2) === '[[') {
                     startPos = i;
@@ -318,16 +311,13 @@ export class WikilinksAutoComplete {
             return;
         }
         
-        // Replace from [[ to cursor with [[NoteName]]
         const replacement = `[[${selectedNote.name}]]`;
         this.currentTextarea.value = text.substring(0, startPos) + replacement + text.substring(pos);
         
-        // Position cursor after ]]
         const newPos = startPos + replacement.length;
         this.currentTextarea.selectionStart = newPos;
         this.currentTextarea.selectionEnd = newPos;
         
-        // Mark dirty and focus
         this.app.markDirty();
         this.currentTextarea.focus();
         
@@ -349,7 +339,6 @@ export class WikilinksAutoComplete {
         return div.innerHTML;
     }
 
-    // Clear cache when files change
     invalidateCache() {
         this._notesCache = null;
         this._cacheTime = 0;

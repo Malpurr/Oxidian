@@ -1,5 +1,6 @@
 // Oxidian — Remember: Highlight-to-Card Extraction System
 // Extract selected text or blockquotes into spaced-repetition cards.
+// Card creation via Rust backend.
 
 const { invoke } = window.__TAURI__.core;
 
@@ -11,10 +12,7 @@ export class RememberExtract {
     }
 
     init() {
-        // Keyboard shortcut: Cmd/Ctrl+Shift+E
         document.addEventListener('keydown', this._boundKeydown);
-
-        // Extend editor context menu
         this._patchEditorContextMenu();
     }
 
@@ -28,7 +26,6 @@ export class RememberExtract {
         cm.showEditorMenu = (e, textarea) => {
             e.preventDefault();
 
-            // Get selection to decide if extract option makes sense
             const sel = this.app.editor?.getSelection?.() || '';
 
             const items = [
@@ -42,7 +39,6 @@ export class RememberExtract {
                 { label: 'Link', shortcut: 'Ctrl+K', action: () => this.app.editor.wrapSelection('[[', ']]') },
             ];
 
-            // Add extract option when text is selected
             if (sel.trim()) {
                 items.push({ separator: true });
                 items.push({
@@ -52,7 +48,6 @@ export class RememberExtract {
                 });
             }
 
-            // Add bulk extract for files with blockquotes
             const content = this.app.editor?.getContent?.() || '';
             if (content.split('\n').some(l => l.trimStart().startsWith('>'))) {
                 if (!sel.trim()) items.push({ separator: true });
@@ -89,13 +84,11 @@ export class RememberExtract {
     // ===== Extract Dialog =====
 
     async _showExtractDialog(backText, opts = {}) {
-        // Remove existing
         document.getElementById('remember-extract-overlay')?.remove();
 
         const sourceFile = this.app.currentFile || '';
         const sourceLink = sourceFile ? `[[${sourceFile.replace(/\.md$/, '')}]]` : '';
 
-        // Load tags for autocomplete
         let allTags = [];
         try {
             allTags = await invoke('get_tags');
@@ -155,7 +148,6 @@ export class RememberExtract {
         };
         renderTags();
 
-        // Tag autocomplete
         tagsInput.addEventListener('input', () => {
             const q = tagsInput.value.trim().toLowerCase();
             if (!q) { suggestionsEl.classList.add('hidden'); return; }
@@ -188,7 +180,6 @@ export class RememberExtract {
             }
         });
 
-        // Save
         const save = async () => {
             const front = frontInput.value.trim();
             const back = backInput.value.trim();
@@ -197,11 +188,18 @@ export class RememberExtract {
 
             const source = sourceInput.value.trim();
             const tags = [...selectedTags];
-            const today = new Date().toISOString().split('T')[0];
 
-            await this._createCard({ front, back, source, tags, today });
+            // Create card via Rust
+            try {
+                await invoke('remember_create_card', {
+                    input: { front, back, source, tags, existing_path: null }
+                });
+            } catch (err) {
+                console.error('[RememberExtract] Failed to create card:', err);
+                this.app.showNotice?.('Failed to create card: ' + err);
+                return;
+            }
 
-            // Mark highlight as extracted in source
             if (backText && sourceFile) {
                 await this._markExtracted(backText);
             }
@@ -209,7 +207,6 @@ export class RememberExtract {
             overlay.remove();
             this.app.showNotice?.(`Card created: ${front}`);
 
-            // Refresh remember data
             if (this.app.remember) await this.app.remember.loadAll();
         };
 
@@ -217,49 +214,12 @@ export class RememberExtract {
         overlay.querySelector('#re-cancel').addEventListener('click', () => overlay.remove());
         overlay.addEventListener('mousedown', (e) => { if (e.target === overlay) overlay.remove(); });
 
-        // Keyboard navigation
         overlay.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') overlay.remove();
             if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) save();
         });
 
         frontInput.focus();
-    }
-
-    // ===== Card Creation =====
-
-    async _createCard({ front, back, source, tags, today }) {
-        // Generate filename from front text
-        const slug = front
-            .replace(/[^a-zA-Z0-9äöüÄÖÜß\s-]/g, '')
-            .trim()
-            .replace(/\s+/g, '-')
-            .substring(0, 60);
-        const filename = `Cards/${slug}.md`;
-
-        const tagsYaml = tags.length ? `[${tags.join(', ')}]` : '[]';
-        const content = `---
-type: card
-source: "${source}"
-tags: ${tagsYaml}
-interval: 0
-ease: 2.5
-next_review: ${today}
-last_review: ${today}
-review_count: 0
-created: ${today}
----
-# ${front}
-
-${back}
-`;
-
-        try {
-            await invoke('save_note', { path: filename, content });
-        } catch (err) {
-            console.error('[RememberExtract] Failed to create card:', err);
-            this.app.showNotice?.('Failed to create card: ' + err);
-        }
     }
 
     // ===== Highlight Marker =====
@@ -269,14 +229,12 @@ ${back}
             let content = this.app.editor?.getContent?.() || '';
             if (!content) return;
 
-            // Find the highlight line and add extracted marker
             const marker = ' <!-- extracted -->';
             const lines = content.split('\n');
             let changed = false;
 
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i];
-                // Match if line contains the highlight text (trimmed) and isn't already marked
                 if (line.includes(highlightText.split('\n')[0].trim()) && !line.includes('<!-- extracted -->')) {
                     lines[i] = line + marker;
                     changed = true;
@@ -287,7 +245,6 @@ ${back}
             if (changed) {
                 const newContent = lines.join('\n');
                 this.app.editor?.setContent?.(newContent);
-                // Trigger save
                 this.app.isDirty = true;
                 this.app.saveCurrentFile?.();
             }
@@ -305,7 +262,6 @@ ${back}
         const sourceFile = this.app.currentFile || '';
         const sourceLink = sourceFile ? `[[${sourceFile.replace(/\.md$/, '')}]]` : '';
 
-        // Parse blockquotes (lines starting with >)
         const highlights = [];
         const lines = content.split('\n');
         for (let i = 0; i < lines.length; i++) {
@@ -323,7 +279,6 @@ ${back}
             return;
         }
 
-        // Remove existing
         document.getElementById('remember-bulk-overlay')?.remove();
 
         const overlay = document.createElement('div');
@@ -363,7 +318,6 @@ ${back}
             listEl.appendChild(row);
         }
 
-        // Extract selected
         overlay.querySelector('#re-bulk-extract').addEventListener('click', async () => {
             if (!selected.size) {
                 this.app.showNotice?.('Select at least one highlight.');
@@ -371,7 +325,6 @@ ${back}
             }
             overlay.remove();
 
-            // For each selected highlight, open extract dialog sequentially
             const items = [...selected];
             for (let i = 0; i < items.length; i++) {
                 await this._showBulkItemDialog(items[i].text, sourceLink, i + 1, items.length);
@@ -383,24 +336,16 @@ ${back}
         overlay.addEventListener('keydown', (e) => { if (e.key === 'Escape') overlay.remove(); });
     }
 
-    /**
-     * Show a quick dialog for a single bulk item.
-     * Returns a promise that resolves when the user saves or skips.
-     */
     _showBulkItemDialog(backText, sourceLink, index, total) {
         return new Promise((resolve) => {
-            // Reuse the extract dialog with a modified header
-            const origShowNotice = this.app.showNotice;
-            this._showExtractDialog(backText, {}).then?.(() => {});
+            this._showExtractDialog(backText, {});
 
-            // Wait for dialog to appear then modify header
             requestAnimationFrame(() => {
                 const header = document.querySelector('.remember-extract-header');
                 if (header) header.textContent = `🃏 Extract Card ${index}/${total}`;
                 const sourceInput = document.querySelector('#re-source');
                 if (sourceInput) sourceInput.value = sourceLink;
 
-                // Wait for overlay removal (save or cancel)
                 const obs = new MutationObserver(() => {
                     if (!document.getElementById('remember-extract-overlay')) {
                         obs.disconnect();

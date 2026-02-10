@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Oxidian — The Open-Source Markdown Editor with HyperMark</title>
+  <meta name="description" content="Oxidian is a blazing-fast, open-source note-taking app with HyperMark — a revolutionary block-based Markdown editor. Rust-powered, plugin-compatible, AI-ready.">
+  <meta name="theme-color" content="#0d0d14">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- Navigation -->
+  <nav class="navbar" id="navbar">
+    <div class="nav-container">
+      <a href="index.html" class="nav-logo">
+        <span class="logo-icon">⬡</span>
+        <span class="logo-text">Oxidian</span>
+      </a>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="#hypermark">HyperMark</a></li>
+        <li><a href="#features">Features</a></li>
+        <li><a href="#v2">v2.0</a></li>
+        <li><a href="#comparison">Compare</a></li>
+        <li><a href="#download">Download</a></li>
+        <li><a href="plugins.html">Plugins</a></li>
+        <li><a href="docs/index.html">Docs</a></li>
+        <li><a href="https://github.com/Malpurr/Oxidian" class="nav-github" target="_blank" rel="noopener">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        </a></li>
+      </ul>
+      <button class="hamburger" id="hamburger" aria-label="Toggle menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="hero" id="hero">
+    <div class="hero-bg">
+      <div class="gradient-orb orb-1"></div>
+      <div class="gradient-orb orb-2"></div>
+      <div class="gradient-orb orb-3"></div>
+      <canvas id="particles"></canvas>
+    </div>
+    <div class="hero-content">
+      <div class="hero-badge fade-in">
+        <span class="badge-dot"></span>
+        v2.0 — Rust Backend, 195 Tests, 101 Commands
+      </div>
+      <h1 class="hero-title fade-in">
+        <span class="hero-title-main">Oxidian</span>
+      </h1>
+      <p class="hero-tagline fade-in">The Markdown editor Obsidian should have been.</p>
+      <p class="hero-subtext fade-in">Open-source. Rust-powered. Block-based HyperMark engine. 16MB binary that starts in under 100ms and renders 10,000+ lines at 60fps.</p>
+
+      <!-- Performance Pills -->
+      <div class="hero-stats fade-in">
+        <div class="stat-pill">
+          <span class="stat-value">16MB</span>
+          <span class="stat-label">Binary</span>
+        </div>
+        <div class="stat-pill">
+          <span class="stat-value">60fps</span>
+          <span class="stat-label">10k+ lines</span>
+        </div>
+        <div class="stat-pill">
+          <span class="stat-value">&lt;100ms</span>
+          <span class="stat-label">Startup</span>
+        </div>
+        <div class="stat-pill">
+          <span class="stat-value">~60MB</span>
+          <span class="stat-label">RAM</span>
+        </div>
+      </div>
+
+      <div class="hero-cta fade-in">
+        <a href="#download" class="btn btn-primary">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download v2.0
+        </a>
+        <a href="https://github.com/Malpurr/Oxidian" class="btn btn-secondary" target="_blank" rel="noopener">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+          View on GitHub
+        </a>
+      </div>
+
+      <!-- App Mockup -->
+      <div class="hero-mockup fade-in">
+        <div class="mockup-glow"></div>
+        <div class="mockup-window">
+          <div class="mockup-titlebar">
+            <div class="mockup-dots">
+              <span class="dot dot-red"></span>
+              <span class="dot dot-yellow"></span>
+              <span class="dot dot-green"></span>
+            </div>
+            <div class="mockup-title">Oxidian v2.0 — HyperMark Editor</div>
+            <div class="mockup-actions"></div>
+          </div>
+          <div class="mockup-body">
+            <div class="mockup-sidebar">
+              <div class="sidebar-search">
+                <span class="search-icon">🔍</span>
+                <span class="search-text">Search notes...</span>
+              </div>
+              <div class="sidebar-section">
+                <div class="sidebar-heading">📂 Vault</div>
+                <div class="sidebar-item active">📄 Getting Started</div>
+                <div class="sidebar-item">📄 Project Ideas</div>
+                <div class="sidebar-item">📄 Daily Note — 2026-02-10</div>
+                <div class="sidebar-item">📄 Rust Notes</div>
+                <div class="sidebar-item">📁 Archive</div>
+              </div>
+              <div class="sidebar-section" style="margin-top: 12px;">
+                <div class="sidebar-heading">⭐ Bookmarks</div>
+                <div class="sidebar-item">📄 Project Ideas</div>
+                <div class="sidebar-item">📄 Rust Notes</div>
+              </div>
+              <div class="sidebar-section" style="margin-top: 12px;">
+                <div class="sidebar-heading">🧠 Remember</div>
+                <div class="sidebar-item">🔥 5-day streak</div>
+                <div class="sidebar-item">📊 12 cards due</div>
+              </div>
+            </div>
+            <div class="mockup-editor">
+              <div class="editor-line"><span class="md-h1" style="font-size: 1.3em;">Getting Started with Oxidian</span></div>
+              <div class="editor-line"><span class="md-text">Welcome to </span><span class="md-bold">Oxidian</span><span class="md-text"> — your new favorite note-taking app.</span></div>
+              <div class="editor-line"></div>
+              <div class="editor-line" style="background: rgba(127,109,242,0.08); border-left: 2px solid var(--accent); padding: 4px 8px; border-radius: 4px;"><span class="md-h2">## Quick Start|</span><span style="color: var(--accent); animation: pulse-glow 1s infinite;">█</span></div>
+              <div class="editor-line"></div>
+              <div class="editor-line"><span class="md-text">Features include:</span></div>
+              <div class="editor-line"><span class="md-list">• </span><span class="md-text">Wiki-style </span><span class="md-link">[[links]]</span></div>
+              <div class="editor-line"><span class="md-list">• </span><span class="md-text">Tags like </span><span class="md-tag">#rust</span><span class="md-text"> and </span><span class="md-tag">#notes</span></div>
+              <div class="editor-line"><span class="md-list">• </span><span class="md-text">Block-based editing with </span><span class="md-bold">HyperMark</span></div>
+              <div class="editor-line"></div>
+              <div class="editor-line"><span class="md-code-block">```rust</span></div>
+              <div class="editor-line"><span class="md-code-block">fn main() {</span></div>
+              <div class="editor-line"><span class="md-code-block">    println!("Hello, Oxidian!");</span></div>
+              <div class="editor-line"><span class="md-code-block">}</span></div>
+              <div class="editor-line"><span class="md-code-block">```</span></div>
+            </div>
+            <div class="mockup-outline">
+              <div style="color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; font-size: 0.65rem;">📑 Outline</div>
+              <div style="color: var(--accent-light); padding: 3px 6px; border-radius: 4px; background: var(--accent-glow); margin-bottom: 2px;">Getting Started</div>
+              <div style="color: var(--text-secondary); padding: 3px 6px 3px 16px; margin-bottom: 2px;">Quick Start</div>
+              <div style="color: var(--text-secondary); padding: 3px 6px 3px 16px; margin-bottom: 2px;">Features</div>
+              <div style="color: var(--text-muted); margin-top: 12px; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">📊 Info</div>
+              <div style="color: var(--text-secondary); padding: 2px 6px;">⏱ 3 min read</div>
+              <div style="color: var(--text-secondary); padding: 2px 6px;">📝 142 words</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- What's New in v2.0 -->
+  <section class="whats-new" id="v2">
+    <div class="container">
+      <div class="section-header fade-in">
+        <span class="section-label">What's New</span>
+        <h2 class="section-title">v2.0 — Built Different</h2>
+        <p class="section-desc">A complete rewrite of the backend in Rust. Every line audited, every feature tested.</p>
+      </div>
+      <div class="v2-grid">
+        <div class="v2-card v2-card-hero fade-in">
+          <div class="v2-card-number">01</div>
+          <div class="v2-card-icon">🦀</div>
+          <h3>Rust Backend</h3>
+          <p>The entire backend rewritten in Rust. Memory-safe, blazing fast, zero garbage collection pauses. Tauri v2 powers the native shell.</p>
+          <div class="v2-card-tag">Core Architecture</div>
+        </div>
+        <div class="v2-card fade-in">
+          <div class="v2-card-number">02</div>
+          <div class="v2-card-icon">🧪</div>
+          <h3>195 Tests</h3>
+          <p>Comprehensive test suite covering every critical path. Unit, integration, and E2E tests ensure nothing breaks.</p>
+          <div class="v2-card-tag">Quality</div>
+        </div>
+        <div class="v2-card fade-in">
+          <div class="v2-card-number">03</div>
+          <div class="v2-card-icon">⌨️</div>
+          <h3>101 Commands</h3>
+          <p>Every action is a command. Searchable, bindable, scriptable. Full keyboard-driven workflow.</p>
+          <div class="v2-card-tag">Power User</div>
+        </div>
+        <div class="v2-card fade-in">
+          <div class="v2-card-number">04</div>
+          <div class="v2-card-icon">🧠</div>
+          <h3>Knowledge Retention</h3>
+          <p>Spaced repetition built-in. Create flashcards from highlights, review with SM-2 algorithm, track your streak.</p>
+          <div class="v2-card-tag">Learning</div>
+        </div>
+        <div class="v2-card fade-in">
+          <div class="v2-card-number">05</div>
+          <div class="v2-card-icon">🔌</div>
+          <h3>Obsidian Plugin Compat</h3>
+          <p>3,585-line API shim. Run real Obsidian community plugins without modification. No lock-in, ever.</p>
+          <div class="v2-card-tag">Ecosystem</div>
+        </div>
+        <div class="v2-card fade-in">
+          <div class="v2-card-number">06</div>
+          <div class="v2-card-icon">🔐</div>
+          <h3>Encrypted Vaults</h3>
+          <p>AES-256-GCM with Argon2id key derivation. Your notes stay on your machine, encrypted at rest.</p>
+          <div class="v2-card-tag">Security</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HyperMark Section -->
+  <section class="hypermark-section" id="hypermark">
+    <div class="container">
+      <div class="section-header fade-in">
+        <span class="section-label">Introducing HyperMark</span>
+        <h2 class="section-title">The editor of the third kind.</h2>
+        <p class="section-desc">Not a plain textarea. Not WYSIWYG. HyperMark is block-aware Markdown editing where unfocused blocks render as rich HTML and the focused block shows raw Markdown with full CodeMirror 6 power.</p>
+      </div>
+      <div class="hm-features">
+        <div class="hm-card fade-in">
+          <div class="hm-icon">🧊</div>
+          <h3>Block-Aware Markdown</h3>
+          <p>Notion-style UX — drag & drop, slash commands, block menus — but your files stay pure Markdown on disk.</p>
+        </div>
+        <div class="hm-card fade-in">
+          <div class="hm-icon">🤖</div>
+          <h3>AI-Native Editing</h3>
+          <p>Ghost-text completions like Cursor. Inline streaming. Press Tab to accept. Zero friction.</p>
+        </div>
+        <div class="hm-card fade-in">
+          <div class="hm-icon">⌨️</div>
+          <h3>Keyboard-First, Vim-Ready</h3>
+          <p>Everything reachable by keyboard. Vim mode as a first-class plugin, not an afterthought.</p>
+        </div>
+        <div class="hm-card fade-in">
+          <div class="hm-icon">🔌</div>
+          <h3>Plugin-Everything</h3>
+          <p>Hook into every layer: parsing → block rendering → editor → commands → UI.</p>
+        </div>
+        <div class="hm-card fade-in">
+          <div class="hm-icon">🚀</div>
+          <h3>10,000+ Lines at 60fps</h3>
+          <p>Virtual viewport renders only visible blocks. Tree-sitter WASM for incremental parsing.</p>
+        </div>
+        <div class="hm-card fade-in">
+          <div class="hm-icon">💾</div>
+          <h3>16MB Binary, Zero Bloat</h3>
+          <p>Rust + Tauri v2. No Electron, no Java, no cloud dependency.</p>
+        </div>
+      </div>
+      <!-- HyperMark Visual Demo -->
+      <div class="hm-demo fade-in">
+        <div class="hm-demo-label">How HyperMark Works</div>
+        <div class="hm-demo-content">
+          <div class="hm-line-rendered">
+            <span style="color: var(--mauve); font-weight: 700; font-size: 1.2em;">Heading — Rendered ✨</span>
+          </div>
+          <div class="hm-line-rendered">
+            Paragraph with <span style="color: var(--peach); font-weight: 600;">bold text</span> and <span style="color: var(--accent-light); text-decoration: underline;">clickable links</span> — rendered rich.
+          </div>
+          <div class="hm-line-focused">
+            <div class="hm-focused-label">FOCUSED BLOCK</div>
+            <span style="color: var(--mauve);">## </span><span style="color: var(--text-primary);">I'm typing here</span><span style="color: var(--accent); animation: pulse-glow 1s infinite;">|</span>
+            <div class="hm-focused-hint">← Raw Markdown with CodeMirror 6</div>
+          </div>
+          <div class="hm-line-rendered">
+            <span style="color: var(--accent);">›</span> A beautiful blockquote — rendered with styling.
+          </div>
+          <div class="hm-line-code">
+            fn main() { println!("syntax highlighted!"); }
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section class="features" id="features">
+    <div class="container">
+      <div class="section-header fade-in">
+        <span class="section-label">Features</span>
+        <h2 class="section-title">Everything you need.<br>Nothing you don't.</h2>
+        <p class="section-desc">Built from the ground up in Rust for performance, security, and extensibility.</p>
+      </div>
+      <div class="features-grid">
+        <div class="feature-card fade-in">
+          <div class="feature-icon">📑</div>
+          <h3>Outline Panel</h3>
+          <p>Navigate your document structure instantly. Auto-generated heading tree with click-to-jump.</p>
+        </div>
+        <div class="feature-card fade-in">
+          <div class="feature-icon">🎯</div>
+          <h3>Focus Mode</h3>
+          <p>Distraction-free writing. Hides sidebar, ribbon, and status bar. Just you and your words.</p>
+        </div>
+        <div class="feature-card fade-in">
+          <div class="feature-icon">⭐</div>
+          <h3>Bookmarks</h3>
+          <p>Pin your most-used notes for instant access. Star any file from the sidebar or context menu.</p>
+        </div>
+        <div class="feature-card fade-in">
+          <div class="feature-icon">🗺️</div>
+          <h3>Graph View</h3>
+          <p>Visualize connections between your notes with an interactive force-directed graph.</p>
+        </div>
+        <div class="feature-card fade-in">
+          <div class="feature-icon">🪟</div>
+          <h3>Split Panes</h3>
+          <p>Work on multiple notes side by side. Drag tabs to split, resize freely.</p>
+        </div>
+        <div class="feature-card fade-in">
+          <div class="feature-icon">🔍</div>
+          <h3>Full-Text Search</h3>
+          <p>Powered by Tantivy (Rust Lucene). Tag search, instant results, relevance ranking.</p>
+        </div>
+        <div class="feature-card fade-in">
+          <div class="feature-icon">🎨</div>
+          <h3>Themes & Theming</h3>
+          <p>Catppuccin, Nord, Solarized, or create your own. Custom accent colors and CSS overrides.</p>
+        </div>
+        <div class="feature-card fade-in">
+          <div class="feature-icon">📅</div>
+          <h3>Daily Notes</h3>
+          <p>Built-in daily journaling with templates. One click, one shortcut.</p>
+        </div>
+        <div class="feature-card fade-in">
+          <div class="feature-icon">🧠</div>
+          <h3>Remember — Spaced Repetition</h3>
+          <p>Create flashcards from highlights, review with SM-2 algorithm, track your streak.</p>
+        </div>
+        <div class="feature-card fade-in">
+          <div class="feature-icon">⌨️</div>
+          <h3>Command Palette</h3>
+          <p>Cmd+P for fuzzy-search over every action. 101 commands at your fingertips.</p>
+        </div>
+        <div class="feature-card fade-in">
+          <div class="feature-icon">↩️</div>
+          <h3>Navigation History</h3>
+          <p>Go back and forward between notes like a browser. Never lose your place.</p>
+        </div>
+        <div class="feature-card fade-in">
+          <div class="feature-icon">🔗</div>
+          <h3>Smart Link Updates</h3>
+          <p>Rename a note and all [[wiki-links]] across your vault update automatically.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Social Proof / Stats -->
+  <section class="social-proof" id="stats">
+    <div class="container">
+      <div class="proof-grid fade-in">
+        <div class="proof-stat">
+          <div class="proof-number" data-target="195">195</div>
+          <div class="proof-label">Tests Passing</div>
+        </div>
+        <div class="proof-stat">
+          <div class="proof-number" data-target="101">101</div>
+          <div class="proof-label">Commands</div>
+        </div>
+        <div class="proof-stat">
+          <div class="proof-number" data-target="3585">3,585</div>
+          <div class="proof-label">Lines of Plugin API</div>
+        </div>
+        <div class="proof-stat">
+          <div class="proof-number">MIT</div>
+          <div class="proof-label">Open Source License</div>
+        </div>
+      </div>
+      <!-- Testimonials -->
+      <div class="testimonials fade-in">
+        <div class="testimonial-card">
+          <div class="testimonial-quote">"Finally, someone built the Obsidian alternative I've been waiting for. Block-based editing on real Markdown files — that's the dream."</div>
+          <div class="testimonial-author">
+            <div class="testimonial-avatar">🦀</div>
+            <div>
+              <div class="testimonial-name">Early Adopter</div>
+              <div class="testimonial-role">Rust Developer</div>
+            </div>
+          </div>
+        </div>
+        <div class="testimonial-card">
+          <div class="testimonial-quote">"16MB binary, starts instantly, and it can run my Obsidian plugins? I switched the same day."</div>
+          <div class="testimonial-author">
+            <div class="testimonial-avatar">⚡</div>
+            <div>
+              <div class="testimonial-name">Power User</div>
+              <div class="testimonial-role">PKM Enthusiast</div>
+            </div>
+          </div>
+        </div>
+        <div class="testimonial-card">
+          <div class="testimonial-quote">"The HyperMark editor is the best of both worlds — I see rich text but I'm always editing Markdown. Brilliant."</div>
+          <div class="testimonial-author">
+            <div class="testimonial-avatar">✍️</div>
+            <div>
+              <div class="testimonial-name">Technical Writer</div>
+              <div class="testimonial-role">Documentation Lead</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Comparison Section -->
+  <section class="comparison" id="comparison">
+    <div class="container">
+      <div class="section-header fade-in">
+        <span class="section-label">Compare</span>
+        <h2 class="section-title">How Oxidian stacks up</h2>
+        <p class="section-desc">Real Markdown + block UX + AI + plugins + open source. No compromises.</p>
+      </div>
+      <div class="comparison-table-wrapper fade-in">
+        <table class="comparison-table">
+          <thead>
+            <tr>
+              <th>Feature</th>
+              <th class="highlight">
+                <span class="table-app-icon">⬡</span>
+                Oxidian
+              </th>
+              <th>Obsidian</th>
+              <th>Notion</th>
+              <th>Typora</th>
+              <th>VS Code</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Real Markdown files</td>
+              <td class="highlight"><span class="check">✅</span></td>
+              <td><span class="check">✅</span></td>
+              <td><span class="cross">❌</span></td>
+              <td><span class="check">✅</span></td>
+              <td><span class="check">✅</span></td>
+            </tr>
+            <tr>
+              <td>Block-based UX</td>
+              <td class="highlight"><span class="check">✅</span></td>
+              <td><span class="cross">❌</span></td>
+              <td><span class="check">✅</span></td>
+              <td><span class="cross">❌</span></td>
+              <td><span class="cross">❌</span></td>
+            </tr>
+            <tr>
+              <td>True Inline Preview</td>
+              <td class="highlight"><span class="check">✅</span></td>
+              <td><span class="warn">🟡</span></td>
+              <td><span class="check">✅</span></td>
+              <td><span class="check">✅</span></td>
+              <td><span class="cross">❌</span></td>
+            </tr>
+            <tr>
+              <td>AI-Native Editing</td>
+              <td class="highlight"><span class="check">✅</span></td>
+              <td><span class="cross">❌</span></td>
+              <td><span class="warn">🟡</span></td>
+              <td><span class="cross">❌</span></td>
+              <td><span class="warn">🟡</span></td>
+            </tr>
+            <tr>
+              <td>Vim Mode</td>
+              <td class="highlight"><span class="check">✅</span></td>
+              <td><span class="warn">🟡</span></td>
+              <td><span class="cross">❌</span></td>
+              <td><span class="cross">❌</span></td>
+              <td><span class="check">✅</span></td>
+            </tr>
+            <tr>
+              <td>Plugin System</td>
+              <td class="highlight"><span class="check">✅</span></td>
+              <td><span class="check">✅</span></td>
+              <td><span class="cross">❌</span></td>
+              <td><span class="cross">❌</span></td>
+              <td><span class="check">✅</span></td>
+            </tr>
+            <tr>
+              <td>Open Source</td>
+              <td class="highlight"><span class="check">✅</span></td>
+              <td><span class="cross">❌</span></td>
+              <td><span class="cross">❌</span></td>
+              <td><span class="cross">❌</span></td>
+              <td><span class="check">✅</span></td>
+            </tr>
+            <tr>
+              <td>Encrypted Vaults</td>
+              <td class="highlight"><span class="check">✅</span></td>
+              <td><span class="cross">❌</span></td>
+              <td><span class="cross">❌</span></td>
+              <td><span class="cross">❌</span></td>
+              <td><span class="cross">❌</span></td>
+            </tr>
+            <tr>
+              <td>Spaced Repetition</td>
+              <td class="highlight"><span class="check">✅</span></td>
+              <td><span class="cross">❌</span></td>
+              <td><span class="cross">❌</span></td>
+              <td><span class="cross">❌</span></td>
+              <td><span class="cross">❌</span></td>
+            </tr>
+            <tr>
+              <td>Native (non-Electron)</td>
+              <td class="highlight"><span class="check">✅</span></td>
+              <td><span class="cross">❌</span></td>
+              <td><span class="cross">❌</span></td>
+              <td><span class="cross">❌</span></td>
+              <td><span class="cross">❌</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Download Section -->
+  <section class="download" id="download">
+    <div class="container">
+      <div class="download-content fade-in">
+        <span class="section-label">Download</span>
+        <h2 class="section-title">Get Oxidian v2.0</h2>
+        <p class="section-desc">Start taking notes at the speed of thought.</p>
+        <div class="download-platforms">
+          <a href="https://github.com/Malpurr/Oxidian/releases" class="platform-card" target="_blank" rel="noopener">
+            <svg class="platform-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12.504 0c-.155 0-.311.002-.465.007C6.97.152 2.874 4.053 2.16 9.242a10.553 10.553 0 00-.12 1.63c0 .1.004.198.007.297-.003.053-.007.105-.007.158 0 5.519 4.479 9.998 9.998 9.998 5.52 0 9.998-4.479 9.998-9.998 0-5.52-4.479-9.998-9.998-9.998l-.534.001z"/><path d="M12 5.5c-.276 0-.5.224-.5.5v5.586l-2.293-2.293a.5.5 0 00-.707.707l3.146 3.147a.5.5 0 00.708 0L15.5 10a.5.5 0 00-.707-.707L12.5 11.586V6a.5.5 0 00-.5-.5z" fill="var(--bg-base)"/></svg>
+            <div class="platform-name">Linux x86_64</div>
+            <div class="platform-status">Available Now</div>
+          </a>
+          <div class="platform-card platform-coming">
+            <svg class="platform-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83"/><path d="M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+            <div class="platform-name">macOS</div>
+            <div class="platform-status">Coming Soon</div>
+          </div>
+          <div class="platform-card platform-coming">
+            <svg class="platform-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+            <div class="platform-name">Windows</div>
+            <div class="platform-status">Coming Soon</div>
+          </div>
+        </div>
+        <div class="build-source">
+          <h3>Build from source</h3>
+          <div class="code-block">
+            <code><span class="code-comment"># Clone and build</span>
+git clone https://github.com/Malpurr/Oxidian.git
+cd oxidian
+cargo build --release</code>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Open Source -->
+  <section class="open-source" id="studio">
+    <div class="container">
+      <div class="open-source-content fade-in">
+        <div class="os-badges">
+          <span class="badge badge-license">MIT License</span>
+          <span class="badge badge-stars">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .587l3.668 7.431 8.2 1.192-5.934 5.787 1.4 8.168L12 18.896l-7.334 3.858 1.4-8.168L.132 9.21l8.2-1.192z"/></svg>
+            Star on GitHub
+          </span>
+        </div>
+        <h2 class="section-title">Built by Oxidian Studio</h2>
+        <p class="section-desc">Open source, community-driven, no compromises.</p>
+        <div class="os-cards">
+          <div class="os-card">
+            <div class="os-card-icon">🦀</div>
+            <h3>Rust-Powered</h3>
+            <p>Backend in Rust for memory safety and raw performance. Frontend in vanilla JS — no framework bloat.</p>
+            <a href="https://github.com/Malpurr/Oxidian" class="os-link" target="_blank" rel="noopener">View Source →</a>
+          </div>
+          <div class="os-card">
+            <div class="os-card-icon">🤝</div>
+            <h3>Contribute</h3>
+            <p>Check out our contribution guide and help shape the future of note-taking.</p>
+            <a href="https://github.com/Malpurr/Oxidian/blob/main/CONTRIBUTING.md" class="os-link" target="_blank" rel="noopener">Contribution Guide →</a>
+          </div>
+          <div class="os-card">
+            <div class="os-card-icon">💬</div>
+            <h3>Community</h3>
+            <p>Join the discussion, report bugs, or request features on GitHub.</p>
+            <a href="https://github.com/Malpurr/Oxidian/discussions" class="os-link" target="_blank" rel="noopener">Join Discussion →</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-content">
+        <div class="footer-brand">
+          <div class="footer-logo">
+            <span class="logo-icon">⬡</span>
+            <span class="logo-text">Oxidian</span>
+          </div>
+          <p class="footer-tagline">Made with 🦀 by Oxidian Studio</p>
+        </div>
+        <div class="footer-nav">
+          <a href="#hypermark">HyperMark</a>
+          <a href="#features">Features</a>
+          <a href="#v2">v2.0</a>
+          <a href="#comparison">Compare</a>
+          <a href="#download">Download</a>
+          <a href="docs/index.html">Docs</a>
+          <a href="plugins.html">Plugins</a>
+          <a href="https://github.com/Malpurr/Oxidian" target="_blank" rel="noopener">GitHub</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2026 Oxidian Studio. Open source under the MIT License.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/main.js"></script>
+</body>
+</html>

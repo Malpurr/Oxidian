@@ -270,7 +270,20 @@ export class HoverPreview {
         const contentEl = this.popup.querySelector('.hover-preview-content');
         
         try {
-            const html = await this.app.renderMarkdown?.(content) || this.simpleMarkdownRender(content);
+            // Use Rust render_markdown_html directly for hover previews (faster, no embed/frontmatter processing needed)
+            let html;
+            try {
+                html = await invoke('render_markdown_html', { content });
+            } catch {
+                // Fallback to app's full render pipeline
+                html = await this.app.renderMarkdown?.(content);
+            }
+            
+            if (!html) {
+                contentEl.innerHTML = `<p style="color: var(--text-faint)">Empty note</p>`;
+                return;
+            }
+            
             contentEl.innerHTML = html;
             
             // Process any special elements
@@ -279,20 +292,6 @@ export class HoverPreview {
         } catch (err) {
             contentEl.innerHTML = `<div class="preview-error">Failed to render preview: ${err.message}</div>`;
         }
-    }
-
-    simpleMarkdownRender(content) {
-        // Basic markdown rendering for fallback
-        return content
-            .replace(/^# (.+)$/gm, '<h1>$1</h1>')
-            .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-            .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\*(.+?)\*/g, '<em>$1</em>')
-            .replace(/`(.+?)`/g, '<code>$1</code>')
-            .replace(/\n\n/g, '</p><p>')
-            .replace(/^(.+)$/gm, '<p>$1</p>')
-            .replace(/<p><\/p>/g, '');
     }
 
     truncateContent(content, maxLines = 15) {

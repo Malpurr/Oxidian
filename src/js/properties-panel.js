@@ -1,6 +1,8 @@
 // Oxidian — Properties/Frontmatter Panel
 // Klappbarer Bereich oben im Editor zeigt YAML Frontmatter als editierbare Key-Value Felder
 
+const { invoke } = window.__TAURI__.core;
+
 export class PropertiesPanel {
     constructor(app) {
         this.app = app;
@@ -109,37 +111,39 @@ export class PropertiesPanel {
         });
     }
 
-    parsePropertiesFromContent(content) {
+    async parsePropertiesFromContent(content) {
         this.properties = {};
         
-        // Check for YAML frontmatter
-        const match = content.match(/^---\n([\s\S]*?)\n---/);
-        if (match) {
-            const yamlString = match[1];
-            
-            try {
-                // Simple YAML parser (basic key: value pairs)
-                const lines = yamlString.split('\n');
-                for (const line of lines) {
-                    const trimmed = line.trim();
-                    if (!trimmed || trimmed.startsWith('#')) continue;
-                    
-                    const colonIndex = trimmed.indexOf(':');
-                    if (colonIndex === -1) continue;
-                    
-                    const key = trimmed.substring(0, colonIndex).trim();
-                    let value = trimmed.substring(colonIndex + 1).trim();
-                    
-                    // Remove quotes if present
-                    if ((value.startsWith('"') && value.endsWith('"')) || 
-                        (value.startsWith("'") && value.endsWith("'"))) {
-                        value = value.slice(1, -1);
-                    }
-                    
-                    this.properties[key] = value;
+        try {
+            const result = await invoke('parse_frontmatter', { content });
+            if (result && result.frontmatter && typeof result.frontmatter === 'object') {
+                // Flatten to string values for the UI
+                for (const [key, value] of Object.entries(result.frontmatter)) {
+                    this.properties[key] = Array.isArray(value) ? value.join(', ') : String(value ?? '');
                 }
-            } catch (err) {
-                console.warn('Failed to parse YAML frontmatter:', err);
+            }
+        } catch (err) {
+            // Fallback: simple regex parse if Rust command fails
+            const match = content.match(/^---\n([\s\S]*?)\n---/);
+            if (match) {
+                try {
+                    const lines = match[1].split('\n');
+                    for (const line of lines) {
+                        const trimmed = line.trim();
+                        if (!trimmed || trimmed.startsWith('#')) continue;
+                        const colonIndex = trimmed.indexOf(':');
+                        if (colonIndex === -1) continue;
+                        const key = trimmed.substring(0, colonIndex).trim();
+                        let value = trimmed.substring(colonIndex + 1).trim();
+                        if ((value.startsWith('"') && value.endsWith('"')) || 
+                            (value.startsWith("'") && value.endsWith("'"))) {
+                            value = value.slice(1, -1);
+                        }
+                        this.properties[key] = value;
+                    }
+                } catch (parseErr) {
+                    console.warn('Failed to parse YAML frontmatter:', parseErr);
+                }
             }
         }
         
@@ -285,7 +289,7 @@ export class PropertiesPanel {
         }, 50);
     }
 
-    updateContentFromProperties() {
+    async updateContentFromProperties() {
         if (!this.textarea || this.isUpdating) return;
         
         this.isUpdating = true;
@@ -298,19 +302,23 @@ export class PropertiesPanel {
             const withoutFrontmatter = content.replace(/^---\n[\s\S]*?\n---\n?/, '');
             this.textarea.value = withoutFrontmatter;
         } else {
-            // Generate YAML
-            const yamlLines = ['---'];
-            for (const [key, value] of Object.entries(this.properties)) {
-                let yamlValue = value;
-                // Quote values that contain special characters
-                if (typeof yamlValue === 'string' && (/[:#\[\]{}|>]/.test(yamlValue) || yamlValue.trim() !== yamlValue)) {
-                    yamlValue = `"${yamlValue.replace(/"/g, '\\"')}"`;
+            let newFrontmatter;
+            try {
+                // Use Rust to serialize YAML frontmatter
+                newFrontmatter = await invoke('stringify_frontmatter', { frontmatter: this.properties });
+            } catch {
+                // Fallback: generate YAML manually
+                const yamlLines = ['---'];
+                for (const [key, value] of Object.entries(this.properties)) {
+                    let yamlValue = value;
+                    if (typeof yamlValue === 'string' && (/[:#\[\]{}|>]/.test(yamlValue) || yamlValue.trim() !== yamlValue)) {
+                        yamlValue = `"${yamlValue.replace(/"/g, '\\"')}"`;
+                    }
+                    yamlLines.push(`${key}: ${yamlValue}`);
                 }
-                yamlLines.push(`${key}: ${yamlValue}`);
+                yamlLines.push('---');
+                newFrontmatter = yamlLines.join('\n') + '\n';
             }
-            yamlLines.push('---');
-            
-            const newFrontmatter = yamlLines.join('\n') + '\n';
             
             // Replace or add frontmatter
             const existingMatch = content.match(/^---\n[\s\S]*?\n---\n?/);

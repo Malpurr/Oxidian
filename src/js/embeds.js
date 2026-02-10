@@ -1,60 +1,97 @@
 // Oxidian — Embeds/Transclusion Module
-// Handles ![[note]] and ![[note#heading]] syntax for inline content embedding
+// Refactored: Embed detection/resolution delegated to Rust via invoke().
+// JS retains: Embed DOM rendering (wrapEmbedContent, renderEmbedError), click handlers, cache management.
 
 const { invoke } = window.__TAURI__.core;
 
 export class EmbedProcessor {
     constructor(app) {
         this.app = app;
-        this.embedCache = new Map(); // Cache for embedded content
-        this.maxEmbedDepth = 3; // Prevent infinite recursion
-        this.currentEmbedDepth = 0;
+        this.embedCache = new Map();
+        this.maxEmbedDepth = 3;
     }
 
     /**
-     * Process embeds in markdown content
+     * Process embeds in markdown content via Rust.
+     * Rust handles: regex scanning, path resolution, recursive embed resolution.
+     * JS handles: wrapping resolved content with DOM/HTML.
+     * 
      * @param {string} content - The markdown content
      * @param {string} currentPath - Current file path for relative resolution
      * @param {number} embedDepth - Current embedding depth
-     * @returns {string} Processed content with embeds rendered
+     * @returns {Promise<string>} Processed content with embeds rendered
      */
     async processEmbeds(content, currentPath = null, embedDepth = 0) {
         if (embedDepth >= this.maxEmbedDepth) {
             return content;
         }
 
-        this.currentEmbedDepth = embedDepth;
-
-        // Match embed patterns: ![[note]] or ![[note#heading]]
-        const embedRegex = /!\[\[([^\]]+?)(?:#([^\]]+?))?\]\]/g;
-        let processedContent = content;
-        const embeds = [];
-
-        // Find all embeds
-        let match;
-        while ((match = embedRegex.exec(content)) !== null) {
-            embeds.push({
-                fullMatch: match[0],
-                notePath: match[1].trim(),
-                heading: match[2]?.trim(),
-                index: match.index
+        try {
+            // Rust resolves all embeds: finds ![[...]] patterns, reads files,
+            // extracts sections, strips frontmatter, handles recursion.
+            // Returns: { processed: string, embeds: [{ fullMatch, notePath, heading, content, error }] }
+            const result = await invoke('resolve_embeds', {
+                content,
+                currentPath: currentPath || '',
+                maxDepth: this.maxEmbedDepth - embedDepth,
             });
-        }
 
-        // Process embeds in reverse order to maintain indices
-        for (const embed of embeds.reverse()) {
+            // If Rust returns fully processed content, use it directly
+            if (result.processed) {
+                // Wrap each embed with our DOM styling
+                let processedContent = result.processed;
+                for (const embed of (result.embeds || [])) {
+                    if (embed.error) {
+                        const errorHtml = this.renderEmbedError(embed, embed.error);
+                        processedContent = processedContent.replace(embed.placeholder || embed.fullMatch, errorHtml);
+                    } else if (embed.content != null) {
+                        const wrappedHtml = this.wrapEmbedContent(embed.content, embed, embedDepth + (embed.depth || 0));
+                        processedContent = processedContent.replace(embed.placeholder || embed.fullMatch, wrappedHtml);
+                    }
+                }
+                return processedContent;
+            }
+
+            // Fallback: Rust returned just embed metadata, JS does the wrapping
+            return this._processEmbedsFromMetadata(content, result.embeds || [], embedDepth);
+
+        } catch (err) {
+            console.warn('[Embeds] Rust resolve_embeds failed, using fallback:', err);
+            return this._fallbackProcessEmbeds(content, currentPath, embedDepth);
+        }
+    }
+
+    /**
+     * Process embeds when Rust returns metadata but not fully processed content.
+     * @private
+     */
+    _processEmbedsFromMetadata(content, embeds, embedDepth) {
+        let processedContent = content;
+
+        // Process in reverse order to maintain indices
+        for (const embed of [...embeds].reverse()) {
             try {
-                const embeddedContent = await this.renderEmbed(embed, currentPath, embedDepth + 1);
-                processedContent = processedContent.substring(0, embed.index) +
-                                embeddedContent +
-                                processedContent.substring(embed.index + embed.fullMatch.length);
+                if (embed.error) {
+                    const errorHtml = this.renderEmbedError(embed, embed.error);
+                    processedContent = processedContent.substring(0, embed.index) +
+                        errorHtml +
+                        processedContent.substring(embed.index + embed.fullMatch.length);
+                } else {
+                    const wrappedHtml = this.wrapEmbedContent(
+                        embed.content || '',
+                        embed,
+                        embedDepth + (embed.depth || 0)
+                    );
+                    processedContent = processedContent.substring(0, embed.index) +
+                        wrappedHtml +
+                        processedContent.substring(embed.index + embed.fullMatch.length);
+                }
             } catch (error) {
                 console.error('Failed to process embed:', embed.fullMatch, error);
-                // Replace with error placeholder
-                const errorContent = this.renderEmbedError(embed, error.message);
+                const errorHtml = this.renderEmbedError(embed, error.message);
                 processedContent = processedContent.substring(0, embed.index) +
-                                errorContent +
-                                processedContent.substring(embed.index + embed.fullMatch.length);
+                    errorHtml +
+                    processedContent.substring(embed.index + embed.fullMatch.length);
             }
         }
 
@@ -62,140 +99,100 @@ export class EmbedProcessor {
     }
 
     /**
-     * Render a single embed
+     * Fallback: JS-side embed processing if Rust is unavailable.
+     * @private
      */
-    async renderEmbed(embed, currentPath, embedDepth) {
-        const { notePath, heading } = embed;
-        
-        // Normalize path
-        let fullPath = notePath;
-        if (!fullPath.endsWith('.md')) {
-            fullPath = fullPath + '.md';
+    async _fallbackProcessEmbeds(content, currentPath, embedDepth) {
+        const embedRegex = /!\[\[([^\]]+?)(?:#([^\]]+?))?\]\]/g;
+        let processedContent = content;
+        const embeds = [];
+
+        let match;
+        while ((match = embedRegex.exec(content)) !== null) {
+            embeds.push({
+                fullMatch: match[0],
+                notePath: match[1].trim(),
+                heading: match[2]?.trim(),
+                index: match.index,
+            });
         }
 
-        // Check cache first
-        const cacheKey = `${fullPath}#${heading || ''}`;
-        if (this.embedCache.has(cacheKey)) {
-            return this.wrapEmbedContent(this.embedCache.get(cacheKey), embed, embedDepth);
-        }
+        for (const embed of embeds.reverse()) {
+            try {
+                let fullPath = embed.notePath;
+                if (!fullPath.endsWith('.md')) fullPath += '.md';
 
-        try {
-            // Read the note content
-            const noteContent = await invoke('read_note', { path: fullPath });
-            
-            let contentToEmbed;
-            
-            if (heading) {
-                // Extract specific section
-                contentToEmbed = this.extractSection(noteContent, heading);
-            } else {
-                // Embed entire note (excluding frontmatter)
-                contentToEmbed = this.stripFrontmatter(noteContent);
+                const noteContent = await invoke('read_note', { path: fullPath });
+                let contentToEmbed = embed.heading
+                    ? this._extractSection(noteContent, embed.heading)
+                    : this._stripFrontmatter(noteContent);
+
+                if (contentToEmbed && embedDepth + 1 < this.maxEmbedDepth) {
+                    contentToEmbed = await this._fallbackProcessEmbeds(contentToEmbed, fullPath, embedDepth + 1);
+                }
+
+                const wrappedHtml = this.wrapEmbedContent(contentToEmbed, embed, embedDepth);
+                processedContent = processedContent.substring(0, embed.index) +
+                    wrappedHtml +
+                    processedContent.substring(embed.index + embed.fullMatch.length);
+            } catch (error) {
+                const errorHtml = this.renderEmbedError(embed, error.message);
+                processedContent = processedContent.substring(0, embed.index) +
+                    errorHtml +
+                    processedContent.substring(embed.index + embed.fullMatch.length);
             }
-
-            // Recursively process embeds in the embedded content
-            if (contentToEmbed && embedDepth < this.maxEmbedDepth) {
-                contentToEmbed = await this.processEmbeds(contentToEmbed, fullPath, embedDepth);
-            }
-
-            // Cache the result
-            this.embedCache.set(cacheKey, contentToEmbed);
-
-            return this.wrapEmbedContent(contentToEmbed, embed, embedDepth);
-
-        } catch (error) {
-            // Note doesn't exist or can't be read
-            throw new Error(`Could not embed "${notePath}": ${error.message}`);
         }
+
+        return processedContent;
     }
 
-    /**
-     * Extract a specific section from markdown content
-     */
-    extractSection(content, targetHeading) {
+    /** @private */
+    _extractSection(content, targetHeading) {
         const lines = content.split('\n');
-        let inTargetSection = false;
-        let targetLevel = null;
+        let inTarget = false, targetLevel = null;
         const sectionLines = [];
 
         for (const line of lines) {
-            const trimmedLine = line.trim();
-            
-            // Check if this is a heading
-            const headingMatch = trimmedLine.match(/^(#{1,6})\s+(.+)/);
-            if (headingMatch) {
-                const level = headingMatch[1].length;
-                const headingText = headingMatch[2].trim();
-                
-                if (!inTargetSection) {
-                    // Look for our target heading
-                    if (headingText.toLowerCase() === targetHeading.toLowerCase()) {
-                        inTargetSection = true;
-                        targetLevel = level;
-                        sectionLines.push(line);
-                        continue;
+            const hm = line.trim().match(/^(#{1,6})\s+(.+)/);
+            if (hm) {
+                if (!inTarget) {
+                    if (hm[2].trim().toLowerCase() === targetHeading.toLowerCase()) {
+                        inTarget = true; targetLevel = hm[1].length; sectionLines.push(line); continue;
                     }
-                } else {
-                    // We're in the target section - check if we've hit a same-level or higher heading
-                    if (level <= targetLevel) {
-                        break; // End of our section
-                    }
-                }
+                } else if (hm[1].length <= targetLevel) break;
             }
-            
-            if (inTargetSection) {
-                sectionLines.push(line);
-            }
+            if (inTarget) sectionLines.push(line);
         }
 
-        if (!inTargetSection) {
-            throw new Error(`Heading "${targetHeading}" not found`);
-        }
-
+        if (!inTarget) throw new Error(`Heading "${targetHeading}" not found`);
         return sectionLines.join('\n');
     }
 
-    /**
-     * Remove YAML frontmatter from content
-     */
-    stripFrontmatter(content) {
-        if (!content.startsWith('---\n')) {
-            return content;
-        }
-
+    /** @private */
+    _stripFrontmatter(content) {
+        if (!content.startsWith('---\n')) return content;
         const lines = content.split('\n');
-        let endIndex = -1;
-        
-        // Find the closing ---
         for (let i = 1; i < lines.length; i++) {
-            if (lines[i].trim() === '---') {
-                endIndex = i;
-                break;
-            }
+            if (lines[i].trim() === '---') return lines.slice(i + 1).join('\n').trim();
         }
-
-        if (endIndex > 0) {
-            return lines.slice(endIndex + 1).join('\n').trim();
-        }
-
         return content;
     }
 
     /**
-     * Wrap embedded content with visual styling
+     * Wrap embedded content with visual styling.
      */
     wrapEmbedContent(content, embed, embedDepth) {
         if (!content || content.trim() === '') {
             return this.renderEmbedError(embed, 'No content found');
         }
 
-        const depthClass = `embed-depth-${embedDepth}`;
-        const sourceInfo = embed.heading ? 
-            `${embed.notePath}#${embed.heading}` : 
-            embed.notePath;
+        const depthClass = `embed-depth-${Math.min(embedDepth, 2)}`;
+        const sourceInfo = embed.heading
+            ? `${embed.notePath}#${embed.heading}`
+            : embed.notePath;
 
         return `
-<div class="embedded-content ${depthClass}" data-source="${sourceInfo}">
+<div class="embedded-content ${depthClass}" data-source="${this.escapeHtml(sourceInfo)}">
     <div class="embed-header">
         <span class="embed-source">${this.escapeHtml(sourceInfo)}</span>
         <button class="embed-open-btn" onclick="window.navigateToNote('${embed.notePath}')" title="Open in new tab">
@@ -213,15 +210,15 @@ export class EmbedProcessor {
     }
 
     /**
-     * Render embed error placeholder
+     * Render embed error placeholder.
      */
     renderEmbedError(embed, errorMessage) {
-        const sourceInfo = embed.heading ? 
-            `${embed.notePath}#${embed.heading}` : 
-            embed.notePath;
+        const sourceInfo = embed.heading
+            ? `${embed.notePath}#${embed.heading}`
+            : embed.notePath;
 
         return `
-<div class="embedded-content embed-error" data-source="${sourceInfo}">
+<div class="embedded-content embed-error" data-source="${this.escapeHtml(sourceInfo)}">
     <div class="embed-header">
         <span class="embed-source">${this.escapeHtml(sourceInfo)}</span>
         <span class="embed-error-indicator">!</span>
@@ -232,73 +229,62 @@ export class EmbedProcessor {
         </div>
         <div class="embed-create-suggestion">
             <button class="embed-create-btn" onclick="window.navigateToNote('${embed.notePath}')">
-                Create "${embed.notePath}"
+                Create "${this.escapeHtml(embed.notePath)}"
             </button>
         </div>
     </div>
 </div>`;
     }
 
-    /**
-     * Clear embed cache
-     */
-    clearCache() {
-        this.embedCache.clear();
-    }
+    clearCache() { this.embedCache.clear(); }
 
-    /**
-     * Invalidate cache for specific path
-     */
     invalidateCache(path) {
-        const keysToRemove = [];
-        for (const key of this.embedCache.keys()) {
-            if (key.startsWith(path)) {
-                keysToRemove.push(key);
-            }
+        for (const key of [...this.embedCache.keys()]) {
+            if (key.startsWith(path)) this.embedCache.delete(key);
         }
-        keysToRemove.forEach(key => this.embedCache.delete(key));
     }
 
     /**
-     * Get all embedded references in a document
+     * Get all embedded references in a document via Rust AST.
      */
-    getEmbedReferences(content) {
+    async getEmbedReferences(content) {
+        try {
+            // Rust parses and returns embed references from AST
+            const ast = await invoke('parse_markdown', { content });
+            const refs = [];
+            for (const block of (ast || [])) {
+                if (block.meta?.embeds) {
+                    for (const embed of block.meta.embeds) {
+                        let fullPath = embed.path || embed.notePath;
+                        if (fullPath && !fullPath.endsWith('.md')) fullPath += '.md';
+                        refs.push({ path: fullPath, heading: embed.heading, display: embed.display || `![[${embed.path}]]` });
+                    }
+                }
+            }
+            if (refs.length > 0) return refs;
+        } catch {
+            // Fall through to regex fallback
+        }
+
+        // Fallback: regex
         const embedRegex = /!\[\[([^\]]+?)(?:#([^\]]+?))?\]\]/g;
         const references = [];
-
         let match;
         while ((match = embedRegex.exec(content)) !== null) {
             let fullPath = match[1].trim();
-            if (!fullPath.endsWith('.md')) {
-                fullPath = fullPath + '.md';
-            }
-
-            references.push({
-                path: fullPath,
-                heading: match[2]?.trim(),
-                display: match[0]
-            });
+            if (!fullPath.endsWith('.md')) fullPath += '.md';
+            references.push({ path: fullPath, heading: match[2]?.trim(), display: match[0] });
         }
-
         return references;
     }
 
-    /**
-     * Update embeds when content changes
-     */
-    async onContentChange(path, content) {
-        // Invalidate cache for this file
+    async onContentChange(path, _content) {
         this.invalidateCache(path);
-        
-        // Update backlinks if any files embed this one
         if (this.app.backlinksManager) {
             await this.app.backlinksManager.updateEmbedReferences(path);
         }
     }
 
-    /**
-     * Escape HTML entities
-     */
     escapeHtml(text) {
         const div = document.createElement('div');
         div.textContent = text;
@@ -307,123 +293,26 @@ export class EmbedProcessor {
 }
 
 /**
- * CSS for embed styling (to be added to style.css)
+ * CSS for embed styling
  */
 export const EMBED_CSS = `
-/* Embedded Content */
-.embedded-content {
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    margin: 16px 0;
-    background: var(--bg-secondary);
-    overflow: hidden;
-}
-
-.embed-depth-0 {
-    border-left: 3px solid var(--text-accent);
-}
-
-.embed-depth-1 {
-    border-left: 3px solid var(--text-blue);
-    margin-left: 12px;
-}
-
-.embed-depth-2 {
-    border-left: 3px solid var(--text-green);
-    margin-left: 24px;
-}
-
-.embed-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 8px 12px;
-    background: var(--bg-tertiary);
-    border-bottom: 1px solid var(--border-color);
-    font-size: 12px;
-}
-
-.embed-source {
-    color: var(--text-muted);
-    font-family: var(--font-mono);
-}
-
-.embed-open-btn {
-    background: transparent;
-    border: none;
-    color: var(--text-muted);
-    cursor: pointer;
-    padding: 2px;
-    border-radius: var(--radius-sm);
-    transition: color var(--transition);
-}
-
-.embed-open-btn:hover {
-    color: var(--text-accent);
-}
-
-.embed-content {
-    padding: 12px;
-    line-height: 1.6;
-}
-
-/* Nested content adjustments */
-.embed-content h1,
-.embed-content h2,
-.embed-content h3,
-.embed-content h4,
-.embed-content h5,
-.embed-content h6 {
-    margin-top: 0;
-}
-
-.embed-content p:first-child {
-    margin-top: 0;
-}
-
-.embed-content p:last-child {
-    margin-bottom: 0;
-}
-
-/* Error states */
-.embed-error {
-    border-color: var(--text-red);
-    background: rgba(243, 139, 168, 0.05);
-}
-
-.embed-error-indicator {
-    color: var(--text-red);
-    font-weight: bold;
-}
-
-.embed-error-message {
-    color: var(--text-red);
-    font-size: 13px;
-    margin-bottom: 8px;
-}
-
-.embed-create-suggestion {
-    margin-top: 8px;
-}
-
-.embed-create-btn {
-    background: var(--text-accent);
-    color: white;
-    border: none;
-    padding: 4px 8px;
-    border-radius: var(--radius-sm);
-    font-size: 12px;
-    cursor: pointer;
-    transition: background var(--transition);
-}
-
-.embed-create-btn:hover {
-    background: var(--text-accent-hover);
-}
-
-/* Reduce nesting visual weight */
-.embedded-content .embedded-content {
-    margin: 8px 0;
-    border-width: 1px;
-}
+.embedded-content { border: 1px solid var(--border-color); border-radius: var(--radius-md); margin: 16px 0; background: var(--bg-secondary); overflow: hidden; }
+.embed-depth-0 { border-left: 3px solid var(--text-accent); }
+.embed-depth-1 { border-left: 3px solid var(--text-blue); margin-left: 12px; }
+.embed-depth-2 { border-left: 3px solid var(--text-green); margin-left: 24px; }
+.embed-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: var(--bg-tertiary); border-bottom: 1px solid var(--border-color); font-size: 12px; }
+.embed-source { color: var(--text-muted); font-family: var(--font-mono); }
+.embed-open-btn { background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 2px; border-radius: var(--radius-sm); transition: color var(--transition); }
+.embed-open-btn:hover { color: var(--text-accent); }
+.embed-content { padding: 12px; line-height: 1.6; }
+.embed-content h1, .embed-content h2, .embed-content h3, .embed-content h4, .embed-content h5, .embed-content h6 { margin-top: 0; }
+.embed-content p:first-child { margin-top: 0; }
+.embed-content p:last-child { margin-bottom: 0; }
+.embed-error { border-color: var(--text-red); background: rgba(243, 139, 168, 0.05); }
+.embed-error-indicator { color: var(--text-red); font-weight: bold; }
+.embed-error-message { color: var(--text-red); font-size: 13px; margin-bottom: 8px; }
+.embed-create-suggestion { margin-top: 8px; }
+.embed-create-btn { background: var(--text-accent); color: white; border: none; padding: 4px 8px; border-radius: var(--radius-sm); font-size: 12px; cursor: pointer; transition: background var(--transition); }
+.embed-create-btn:hover { background: var(--text-accent-hover); }
+.embedded-content .embedded-content { margin: 8px 0; border-width: 1px; }
 `;

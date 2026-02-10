@@ -1254,58 +1254,24 @@ class OxidianApp {
     // ===== Auto-Update Internal Links =====
 
     /**
-     * After renaming a note, scan ALL .md files in the vault and replace
-     * [[oldName]] with [[newName]] (and [[oldName|alias]] → [[newName|alias]]).
+     * After renaming a note, update all [[wikilinks]] across the vault via Rust.
      */
     async updateInternalLinks(oldName, newName) {
         try {
-            const tree = await invoke('list_files');
-            const allFiles = [];
-            const walk = (nodes) => {
-                if (!Array.isArray(nodes)) return;
-                for (const node of nodes) {
-                    if (node.is_dir) {
-                        walk(node.children || []);
-                    } else if (node.path && node.path.endsWith('.md')) {
-                        allFiles.push(node.path);
-                    }
-                }
-            };
-            walk(tree);
-
-            // Regex to match [[oldName]] and [[oldName|display text]]
-            const escapedOld = oldName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const linkRegex = new RegExp(`\\[\\[${escapedOld}(\\|[^\\]]*)?\\]\\]`, 'g');
-
-            let updatedCount = 0;
-            for (const filePath of allFiles) {
-                try {
-                    const content = await invoke('read_note', { path: filePath });
-                    if (!linkRegex.test(content)) continue;
-
-                    // Reset regex lastIndex
-                    linkRegex.lastIndex = 0;
-                    const newContent = content.replace(linkRegex, (match, alias) => {
-                        return `[[${newName}${alias || ''}]]`;
-                    });
-
-                    if (newContent !== content) {
-                        await invoke('save_note', { path: filePath, content: newContent });
-                        updatedCount++;
-
-                        // If this file is currently open, refresh the editor content
-                        if (filePath === this.currentFile) {
-                            this.editor.setContent(newContent);
-                            this.isDirty = false;
-                        }
-                    }
-                } catch (fileErr) {
-                    console.warn(`[LinkUpdate] Failed to update links in ${filePath}:`, fileErr);
-                }
-            }
+            const result = await invoke('update_links_on_rename', { oldName, newName });
+            const updatedCount = result?.updated_count || 0;
 
             if (updatedCount > 0) {
                 console.log(`[LinkUpdate] Updated [[${oldName}]] → [[${newName}]] in ${updatedCount} file(s)`);
+
+                // If the currently open file was affected, refresh editor content
+                if (this.currentFile) {
+                    try {
+                        const refreshed = await invoke('read_note', { path: this.currentFile });
+                        this.editor.setContent(refreshed);
+                        this.isDirty = false;
+                    } catch { /* file may not exist anymore */ }
+                }
             }
         } catch (err) {
             console.error('[LinkUpdate] Failed to update internal links:', err);
@@ -1841,102 +1807,7 @@ class OxidianApp {
     }
 
     // ===== Command Palette =====
-
-    openCommandPalette() {
-        // Remove existing palette if open
-        const existing = document.getElementById('command-palette-overlay');
-        if (existing) { existing.remove(); return; }
-
-        const overlay = document.createElement('div');
-        overlay.id = 'command-palette-overlay';
-        overlay.className = 'command-palette-overlay';
-
-        const palette = document.createElement('div');
-        palette.className = 'command-palette';
-
-        const input = document.createElement('input');
-        input.className = 'command-palette-input';
-        input.placeholder = 'Type a command...';
-        input.autocomplete = 'off';
-
-        const results = document.createElement('div');
-        results.className = 'command-palette-results';
-
-        palette.appendChild(input);
-        palette.appendChild(results);
-        overlay.appendChild(palette);
-        document.body.appendChild(overlay);
-
-        const commands = [
-            { name: 'New Note', shortcut: 'Ctrl+N', action: () => this.showNewNoteDialog() },
-            { name: 'Open Daily Note', shortcut: 'Ctrl+D', action: () => this.openDailyNote() },
-            { name: 'Save Current File', shortcut: 'Ctrl+S', action: () => this.saveCurrentFile() },
-            { name: 'Search Notes', shortcut: 'Ctrl+Shift+F', action: () => this.search.show() },
-            { name: 'Cycle View Mode', shortcut: 'Ctrl+E', action: () => this.cycleViewMode() },
-            { name: 'Open Settings', shortcut: 'Ctrl+,', action: () => this.openSettingsTab() },
-            { name: 'Open Graph View', action: () => this.openGraphView() },
-            { name: 'Toggle Focus Mode', shortcut: 'Ctrl+Shift+D', action: () => this.toggleFocusMode() },
-            { name: 'New Folder', action: () => this.createNewFolder() },
-            { name: 'Toggle Bookmark', action: () => this.toggleBookmark() },
-            { name: 'Editor: Switch to Classic Mode', action: () => this.setEditorMode('classic') },
-            { name: 'Editor: Switch to HyperMark Mode', action: () => this.setEditorMode('hypermark') },
-            { name: 'Quick Switcher', shortcut: 'Ctrl+P', action: () => this.quickSwitcher.show() },
-            { name: 'Insert Template', shortcut: 'Ctrl+T', action: () => this.templateManager.showPicker() },
-            { name: 'Toggle Backlinks Panel', action: () => this.toggleBacklinksPanel() },
-            { name: 'Remember: Open Dashboard', shortcut: 'Ctrl+Shift+R', action: () => this.openRememberDashboard() },
-            { name: 'Remember: Extract to Card', shortcut: 'Ctrl+Shift+E', action: () => this.extractToCard() },
-        ];
-
-        // Also include open files from sidebar
-        let allCommands = [...commands];
-
-        let selectedIndex = 0;
-        let filtered = [...allCommands];
-
-        const render = () => {
-            results.innerHTML = '';
-            if (filtered.length === 0) {
-                results.innerHTML = '<div class="command-palette-empty">No matching commands</div>';
-                return;
-            }
-            filtered.forEach((cmd, i) => {
-                const item = document.createElement('div');
-                item.className = 'command-palette-item' + (i === selectedIndex ? ' selected' : '');
-                item.innerHTML = `<span class="command-palette-name">${this.escapeHtml(cmd.name)}</span>${cmd.shortcut ? `<span class="command-palette-shortcut">${cmd.shortcut}</span>` : ''}`;
-                item.addEventListener('mousedown', (e) => {
-                    e.preventDefault();
-                    overlay.remove();
-                    cmd.action();
-                });
-                item.addEventListener('mouseenter', () => {
-                    selectedIndex = i;
-                    render();
-                });
-                results.appendChild(item);
-            });
-        };
-
-        input.addEventListener('input', () => {
-            const q = input.value.toLowerCase();
-            filtered = allCommands.filter(c => c.name.toLowerCase().includes(q));
-            selectedIndex = 0;
-            render();
-        });
-
-        input.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowDown') { e.preventDefault(); selectedIndex = (selectedIndex + 1) % filtered.length; render(); }
-            else if (e.key === 'ArrowUp') { e.preventDefault(); selectedIndex = (selectedIndex - 1 + filtered.length) % filtered.length; render(); }
-            else if (e.key === 'Enter') { e.preventDefault(); if (filtered[selectedIndex]) { overlay.remove(); filtered[selectedIndex].action(); } }
-            else if (e.key === 'Escape') { overlay.remove(); }
-        });
-
-        overlay.addEventListener('mousedown', (e) => {
-            if (e.target === overlay) overlay.remove();
-        });
-
-        render();
-        input.focus();
-    }
+    // Handled by CommandPalette module (command-palette.js)
 
     // ===== View Mode =====
 

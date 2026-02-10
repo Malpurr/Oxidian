@@ -1,5 +1,6 @@
 // Oxidian — Obsidian Plugin Loader
 // Loads real Obsidian community plugins from .obsidian/plugins/
+// Refactored: Plugin discovery, enable/disable, settings → Rust backend via invoke()
 const { invoke } = window.__TAURI__.core;
 
 import ObsidianAPI, { App, Plugin, Notice, TFile, installDomExtensions, setIcon, getIconIds } from './obsidian-api.js';
@@ -63,7 +64,7 @@ export class PluginLoader {
         // Ensure DOM extensions are installed before plugins load
         installDomExtensions();
 
-        // Ensure global functions are available (obsidian-api.js sets them, but reinforce)
+        // Ensure global functions are available
         window.activeDocument = document;
         window.activeWindow = window;
         if (!window.setIcon) window.setIcon = setIcon;
@@ -84,7 +85,7 @@ export class PluginLoader {
         // Init command palette keyboard shortcut
         this._initCommandPalette();
 
-        // Discover and load enabled plugins
+        // Discover and load enabled plugins via Rust backend
         await this.discoverPlugins();
         await this.loadEnabledPlugins();
 
@@ -92,7 +93,6 @@ export class PluginLoader {
     }
 
     _wireAppEvents() {
-        // When oxidian opens a file, update the obsidian workspace
         const origOpenFile = this.oxidianApp.openFile.bind(this.oxidianApp);
         const self = this;
 
@@ -123,9 +123,6 @@ export class PluginLoader {
     }
 
     _initCommandPalette() {
-        // Ctrl+P is handled by OxidianApp.handleKeyboard() → openCommandPalette().
-        // We hook into that by replacing the app method to use our enhanced palette
-        // (which includes plugin commands) instead of registering a duplicate listener.
         this.oxidianApp.openCommandPalette = () => this.showCommandPalette();
     }
 
@@ -216,17 +213,28 @@ export class PluginLoader {
         });
     }
 
+    // ── Plugin Discovery via Rust backend ──────────────────────────────────
     async discoverPlugins() {
         try {
-            const manifests = await invoke('list_obsidian_plugins');
+            // Use Rust PluginRegistry for discovery (reads manifests, validates, checks enabled state)
+            const manifests = await invoke('discover_plugins');
             for (const m of manifests) {
                 this.pluginManifests.set(m.id, m);
             }
         } catch (e) {
-            console.warn('[PluginLoader] Failed to discover plugins:', e);
+            console.warn('[PluginLoader] Failed to discover plugins via Rust registry:', e);
+            // Fallback to legacy command
+            try {
+                const manifests = await invoke('list_obsidian_plugins');
+                for (const m of manifests) {
+                    this.pluginManifests.set(m.id, m);
+                }
+            } catch (e2) {
+                console.warn('[PluginLoader] Fallback discovery also failed:', e2);
+            }
         }
 
-        // Load enabled plugins list
+        // Load enabled plugins list from Rust backend
         try {
             const enabled = await invoke('get_enabled_plugins');
             this.enabledPlugins = new Set(enabled);
@@ -253,10 +261,10 @@ export class PluginLoader {
         }
 
         try {
-            // Read main.js
+            // Read main.js via Rust backend
             const mainJs = await invoke('read_plugin_main', { pluginId });
 
-            // Read styles.css if present
+            // Read styles.css via Rust backend (optional)
             try {
                 const styles = await invoke('read_plugin_styles', { pluginId });
                 if (styles) {
@@ -267,7 +275,7 @@ export class PluginLoader {
                 }
             } catch {} // styles.css is optional
 
-            // Create sandboxed module environment
+            // Create sandboxed module environment (JS execution stays in browser)
             const pluginInstance = this._createPluginSandbox(mainJs, manifest);
 
             if (pluginInstance) {
@@ -282,25 +290,20 @@ export class PluginLoader {
     }
 
     _createPluginSandbox(mainJs, manifest) {
-        // Create a module-like environment
         const moduleExports = {};
         const moduleObj = { exports: moduleExports };
 
-        // The require function that resolves 'obsidian'
         const requireFn = (moduleName) => {
             if (moduleName === 'obsidian') return ObsidianAPI;
-            // Some plugins require other modules
             console.warn(`[PluginLoader] Plugin ${manifest.id} tried to require unknown module: ${moduleName}`);
             return {};
         };
 
         try {
-            // Execute the plugin's main.js in a sandboxed context
             const wrappedCode = `(function(module, exports, require, app, obsidian) {\n${mainJs}\n})`;
             const fn = new Function('return ' + wrappedCode)();
             fn(moduleObj, moduleExports, requireFn, this.obsidianApp, ObsidianAPI);
 
-            // Find the plugin class
             const exports = moduleObj.exports;
             let PluginClass = null;
 
@@ -309,7 +312,6 @@ export class PluginLoader {
             } else if (typeof exports === 'function') {
                 PluginClass = exports;
             } else {
-                // Look for the first class-like export that extends Plugin
                 for (const key of Object.keys(exports)) {
                     if (typeof exports[key] === 'function') {
                         PluginClass = exports[key];
@@ -323,7 +325,6 @@ export class PluginLoader {
                 return null;
             }
 
-            // Instantiate the plugin
             const instance = new PluginClass(this.obsidianApp, manifest);
 
             // Ensure it inherits Plugin methods if the class doesn't properly extend
@@ -342,7 +343,6 @@ export class PluginLoader {
                 if (!instance._statusBarItems) instance._statusBarItems = [];
             }
 
-            // Call load() (not onload!) to properly set _loaded and load children
             instance.load();
 
             return instance;
@@ -369,11 +369,16 @@ export class PluginLoader {
         console.log(`[PluginLoader] Unloaded plugin: ${pluginId}`);
     }
 
+    // ── Enable/Disable via Rust backend ────────────────────────────────────
     async togglePlugin(pluginId, enabled) {
         try {
-            await invoke('toggle_plugin', { pluginId, enabled });
+            if (enabled) {
+                await invoke('enable_plugin', { pluginId });
+            } else {
+                await invoke('disable_plugin', { pluginId });
+            }
         } catch (e) {
-            console.error(`[PluginLoader] Failed to toggle plugin ${pluginId}:`, e);
+            console.error(`[PluginLoader] Failed to ${enabled ? 'enable' : 'disable'} plugin ${pluginId}:`, e);
         }
 
         if (enabled) {
@@ -382,6 +387,24 @@ export class PluginLoader {
         } else {
             this.enabledPlugins.delete(pluginId);
             await this.unloadPlugin(pluginId);
+        }
+    }
+
+    // ── Plugin Settings via Rust backend ───────────────────────────────────
+    async getPluginSettings(pluginId) {
+        try {
+            return await invoke('get_plugin_settings', { pluginId });
+        } catch (e) {
+            console.warn(`[PluginLoader] Failed to load settings for ${pluginId}:`, e);
+            return {};
+        }
+    }
+
+    async savePluginSettings(pluginId, settings) {
+        try {
+            await invoke('save_plugin_settings', { pluginId, settings });
+        } catch (e) {
+            console.error(`[PluginLoader] Failed to save settings for ${pluginId}:`, e);
         }
     }
 

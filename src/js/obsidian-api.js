@@ -244,10 +244,17 @@ class FileSystemAdapter {
 
     async exists(normalizedPath, sensitive) {
         try {
-            await invoke('read_note', { path: normalizedPath });
-            return true;
+            // Try resolve_link first — lightweight check via Rust
+            const targets = await invoke('resolve_link', { link: normalizedPath });
+            return targets && targets.length > 0;
         } catch {
-            return false;
+            // Fallback: attempt read
+            try {
+                await invoke('read_note', { path: normalizedPath });
+                return true;
+            } catch {
+                return false;
+            }
         }
     }
 
@@ -1189,6 +1196,49 @@ class MetadataCache extends Events {
         return null;
     }
 
+    /**
+     * Get backlinks for a note via Rust backend.
+     * Returns a Promise<string[]> of paths linking to the given note.
+     */
+    async getBacklinksForFile(file) {
+        const path = typeof file === 'string' ? file : file.path;
+        try {
+            return await invoke('get_backlinks', { notePath: path });
+        } catch (e) {
+            console.warn('[MetadataCache] Failed to get backlinks via Rust:', e);
+            return [];
+        }
+    }
+
+    /**
+     * Parse frontmatter for a note via Rust backend.
+     * Returns a Promise with parsed frontmatter object.
+     */
+    async getFrontmatter(file) {
+        const path = typeof file === 'string' ? file : file.path;
+        try {
+            const content = await this._app.vault.read(file);
+            const result = await invoke('parse_frontmatter', { content });
+            return result || {};
+        } catch (e) {
+            console.warn('[MetadataCache] Failed to parse frontmatter via Rust:', e);
+            return {};
+        }
+    }
+
+    /**
+     * Resolve a wikilink via Rust backend.
+     * Returns a Promise<LinkTarget[]>.
+     */
+    async resolveLink(link) {
+        try {
+            return await invoke('resolve_link', { link });
+        } catch (e) {
+            console.warn('[MetadataCache] Failed to resolve link via Rust:', e);
+            return [];
+        }
+    }
+
     _updateCache(path, metadata) {
         this._cache.set(path, metadata);
         this.trigger('changed', this._app?.vault?.getAbstractFileByPath(path), '', metadata);
@@ -1234,16 +1284,29 @@ class FileManager {
     async processFrontMatter(file, fn) {
         if (!this._app?.vault) return;
         const content = await this._app.vault.read(file);
-        const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
-        let frontmatter = {};
-        if (fmMatch) {
-            try { frontmatter = parseYaml(fmMatch[1]) || {}; } catch {}
+
+        // Use Rust backend for frontmatter parsing when available
+        try {
+            const parsed = await invoke('parse_frontmatter', { content });
+            let frontmatter = (parsed && parsed.fields) ? parsed.fields : {};
+            fn(frontmatter);
+            // Use Rust backend to reconstruct the document
+            const body = content.replace(/^---\n[\s\S]*?\n---\n?/, '');
+            const result = await invoke('stringify_frontmatter', { fm: frontmatter, body });
+            await this._app.vault.modify(file, result);
+        } catch (e) {
+            // Fallback to JS-based parsing if Rust commands unavailable
+            const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
+            let frontmatter = {};
+            if (fmMatch) {
+                try { frontmatter = parseYaml(fmMatch[1]) || {}; } catch {}
+            }
+            fn(frontmatter);
+            const newFm = stringifyYaml(frontmatter);
+            const body = fmMatch ? content.slice(fmMatch[0].length) : content;
+            const newContent = `---\n${newFm}---${body}`;
+            await this._app.vault.modify(file, newContent);
         }
-        fn(frontmatter);
-        const newFm = stringifyYaml(frontmatter);
-        const body = fmMatch ? content.slice(fmMatch[0].length) : content;
-        const newContent = `---\n${newFm}---${body}`;
-        await this._app.vault.modify(file, newContent);
     }
 }
 
@@ -2334,21 +2397,39 @@ class Plugin extends Component {
 
     async loadData() {
         try {
-            const data = await invoke('get_plugin_data', { pluginId: this.manifest.id });
-            return data ? JSON.parse(data) : null;
+            // Primary: use Rust PluginRegistry settings (returns parsed JSON directly)
+            const data = await invoke('get_plugin_settings', { pluginId: this.manifest.id });
+            // If empty object from fresh install, return null for compat
+            if (data && typeof data === 'object' && Object.keys(data).length === 0) return null;
+            return data;
         } catch {
-            return null;
+            // Fallback: legacy command (returns raw string)
+            try {
+                const raw = await invoke('get_plugin_data', { pluginId: this.manifest.id });
+                return raw ? JSON.parse(raw) : null;
+            } catch {
+                return null;
+            }
         }
     }
 
     async saveData(data) {
         try {
-            await invoke('save_plugin_data', {
+            // Primary: use Rust PluginRegistry settings (accepts JSON value directly)
+            await invoke('save_plugin_settings', {
                 pluginId: this.manifest.id,
-                data: JSON.stringify(data, null, 2),
+                settings: data,
             });
-        } catch (e) {
-            console.error(`Failed to save plugin data for ${this.manifest.id}:`, e);
+        } catch {
+            // Fallback: legacy command (accepts string)
+            try {
+                await invoke('save_plugin_data', {
+                    pluginId: this.manifest.id,
+                    data: JSON.stringify(data, null, 2),
+                });
+            } catch (e) {
+                console.error(`Failed to save plugin data for ${this.manifest.id}:`, e);
+            }
         }
     }
 

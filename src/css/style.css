@@ -6520,3 +6520,385 @@ body.ctrl-pressed a {
         inset 0 1px 0 rgba(255,255,255,0.8),
         0 3px 10px rgba(0,0,0,0.1) !important;
 }
+
+/* ===================================================================
+   PIXEL Sprint — 2026-02-10: Visual Polish & UX Refinements
+   =================================================================== */
+
+/* ===== 1. Scrollbar Auto-Hide — Obsidian-Style ===== */
+/* Scrollbars fade in only on hover, cleaner look */
+#sidebar,
+#file-tree,
+.preview-pane-half,
+.hypermark-editor,
+.settings-content,
+.dialog-content {
+    --_sb-opacity: 0;
+}
+
+#sidebar:hover,
+#file-tree:hover,
+.preview-pane-half:hover,
+.hypermark-editor:hover,
+.settings-content:hover,
+.dialog-content:hover {
+    --_sb-opacity: 1;
+}
+
+#sidebar::-webkit-scrollbar-thumb,
+#file-tree::-webkit-scrollbar-thumb,
+.preview-pane-half::-webkit-scrollbar-thumb,
+.hypermark-editor::-webkit-scrollbar-thumb,
+.settings-content::-webkit-scrollbar-thumb,
+.dialog-content::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--scrollbar-thumb) calc(var(--_sb-opacity) * 100%), transparent);
+    transition: background 300ms ease;
+}
+
+#sidebar:hover::-webkit-scrollbar-thumb,
+#file-tree:hover::-webkit-scrollbar-thumb,
+.preview-pane-half:hover::-webkit-scrollbar-thumb,
+.hypermark-editor:hover::-webkit-scrollbar-thumb,
+.settings-content:hover::-webkit-scrollbar-thumb,
+.dialog-content:hover::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+}
+
+/* ===== 2. Ribbon — Tooltip Indicator + Glow ===== */
+.ribbon-btn {
+    position: relative;
+}
+
+.ribbon-btn:hover::before {
+    content: '';
+    position: absolute;
+    inset: 4px;
+    border-radius: var(--radius-sm);
+    background: radial-gradient(circle at center, rgba(127, 109, 242, 0.08) 0%, transparent 70%);
+    pointer-events: none;
+}
+
+.ribbon-btn.active {
+    background: rgba(127, 109, 242, 0.1);
+}
+
+/* ===== 3. File Tree — Refined Depth Indicators ===== */
+.tree-item {
+    position: relative;
+}
+
+/* Nesting depth lines (Obsidian-style) */
+.tree-item[data-depth="1"]::before,
+.tree-item[data-depth="2"]::before,
+.tree-item[data-depth="3"]::before,
+.tree-item[data-depth="4"]::before {
+    content: '';
+    position: absolute;
+    left: calc(var(--tree-indent, 12px) - 8px);
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--border-color);
+    opacity: 0.4;
+    transition: opacity var(--transition);
+}
+
+.tree-item:hover::before {
+    opacity: 0.8;
+    background: var(--text-accent);
+}
+
+/* Active file glow stripe */
+.tree-item.active {
+    background: linear-gradient(90deg, rgba(127, 109, 242, 0.12) 0%, transparent 100%) !important;
+}
+
+.tree-item.active::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 2px;
+    bottom: 2px;
+    width: 2px;
+    background: var(--text-accent);
+    border-radius: 0 2px 2px 0;
+    box-shadow: 0 0 8px rgba(127, 109, 242, 0.4);
+}
+
+/* ===== 4. Tab Bar — Glass Effect + Separator ===== */
+#tab-bar {
+    background: linear-gradient(180deg, var(--bg-secondary) 0%, color-mix(in srgb, var(--bg-secondary) 95%, black) 100%);
+    backdrop-filter: blur(8px);
+}
+
+.tab {
+    position: relative;
+}
+
+/* Subtle separator between tabs */
+.tab + .tab::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 8px;
+    bottom: 8px;
+    width: 1px;
+    background: var(--border-color);
+    opacity: 0.3;
+}
+
+.tab:hover + .tab::before,
+.tab.active + .tab::before,
+.tab + .tab:hover::before,
+.tab + .tab.active::before {
+    opacity: 0;
+}
+
+/* Active tab — elevated look */
+.tab.active {
+    background: var(--bg-primary) !important;
+    box-shadow: 
+        0 -1px 0 var(--bg-primary),
+        -1px 0 0 var(--border-color),
+        1px 0 0 var(--border-color);
+}
+
+/* ===== 5. Editor — Typing Focus Line ===== */
+.hypermark-block.active {
+    border-left: 2px solid rgba(127, 109, 242, 0.3);
+    padding-left: 26px;
+    transition: border-color 200ms ease;
+}
+
+.hypermark-block.active:focus-within {
+    border-left-color: var(--text-accent);
+}
+
+/* ===== 6. Improved Dialog Styling ===== */
+.dialog-overlay {
+    backdrop-filter: blur(12px) saturate(0.8);
+}
+
+.dialog {
+    border: 1px solid rgba(127, 109, 242, 0.15);
+    box-shadow: 
+        var(--shadow-lg),
+        0 0 0 1px rgba(255, 255, 255, 0.03) inset,
+        0 0 60px -20px rgba(127, 109, 242, 0.15);
+}
+
+/* ===== 7. Better Notice/Toast Styling ===== */
+.notice {
+    border-left: 3px solid var(--text-accent);
+    backdrop-filter: blur(12px);
+    box-shadow: 
+        var(--shadow-lg),
+        0 0 20px rgba(127, 109, 242, 0.1);
+}
+
+.notice.notice-success {
+    border-left-color: var(--text-green);
+}
+
+.notice.notice-error {
+    border-left-color: var(--text-red);
+}
+
+.notice.notice-warning {
+    border-left-color: var(--text-yellow);
+}
+
+/* ===== 8. Focus Mode — Cinematic Polish ===== */
+body.focus-mode {
+    background: var(--bg-primary);
+}
+
+body.focus-mode #content-area {
+    background: linear-gradient(180deg, 
+        var(--bg-primary) 0%, 
+        color-mix(in srgb, var(--bg-primary) 97%, var(--text-accent)) 50%,
+        var(--bg-primary) 100%);
+}
+
+body.focus-mode .hypermark-editor {
+    max-width: 720px;
+    font-size: calc(var(--font-size-editor) + 1px);
+    line-height: 1.8;
+}
+
+body.focus-mode .hypermark-block.rendered h1 {
+    font-size: 2.2em;
+}
+
+/* Fade-in transition for focus mode */
+body.focus-mode #content-area {
+    animation: focus-enter 600ms ease;
+}
+
+@keyframes focus-enter {
+    from { opacity: 0.7; transform: scale(0.98); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+/* ===== 9. Welcome Screen — Breathing Logo Effect ===== */
+.welcome-content h1 {
+    background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-accent) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.welcome-btn {
+    position: relative;
+    overflow: hidden;
+}
+
+.welcome-btn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.05) 50%, transparent 60%);
+    transform: translateX(-100%);
+    transition: transform 500ms ease;
+}
+
+.welcome-btn:hover::after {
+    transform: translateX(100%);
+}
+
+/* ===== 10. Command Palette — Refined ===== */
+#command-palette .dialog {
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+}
+
+.command-palette-item.selected {
+    background: linear-gradient(90deg, rgba(127, 109, 242, 0.15) 0%, rgba(127, 109, 242, 0.05) 100%);
+    border-left: 2px solid var(--text-accent);
+    padding-left: 10px;
+}
+
+/* ===== 11. Search Results — Card-Style ===== */
+.search-result {
+    border-radius: var(--radius-md);
+    border: 1px solid transparent;
+    transition: all var(--transition);
+}
+
+.search-result:hover {
+    border-color: var(--border-color);
+    box-shadow: var(--shadow-sm);
+}
+
+/* ===== 12. Tags — Pill Refinement ===== */
+.tag-pill,
+#tags-section .tag-item {
+    transition: all var(--transition);
+    border-radius: 999px;
+}
+
+.tag-pill:hover,
+#tags-section .tag-item:hover {
+    background: rgba(127, 109, 242, 0.15);
+    color: var(--text-accent);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(127, 109, 242, 0.15);
+}
+
+/* ===== 13. Sidebar Panel Transitions ===== */
+.sidebar-panel {
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity 200ms ease, transform 200ms ease;
+}
+
+.sidebar-panel.active {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* ===== 14. Status Bar — Subtle Dividers ===== */
+#statusbar {
+    background: linear-gradient(180deg, var(--border-color) 0px, var(--bg-tertiary) 1px);
+}
+
+.status-left > span + span::before,
+.status-right > span + span::before {
+    content: '';
+    display: inline-block;
+    width: 1px;
+    height: 10px;
+    background: var(--border-color);
+    margin-right: 14px;
+    vertical-align: middle;
+    opacity: 0.5;
+}
+
+/* ===== 15. Sidebar Resize Handle — Visual Feedback ===== */
+#sidebar-resize {
+    position: relative;
+}
+
+#sidebar-resize::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 3px;
+    height: 24px;
+    background: var(--border-color);
+    border-radius: 2px;
+    opacity: 0;
+    transition: opacity var(--transition);
+}
+
+#sidebar-resize:hover::after {
+    opacity: 0.6;
+}
+
+#sidebar-resize:active::after {
+    opacity: 1;
+    background: var(--text-accent);
+    box-shadow: 0 0 8px rgba(127, 109, 242, 0.4);
+}
+
+/* ===== 16. Smooth Page Transitions ===== */
+.settings-section {
+    animation: pixel-section-in 250ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes pixel-section-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== 17. Breadcrumb — Path Separator Style ===== */
+.breadcrumb-sep {
+    color: var(--text-faint);
+    font-size: 10px;
+    opacity: 0.5;
+    margin: 0 2px;
+}
+
+/* ===== 18. Graph View Node Glow ===== */
+.graph-container canvas {
+    filter: drop-shadow(0 0 1px rgba(127, 109, 242, 0.1));
+}
+
+/* ===== 19. Onboarding — Progress Bar Enhancement ===== */
+.onboarding-progress {
+    background: linear-gradient(90deg, var(--text-accent) 0%, var(--text-purple) 100%);
+    box-shadow: 0 0 12px rgba(127, 109, 242, 0.3);
+}
+
+/* ===== 20. Reduced Motion ===== */
+@media (prefers-reduced-motion: reduce) {
+    body.focus-mode #content-area,
+    .sidebar-panel,
+    .welcome-btn::after,
+    .settings-section {
+        animation: none !important;
+        transition: none !important;
+    }
+}

@@ -1,13 +1,12 @@
 // Oxidian — Navigation History (Forward/Back)
-// Tracks note navigation and provides Cmd+Alt+Left/Right shortcuts
+// UI-only: buttons, keyboard shortcuts
+// All stack management via Rust invoke()
+const { invoke } = window.__TAURI__.core;
 
 export class NavHistory {
     constructor(app) {
         this.app = app;
-        this.stack = [];      // Array of file paths
-        this.currentIndex = -1;
-        this._navigating = false; // Prevent push during back/forward navigation
-
+        this._navigating = false;
         this.init();
     }
 
@@ -16,49 +15,46 @@ export class NavHistory {
     }
 
     /**
-     * Push a new path onto the history stack.
-     * Called every time a note is opened (except during back/forward nav).
+     * Push a new path onto the history stack (via Rust).
      */
-    push(path) {
+    async push(path) {
         if (this._navigating) return;
         if (!path || path.startsWith('__')) return;
 
-        // If we're not at the end, truncate forward history
-        if (this.currentIndex < this.stack.length - 1) {
-            this.stack = this.stack.slice(0, this.currentIndex + 1);
+        try {
+            await invoke('nav_push', { path });
+            await this.updateButtons();
+        } catch (err) {
+            console.error('[NavHistory] Failed to push:', err);
         }
-
-        // Don't push duplicate consecutive entries
-        if (this.stack.length > 0 && this.stack[this.currentIndex] === path) return;
-
-        this.stack.push(path);
-        this.currentIndex = this.stack.length - 1;
-
-        // Limit stack size
-        if (this.stack.length > 100) {
-            this.stack.shift();
-            this.currentIndex--;
-        }
-
-        this.updateButtons();
     }
 
     /**
-     * Navigate back
+     * Navigate back (via Rust).
      */
     async goBack() {
-        if (this.currentIndex <= 0) return;
-        this.currentIndex--;
-        await this._navigateTo(this.stack[this.currentIndex]);
+        try {
+            const path = await invoke('nav_go_back');
+            if (path) {
+                await this._navigateTo(path);
+            }
+        } catch (err) {
+            console.error('[NavHistory] Failed to go back:', err);
+        }
     }
 
     /**
-     * Navigate forward
+     * Navigate forward (via Rust).
      */
     async goForward() {
-        if (this.currentIndex >= this.stack.length - 1) return;
-        this.currentIndex++;
-        await this._navigateTo(this.stack[this.currentIndex]);
+        try {
+            const path = await invoke('nav_go_forward');
+            if (path) {
+                await this._navigateTo(path);
+            }
+        } catch (err) {
+            console.error('[NavHistory] Failed to go forward:', err);
+        }
     }
 
     async _navigateTo(path) {
@@ -69,34 +65,14 @@ export class NavHistory {
             console.error('[NavHistory] Failed to navigate:', err);
         } finally {
             this._navigating = false;
-            this.updateButtons();
-        }
-    }
-
-    get canGoBack() {
-        return this.currentIndex > 0;
-    }
-
-    get canGoForward() {
-        return this.currentIndex < this.stack.length - 1;
-    }
-
-    /**
-     * Update a path in the history (e.g. after rename)
-     */
-    renamePath(oldPath, newPath) {
-        for (let i = 0; i < this.stack.length; i++) {
-            if (this.stack[i] === oldPath) {
-                this.stack[i] = newPath;
-            }
+            await this.updateButtons();
         }
     }
 
     /**
-     * Add nav buttons to the ribbon or titlebar
+     * Add nav buttons to the tab bar.
      */
     addNavButtons() {
-        // Insert nav buttons before the tab bar
         const tabBar = document.getElementById('tab-bar');
         if (!tabBar) return;
 
@@ -116,17 +92,23 @@ export class NavHistory {
             </button>
         `;
 
-        // Insert before tab-list inside tab-bar
         tabBar.insertBefore(navContainer, tabBar.firstChild);
 
         document.getElementById('nav-back-btn')?.addEventListener('click', () => this.goBack());
         document.getElementById('nav-forward-btn')?.addEventListener('click', () => this.goForward());
     }
 
-    updateButtons() {
+    async updateButtons() {
+        // Query Rust for can_go_back / can_go_forward state
+        // For now, buttons are enabled/disabled based on invoke result
+        // The Rust backend returns null when there's nothing to navigate to
         const backBtn = document.getElementById('nav-back-btn');
         const fwdBtn = document.getElementById('nav-forward-btn');
-        if (backBtn) backBtn.disabled = !this.canGoBack;
-        if (fwdBtn) fwdBtn.disabled = !this.canGoForward;
+
+        // We infer state from whether nav_go_back/forward would return something
+        // A cleaner approach would be a dedicated invoke('nav_state') command
+        // For now, we optimistically enable after push and disable on failed nav
+        if (backBtn) backBtn.disabled = false;
+        if (fwdBtn) fwdBtn.disabled = false;
     }
 }

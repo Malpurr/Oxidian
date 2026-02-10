@@ -1,151 +1,46 @@
 // Oxidian — Remember Cards Module
-// Karteikarten-System: Create, Edit, Delete, Browse, Extract-to-Card
-// Uses Tauri invoke API for file operations.
-
+// Card CRUD via Rust backend, UI-only in JS
 const { invoke } = window.__TAURI__.core;
-
-const CARDS_FOLDER = 'Cards';
-
-// ── Helpers ────────────────────────────────────────────────────────────
-
-function slugify(text) {
-    return text
-        .toLowerCase()
-        .trim()
-        .replace(/[^\w\s-]/g, '')
-        .replace(/[\s_]+/g, '-')
-        .replace(/-+/g, '-')
-        .replace(/^-|-$/g, '');
-}
-
-function todayISO() {
-    return new Date().toISOString().slice(0, 10);
-}
-
-function tomorrowISO() {
-    const d = new Date();
-    d.setDate(d.getDate() + 1);
-    return d.toISOString().slice(0, 10);
-}
-
-function parseFrontmatter(content) {
-    const m = content.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
-    if (!m) return { meta: {}, body: content };
-    const meta = {};
-    for (const line of m[1].split('\n')) {
-        const idx = line.indexOf(':');
-        if (idx < 0) continue;
-        const key = line.slice(0, idx).trim();
-        let val = line.slice(idx + 1).trim();
-        // Parse arrays like [a, b]
-        if (val.startsWith('[') && val.endsWith(']')) {
-            val = val.slice(1, -1).split(',').map(s => s.trim()).filter(Boolean);
-        }
-        // Strip quotes
-        if (typeof val === 'string' && val.startsWith('"') && val.endsWith('"')) {
-            val = val.slice(1, -1);
-        }
-        if (val === 'null') val = null;
-        if (!isNaN(val) && val !== null && val !== '') val = Number(val);
-        meta[key] = val;
-    }
-    return { meta, body: m[2] };
-}
-
-function buildCardMarkdown({ front, back, source, tags, interval, ease, next_review, last_review, review_count, created }) {
-    const tagsArr = Array.isArray(tags) ? tags : (tags || '').split(',').map(t => t.trim()).filter(Boolean);
-    const tagsYaml = `[${tagsArr.join(', ')}]`;
-    const srcYaml = source ? `"${source}"` : '""';
-    return `---
-type: card
-source: ${srcYaml}
-tags: ${tagsYaml}
-interval: ${interval ?? 1}
-ease: ${ease ?? 2.5}
-next_review: ${next_review ?? tomorrowISO()}
-last_review: ${last_review ?? 'null'}
-review_count: ${review_count ?? 0}
-created: ${created ?? todayISO()}
----
-# ${front}
-
-${back}
-`.trimEnd() + '\n';
-}
-
-// ── CardsManager ───────────────────────────────────────────────────────
 
 export class RememberCards {
     constructor(app) {
         this.app = app;
-        this.cards = [];          // cached card list
-        this._browserEl = null;   // card browser container
-        this._creatorEl = null;   // card creator modal
+        this.cards = [];
+        this._browserEl = null;
+        this._creatorEl = null;
     }
 
-    // ── CRUD ───────────────────────────────────────────────────────────
-
-    async ensureFolder() {
-        try {
-            await invoke('create_folder', { path: CARDS_FOLDER });
-        } catch (_) { /* already exists */ }
-    }
+    // ── CRUD (via Rust) ────────────────────────────────────────────────
 
     async loadAll() {
-        await this.ensureFolder();
-        const tree = await invoke('list_files');
-        const cardFiles = this._findCardFiles(tree);
-        const cards = [];
-        for (const path of cardFiles) {
-            try {
-                const content = await invoke('read_note', { path });
-                const { meta, body } = parseFrontmatter(content);
-                if (meta.type !== 'card') continue;
-                const heading = body.match(/^#\s+(.+)$/m);
-                const front = heading ? heading[1].trim() : path;
-                const back = body.replace(/^#\s+.+\n?/, '').trim();
-                cards.push({ path, front, back, ...meta });
-            } catch (_) { /* skip unreadable */ }
+        try {
+            this.cards = await invoke('remember_load_cards');
+        } catch (err) {
+            console.error('[RememberCards] Failed to load:', err);
+            this.cards = [];
         }
-        this.cards = cards;
-        return cards;
+        return this.cards;
     }
 
-    _findCardFiles(node, prefix = '') {
-        const files = [];
-        if (!node) return files;
-        if (Array.isArray(node)) {
-            for (const n of node) files.push(...this._findCardFiles(n, prefix));
-            return files;
-        }
-        const name = node.name || '';
-        const fullPath = prefix ? `${prefix}/${name}` : name;
-        if (node.children) {
-            if (name === CARDS_FOLDER || fullPath.startsWith(CARDS_FOLDER)) {
-                for (const child of node.children) {
-                    files.push(...this._findCardFiles(child, fullPath));
-                }
-            } else {
-                for (const child of node.children) {
-                    files.push(...this._findCardFiles(child, fullPath));
-                }
-            }
-        } else if (name.endsWith('.md') && fullPath.startsWith(CARDS_FOLDER + '/')) {
-            files.push(fullPath);
-        }
-        return files;
-    }
+    async saveCard({ front, back, source, tags, existingPath }) {
+        const tagsArr = Array.isArray(tags)
+            ? tags
+            : (tags || '').split(',').map(t => t.trim()).filter(Boolean);
 
-    async saveCard({ front, back, source, tags, interval, ease, next_review, last_review, review_count, created, existingPath }) {
-        await this.ensureFolder();
-        const md = buildCardMarkdown({ front, back, source, tags, interval, ease, next_review, last_review, review_count, created });
-        const path = existingPath || `${CARDS_FOLDER}/${slugify(front)}.md`;
-        await invoke('save_note', { path, content: md });
-        return path;
+        const input = {
+            front,
+            back: back || '',
+            source: source || '',
+            tags: tagsArr,
+            existing_path: existingPath || null,
+        };
+
+        const card = await invoke('remember_create_card', { input });
+        return card.path;
     }
 
     async deleteCard(path) {
-        await invoke('delete_note', { path });
+        await invoke('remember_delete_card', { cardPath: path });
         this.cards = this.cards.filter(c => c.path !== path);
     }
 
@@ -153,28 +48,9 @@ export class RememberCards {
 
     async listSources() {
         try {
-            const tree = await invoke('list_files');
-            return this._findSourceFiles(tree);
+            const sources = await invoke('remember_load_sources');
+            return sources.map(s => s.title);
         } catch (_) { return []; }
-    }
-
-    _findSourceFiles(node, prefix = '') {
-        const files = [];
-        if (!node) return files;
-        if (Array.isArray(node)) {
-            for (const n of node) files.push(...this._findSourceFiles(n, prefix));
-            return files;
-        }
-        const name = node.name || '';
-        const fullPath = prefix ? `${prefix}/${name}` : name;
-        if (node.children) {
-            for (const child of node.children) {
-                files.push(...this._findSourceFiles(child, fullPath));
-            }
-        } else if (name.endsWith('.md') && fullPath.startsWith('Sources/')) {
-            files.push(name.replace(/\.md$/, ''));
-        }
-        return files;
     }
 
     // ── Card Creator UI ────────────────────────────────────────────────
@@ -221,7 +97,6 @@ export class RememberCards {
         document.body.appendChild(overlay);
         this._creatorEl = overlay;
 
-        // Fill values
         const frontInput = modal.querySelector('#rc-front');
         const backInput = modal.querySelector('#rc-back');
         const sourceSelect = modal.querySelector('#rc-source-select');
@@ -250,16 +125,9 @@ export class RememberCards {
             const tags = tagsInput.value;
             await this.saveCard({
                 front, back, source, tags,
-                interval: prefill.interval,
-                ease: prefill.ease,
-                next_review: prefill.next_review,
-                last_review: prefill.last_review,
-                review_count: prefill.review_count,
-                created: prefill.created,
                 existingPath: prefill.existingPath,
             });
             this.closeCreator();
-            // Refresh browser if open
             if (this._browserEl) this.openBrowser(this._browserEl.parentElement);
         });
 
@@ -279,7 +147,6 @@ export class RememberCards {
         let selectedText = '';
         const editor = this.app?.editor;
         if (editor) {
-            // CodeMirror 6 style
             const cm = editor.cm || editor;
             if (cm?.state) {
                 const sel = cm.state.selection?.main;
@@ -288,7 +155,6 @@ export class RememberCards {
                 }
             }
         }
-        // Fallback: window selection
         if (!selectedText) {
             selectedText = window.getSelection()?.toString() || '';
         }
@@ -312,12 +178,10 @@ export class RememberCards {
         const el = document.createElement('div');
         el.className = 'remember-card-browser';
 
-        // Collect all tags and sources for filters
         const allTags = new Set();
         const allSources = new Set();
         for (const c of this.cards) {
             if (Array.isArray(c.tags)) c.tags.forEach(t => allTags.add(t));
-            else if (c.tags) allTags.add(c.tags);
             if (c.source) allSources.add(c.source);
         }
 
@@ -389,12 +253,6 @@ export class RememberCards {
                         back: card.back,
                         source: card.source,
                         tags: card.tags,
-                        interval: card.interval,
-                        ease: card.ease,
-                        next_review: card.next_review,
-                        last_review: card.last_review,
-                        review_count: card.review_count,
-                        created: card.created,
                         existingPath: card.path,
                     });
                 }
@@ -413,8 +271,6 @@ export class RememberCards {
         return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 }
-
-// ── Safe Init Wrapper ──────────────────────────────────────────────────
 
 export function safeInitModule(app) {
     try {

@@ -1,4 +1,5 @@
 // Oxidian — Remember Sources: Quellen-Manager (Books, Articles, Videos, Podcasts)
+// All data ops via Rust backend
 const { invoke } = window.__TAURI__.core;
 
 const SOURCE_TYPES = [
@@ -16,20 +17,15 @@ const STATUS_OPTIONS = [
 
 const STATUS_ORDER = { reading: 0, want_to_read: 1, finished: 2 };
 
-const SOURCES_DIR = 'Sources';
-
 export class RememberSources {
     constructor(app) {
         this.app = app;
         this.sources = [];
         this.filterType = 'all';
-        this.editingSource = null; // path of source being edited
+        this.editingSource = null;
         this.panelEl = null;
     }
 
-    // ── Public API ──────────────────────────────────────────────
-
-    /** Convenience: show the sources panel in the sidebar remember-dashboard container and open create form */
     showCreateForm() {
         const container = this.panelEl || document.getElementById('remember-dashboard');
         if (container) {
@@ -42,109 +38,40 @@ export class RememberSources {
 
     async show(container) {
         this.panelEl = container;
-        await this.ensureSourcesDir();
         await this.loadSources();
         this.render();
     }
 
-    // ── Data layer ──────────────────────────────────────────────
-
-    async ensureSourcesDir() {
-        try {
-            await invoke('list_files');
-            // The directory will be created on first save if needed
-        } catch (_) { /* ignore */ }
-    }
+    // ── Data layer (via Rust) ───────────────────────────────────
 
     async loadSources() {
-        this.sources = [];
         try {
-            const tree = await invoke('list_files');
-            const sourceFiles = this.findSourceFiles(tree);
-            for (const path of sourceFiles) {
-                try {
-                    const content = await invoke('read_note', { path });
-                    const source = this.parseSource(path, content);
-                    if (source) this.sources.push(source);
-                } catch (e) {
-                    console.warn(`[RememberSources] Failed to read ${path}:`, e);
-                }
-            }
-            this.sources.sort((a, b) => (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9));
+            const sources = await invoke('remember_load_sources');
+            this.sources = sources.sort((a, b) =>
+                (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9)
+            );
         } catch (err) {
-            console.error('[RememberSources] Failed to list files:', err);
+            console.error('[RememberSources] Failed to load:', err);
+            this.sources = [];
         }
-    }
-
-    /** Walk file tree and collect .md paths under Sources/ */
-    findSourceFiles(tree, prefix = '') {
-        const paths = [];
-        if (!tree) return paths;
-        const items = Array.isArray(tree) ? tree : (tree.children || []);
-        for (const item of items) {
-            const itemPath = prefix ? `${prefix}/${item.name}` : item.name;
-            if (item.children) {
-                paths.push(...this.findSourceFiles(item, itemPath));
-            } else if (itemPath.startsWith(SOURCES_DIR + '/') && itemPath.endsWith('.md')) {
-                paths.push(itemPath);
-            }
-        }
-        return paths;
-    }
-
-    parseSource(path, content) {
-        const match = content.match(/^---\n([\s\S]*?)\n---/);
-        if (!match) return null;
-        const fm = {};
-        for (const line of match[1].split('\n')) {
-            const m = line.match(/^(\w+):\s*(.+)$/);
-            if (m) {
-                let val = m[2].trim();
-                if (val === 'null') val = null;
-                else if (val === 'true') val = true;
-                else if (val === 'false') val = false;
-                else if (/^\d+$/.test(val)) val = parseInt(val, 10);
-                else val = val.replace(/^["']|["']$/g, '');
-                fm[m[1]] = val;
-            }
-        }
-        if (fm.type !== 'source') return null;
-        const body = content.slice(match[0].length).trim();
-        return { path, ...fm, body };
     }
 
     async saveSource(data, existingPath) {
-        const filename = data.title.replace(/[\\/:*?"<>|]/g, '_').trim();
-        const path = existingPath || `${SOURCES_DIR}/${filename}.md`;
-        const today = new Date().toISOString().slice(0, 10);
+        const input = {
+            title: data.title,
+            author: data.author || '',
+            source_type: data.source_type || 'book',
+            status: data.status || 'want_to_read',
+            rating: data.rating || 0,
+            notes: data.notes || '',
+            existing_path: existingPath || null,
+        };
 
-        const frontmatter = [
-            '---',
-            'type: source',
-            `title: "${data.title}"`,
-            `author: "${data.author || ''}"`,
-            `source_type: ${data.source_type}`,
-            `status: ${data.status}`,
-            `rating: ${data.rating || 0}`,
-            `started: ${data.status !== 'want_to_read' ? (data.started || today) : 'null'}`,
-            `finished: ${data.status === 'finished' ? (data.finished || today) : 'null'}`,
-            '---',
-        ].join('\n');
-
-        const body = data.body != null ? data.body : `\n# Highlights & Notes\n\n${data.notes || ''}`;
-        const content = frontmatter + '\n' + body;
-
-        await invoke('save_note', { path, content });
-
-        // If title changed and we had a different path, delete old file
-        if (existingPath && existingPath !== path) {
-            try { await invoke('delete_note', { path: existingPath }); } catch (_) {}
-        }
-        return path;
+        await invoke('remember_create_source', { input });
     }
 
     async deleteSource(path) {
-        await invoke('delete_note', { path });
+        await invoke('remember_delete_source', { sourcePath: path });
     }
 
     // ── Rendering ───────────────────────────────────────────────
@@ -186,12 +113,14 @@ export class RememberSources {
         let currentStatus = null;
         let html = '';
         for (const s of filtered) {
-            if (s.status !== currentStatus) {
-                currentStatus = s.status;
-                const label = STATUS_OPTIONS.find(o => o.value === s.status);
-                html += `<div class="rs-status-group">${label ? label.icon + ' ' + label.label : s.status}</div>`;
+            const status = typeof s.status === 'object' ? Object.keys(s.status)[0] : s.status;
+            if (status !== currentStatus) {
+                currentStatus = status;
+                const label = STATUS_OPTIONS.find(o => o.value === status);
+                html += `<div class="rs-status-group">${label ? label.icon + ' ' + label.label : status}</div>`;
             }
-            const typeInfo = SOURCE_TYPES.find(t => t.value === s.source_type) || { icon: '📄', label: s.source_type };
+            const sourceType = typeof s.source_type === 'object' ? Object.keys(s.source_type)[0] : s.source_type;
+            const typeInfo = SOURCE_TYPES.find(t => t.value === sourceType) || { icon: '📄', label: sourceType };
             const stars = '★'.repeat(s.rating || 0) + '☆'.repeat(5 - (s.rating || 0));
             html += `
                 <div class="rs-card" data-path="${this.esc(s.path)}">
@@ -215,6 +144,9 @@ export class RememberSources {
 
     renderForm(overlay, source) {
         const isEdit = !!source;
+        const sourceType = source ? (typeof source.source_type === 'object' ? Object.keys(source.source_type)[0] : source.source_type) : '';
+        const status = source ? (typeof source.status === 'object' ? Object.keys(source.status)[0] : source.status) : '';
+
         overlay.style.display = 'flex';
         overlay.innerHTML = `
             <div class="rs-form">
@@ -223,12 +155,12 @@ export class RememberSources {
                 <label>Author<input type="text" id="rs-author" value="${this.esc(source?.author || '')}" placeholder="e.g. Ryan Holiday" /></label>
                 <label>Type
                     <select id="rs-type">
-                        ${SOURCE_TYPES.map(t => `<option value="${t.value}" ${source?.source_type === t.value ? 'selected' : ''}>${t.icon} ${t.label}</option>`).join('')}
+                        ${SOURCE_TYPES.map(t => `<option value="${t.value}" ${sourceType === t.value ? 'selected' : ''}>${t.icon} ${t.label}</option>`).join('')}
                     </select>
                 </label>
                 <label>Status
                     <select id="rs-status">
-                        ${STATUS_OPTIONS.map(o => `<option value="${o.value}" ${source?.status === o.value ? 'selected' : ''}>${o.icon} ${o.label}</option>`).join('')}
+                        ${STATUS_OPTIONS.map(o => `<option value="${o.value}" ${status === o.value ? 'selected' : ''}>${o.icon} ${o.label}</option>`).join('')}
                     </select>
                 </label>
                 <label>Rating
@@ -273,7 +205,6 @@ export class RememberSources {
             }
         });
 
-        // Filter buttons
         wrap.querySelectorAll('.rs-filter-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 this.filterType = btn.dataset.filter;
@@ -285,7 +216,6 @@ export class RememberSources {
     bindFormEvents(overlay, source) {
         let rating = source?.rating || 0;
 
-        // Star picker
         overlay.querySelectorAll('.rs-star').forEach(star => {
             star.addEventListener('click', () => {
                 rating = parseInt(star.dataset.val, 10);
@@ -315,15 +245,7 @@ export class RememberSources {
                     status: overlay.querySelector('#rs-status').value,
                     rating,
                     notes: overlay.querySelector('#rs-notes').value.trim(),
-                    started: source?.started || null,
-                    finished: source?.finished || null,
-                    body: source ? source.body : null,
                 };
-
-                // If editing, preserve original body (don't overwrite highlights)
-                if (source) {
-                    data.body = source.body;
-                }
 
                 try {
                     await this.saveSource(data, this.editingSource);
@@ -337,16 +259,12 @@ export class RememberSources {
             }
         });
 
-        // Close on overlay background click
         overlay.addEventListener('click', (e) => {
             if (e.target === overlay) overlay.style.display = 'none';
         });
 
-        // Focus title
         setTimeout(() => overlay.querySelector('#rs-title')?.focus(), 50);
     }
-
-    // ── Helpers ──────────────────────────────────────────────────
 
     esc(str) {
         if (!str) return '';
