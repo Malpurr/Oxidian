@@ -1,7 +1,7 @@
 // Oxidian — Sidebar / File Tree Component
 // UI-only: DOM rendering, drag/drop, context menu, expand/collapse
 // All data/logic via Rust invoke()
-const { invoke } = window.__TAURI__.core;
+import { invoke } from './tauri-bridge.js';
 
 export class Sidebar {
     constructor(app) {

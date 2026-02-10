@@ -2,7 +2,7 @@
 // Extract selected text or blockquotes into spaced-repetition cards.
 // Card creation via Rust backend.
 
-const { invoke } = window.__TAURI__.core;
+import { invoke } from './tauri-bridge.js';
 
 export class RememberExtract {
     constructor(app) {

@@ -1,7 +1,7 @@
 // remember-review.js — Review UI (SM-2 logic is in Rust)
 // Oxidian Knowledge Retention System
 
-const { invoke } = window.__TAURI__.core;
+import { invoke } from './tauri-bridge.js';
 
 // ─── Review UI ───────────────────────────────────────────────────────
 

@@ -611,7 +611,7 @@ export class CodeMirrorEditor {
     }
     
     try {
-      const { invoke } = window.__TAURI__.core;
+      import { invoke } from './tauri-bridge.js';
       const html = await invoke('render_markdown', { content });
       this.previewEl.innerHTML = html;
     } catch (err) {

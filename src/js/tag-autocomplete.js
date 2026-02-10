@@ -1,7 +1,7 @@
 // Oxidian — Tag Auto-Complete
 // UI-only: popup DOM, keyboard navigation, positioning
 // All tag data via Rust invoke()
-const { invoke } = window.__TAURI__.core;
+import { invoke } from './tauri-bridge.js';
 
 export class TagAutoComplete {
     constructor(app) {

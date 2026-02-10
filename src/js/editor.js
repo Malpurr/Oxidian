@@ -1,5 +1,5 @@
 // Oxidian — Editor Component (CodeMirror 6 + Classic Fallback)
-const { invoke } = window.__TAURI__.core;
+import { invoke } from './tauri-bridge.js';
 
 // CodeMirror is loaded lazily on first editor attach to avoid blocking app startup
 let CodeMirrorEditor = null;

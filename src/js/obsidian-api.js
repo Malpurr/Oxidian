@@ -2,7 +2,7 @@
 // Provides the 'obsidian' module API so real Obsidian community plugins can run in Oxidian.
 // This is a comprehensive implementation covering the full obsidian.d.ts API surface.
 
-const { invoke } = window.__TAURI__.core;
+import { invoke } from './tauri-bridge.js';
 
 // ===== Stub warning tracker =====
 const _warnedStubs = new Set();

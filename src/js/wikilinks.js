@@ -1,7 +1,7 @@
 // Oxidian — Wikilinks Auto-Complete
 // Type [[ → Shows popup with all notes, filter as you type
 
-const { invoke } = window.__TAURI__.core;
+import { invoke } from './tauri-bridge.js';
 
 export class WikilinksAutoComplete {
     constructor(app) {

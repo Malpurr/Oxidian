@@ -1,7 +1,7 @@
 // Oxidian — Drag & Drop Files
 // Drag files into editor → insert as links, images as ![](path), notes as [[note]]
 
-const { invoke } = window.__TAURI__.core;
+import { invoke } from './tauri-bridge.js';
 
 export class DragDrop {
     constructor(app) {

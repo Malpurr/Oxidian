@@ -1,7 +1,7 @@
 // Oxidian — Link Handler Module
 // Handles Ctrl+Click navigation for wikilinks and external links
 
-const { invoke } = window.__TAURI__.core;
+import { invoke } from './tauri-bridge.js';
 
 export class LinkHandler {
     constructor(app) {

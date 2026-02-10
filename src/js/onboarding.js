@@ -1,5 +1,5 @@
 // Oxidian — First-Time Setup / Onboarding Wizard
-const { invoke } = window.__TAURI__.core;
+import { invoke } from './tauri-bridge.js';
 
 export class Onboarding {
     constructor(app) {

@@ -1,6 +1,6 @@
 // Oxidian — Remember Sources: Quellen-Manager (Books, Articles, Videos, Podcasts)
 // All data ops via Rust backend
-const { invoke } = window.__TAURI__.core;
+import { invoke } from './tauri-bridge.js';
 
 const SOURCE_TYPES = [
     { value: 'book', label: 'Book', icon: '📖' },

@@ -2,7 +2,7 @@
 // Notes als Karten anordnen mit Drag & Drop und Verbindungslinien.
 // Daten-Persistenz und CRUD via Rust invoke(), UI/Rendering bleibt JS.
 
-const { invoke } = window.__TAURI__.core;
+import { invoke } from './tauri-bridge.js';
 
 export class Canvas {
     constructor(app) {

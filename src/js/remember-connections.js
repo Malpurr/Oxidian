@@ -2,7 +2,7 @@
 // All computation (keyword extraction, similarity, cross-source) done in Rust.
 // JS only renders UI.
 
-const { invoke } = window.__TAURI__.core;
+import { invoke } from './tauri-bridge.js';
 
 export class SmartConnections {
     constructor(app) {

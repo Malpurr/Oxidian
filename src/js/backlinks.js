@@ -1,7 +1,7 @@
 // Oxidian — Enhanced Backlinks Module
 // Loads backlinks from Rust backend and renders them in a panel.
 
-const { invoke } = window.__TAURI__.core;
+import { invoke } from './tauri-bridge.js';
 
 export class BacklinksManager {
     constructor(app) {

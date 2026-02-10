@@ -12,7 +12,7 @@
  * @version 0.2.0
  */
 
-const { invoke } = window.__TAURI__.core;
+import { invoke } from './tauri-bridge.js';
 
 // ============================================================================
 // SECTION 1: BLOCK MODEL (shared with Rust AST output)

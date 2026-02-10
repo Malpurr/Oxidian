@@ -1,7 +1,7 @@
 // Oxidian — Comprehensive Settings Panel (Obsidian-inspired)
 // Fully redesigned settings with professional sidebar navigation and all sections
 
-const { invoke } = window.__TAURI__.core;
+import { invoke } from './tauri-bridge.js';
 
 export class SettingsPage {
     constructor(app) {

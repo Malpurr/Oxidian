@@ -1,7 +1,7 @@
 // Oxidian — Quick Switcher Module
 // Fuzzy search via Rust invoke(), UI/keyboard-nav stays JS.
 
-const { invoke } = window.__TAURI__.core;
+import { invoke } from './tauri-bridge.js';
 
 export class QuickSwitcher {
     constructor(app) {

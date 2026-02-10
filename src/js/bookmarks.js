@@ -1,7 +1,7 @@
 // Oxidian — Bookmarks / Favoriten Module
 // UI-only: star toggle, context menu integration, bookmark panel
 // All data/logic via Rust invoke()
-const { invoke } = window.__TAURI__.core;
+import { invoke } from './tauri-bridge.js';
 
 export class BookmarksManager {
     constructor(app) {

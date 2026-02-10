@@ -1,7 +1,7 @@
 // Oxidian — Navigation History (Forward/Back)
 // UI-only: buttons, keyboard shortcuts
 // All stack management via Rust invoke()
-const { invoke } = window.__TAURI__.core;
+import { invoke } from './tauri-bridge.js';
 
 export class NavHistory {
     constructor(app) {

@@ -1,6 +1,6 @@
 // Oxidian — Knowledge Retention System ("Remember")
 // Main module: Sidebar tab, dashboard, card loading via Rust backend
-const { invoke } = window.__TAURI__.core;
+import { invoke } from './tauri-bridge.js';
 
 export class Remember {
     constructor(app) {

@@ -7,7 +7,7 @@ license = "MIT"
 repository = "https://github.com/oxidian/oxidian"
 
 [dependencies]
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["protocol-asset"] }
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-shell = "2"

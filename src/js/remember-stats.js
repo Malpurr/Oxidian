@@ -3,7 +3,7 @@
  * All computation done in Rust. JS only renders UI.
  */
 
-const { invoke } = window.__TAURI__.core;
+import { invoke } from './tauri-bridge.js';
 
 class RememberStats {
     constructor(app) {

@@ -1,5 +1,5 @@
 // Oxidian — Graph View (Canvas-based, layout computed in Rust)
-const { invoke } = window.__TAURI__.core;
+import { invoke } from './tauri-bridge.js';
 
 export class GraphView {
     constructor(app, container) {

@@ -1,6 +1,6 @@
 // Oxidian — Search Component
 // Search logic via Rust invoke(), UI/rendering stays JS.
-const { invoke } = window.__TAURI__.core;
+import { invoke } from './tauri-bridge.js';
 
 export class Search {
     constructor(app) {

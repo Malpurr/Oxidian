@@ -1,5 +1,5 @@
 // Oxidian — Editor Component (Enhanced Classic Editor)
-const { invoke } = window.__TAURI__.core;
+import { invoke } from './tauri-bridge.js';
 
 export class Editor {
     constructor(app) {

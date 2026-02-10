@@ -1,7 +1,7 @@
 // Oxidian — Properties/Frontmatter Panel
 // Klappbarer Bereich oben im Editor zeigt YAML Frontmatter als editierbare Key-Value Felder
 
-const { invoke } = window.__TAURI__.core;
+import { invoke } from './tauri-bridge.js';
 
 export class PropertiesPanel {
     constructor(app) {

@@ -1,5 +1,5 @@
 // Oxidian — Main Application Module
-const { invoke } = window.__TAURI__.core;
+import { invoke } from './tauri-bridge.js';
 
 import { Editor } from './editor.js';
 import { Sidebar } from './sidebar.js';

@@ -2,7 +2,7 @@
 // Refactored: Markdown rendering delegated to Rust via invoke().
 // JS retains: CM6 Decorations, Widget rendering, DOM layout, event handling.
 
-const { invoke } = window.__TAURI__.core;
+import { invoke } from './tauri-bridge.js';
 
 export class LivePreview {
     constructor(app) {

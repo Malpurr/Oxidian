@@ -3,7 +3,7 @@
  * All stats come from Rust backend. JS only renders UI.
  */
 
-const { invoke } = window.__TAURI__.core;
+import { invoke } from './tauri-bridge.js';
 
 const DASHBOARD_STYLES_ID = 'remember-dashboard-styles';
 

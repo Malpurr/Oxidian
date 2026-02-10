@@ -1,7 +1,7 @@
 // Oxidian — Hover Preview
 // Hover über [[Link]] → zeigt Preview der verlinkten Note
 
-const { invoke } = window.__TAURI__.core;
+import { invoke } from './tauri-bridge.js';
 
 export class HoverPreview {
     constructor(app) {

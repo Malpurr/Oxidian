@@ -356,7 +356,7 @@
                 const pwd = pwdInput.value;
                 if (!pwd) return;
                 try {
-                    const ok = await window.__TAURI__.core.invoke('unlock_vault', { password: pwd });
+                    const ok = await window.__TAURI__?.core?.invoke('unlock_vault', { password: pwd });
                     if (ok) {
                         document.getElementById('password-dialog').classList.add('hidden');
                         // Refresh sidebar and tags after unlocking so decrypted content is accessible
@@ -381,6 +381,7 @@
             });
         });
     </script>
+    <script src="js/tauri-bridge.js" type="module"></script>
     <script src="js/obsidian-api.js" type="module"></script>
     <script src="js/plugin-loader.js" type="module"></script>
     <script src="js/command-palette.js" type="module"></script>

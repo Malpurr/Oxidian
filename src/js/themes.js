@@ -1,5 +1,5 @@
 // Oxidian — Theme Management
-const { invoke } = window.__TAURI__.core;
+import { invoke } from './tauri-bridge.js';
 
 const BUILT_IN_THEMES = {
     system: 'System',

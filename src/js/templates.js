@@ -1,7 +1,7 @@
 // Oxidian — File Templates Module
 // UI-only: template picker dialog, keyboard nav, filter
 // All template scanning and application via Rust invoke()
-const { invoke } = window.__TAURI__.core;
+import { invoke } from './tauri-bridge.js';
 
 export class TemplateManager {
     constructor(app) {

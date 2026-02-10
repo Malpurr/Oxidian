@@ -1,7 +1,7 @@
 // Oxidian — Daily Notes Module
 // UI-only: ribbon button, date picker
 // All creation logic via Rust invoke()
-const { invoke } = window.__TAURI__.core;
+import { invoke } from './tauri-bridge.js';
 
 export class DailyNotes {
     constructor(app) {

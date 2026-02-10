@@ -1,6 +1,6 @@
 // Oxidian — Remember Cards Module
 // Card CRUD via Rust backend, UI-only in JS
-const { invoke } = window.__TAURI__.core;
+import { invoke } from './tauri-bridge.js';
 
 export class RememberCards {
     constructor(app) {

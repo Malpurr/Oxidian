@@ -1,7 +1,7 @@
 // Oxidian — Obsidian Plugin Loader
 // Loads real Obsidian community plugins from .obsidian/plugins/
 // Refactored: Plugin discovery, enable/disable, settings → Rust backend via invoke()
-const { invoke } = window.__TAURI__.core;
+import { invoke } from './tauri-bridge.js';
 
 import ObsidianAPI, { App, Plugin, Notice, TFile, installDomExtensions, setIcon, getIconIds } from './obsidian-api.js';
 

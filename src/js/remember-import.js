@@ -1,7 +1,7 @@
 // Oxidian — Remember Import: Import external highlights from Kindle, Readwise, Markdown, Plain Text
 // Parsing and import execution done in Rust backend. JS handles UI only.
 
-const { invoke } = window.__TAURI__.core;
+import { invoke } from './tauri-bridge.js';
 
 function escHtml(s) {
     if (!s) return '';

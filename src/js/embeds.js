@@ -2,7 +2,7 @@
 // Refactored: Embed detection/resolution delegated to Rust via invoke().
 // JS retains: Embed DOM rendering (wrapEmbedContent, renderEmbedError), click handlers, cache management.
 
-const { invoke } = window.__TAURI__.core;
+import { invoke } from './tauri-bridge.js';
 
 export class EmbedProcessor {
     constructor(app) {
