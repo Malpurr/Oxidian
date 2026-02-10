@@ -11,18 +11,30 @@ export class FrontmatterProcessor {
     /**
      * Parse frontmatter from markdown content
      * @param {string} content - The markdown content
-     * @returns {Object} { frontmatter, content, hasfrontmatter }
+     * @returns {Object} { frontmatter, content, hasFrontmatter }
      */
     async parseFrontmatter(content) {
         try {
             const result = await invoke('parse_frontmatter', { content });
-            return result;
+            // Rust returns Option<Frontmatter> — null if no frontmatter
+            if (result === null || result === undefined) {
+                return {
+                    frontmatter: {},
+                    content: content,
+                    hasFrontmatter: false
+                };
+            }
+            return {
+                frontmatter: result,
+                content: content.replace(/^---[\s\S]*?---\n?/, ''),
+                hasFrontmatter: true
+            };
         } catch (error) {
             console.error('Failed to parse frontmatter:', error);
             return {
                 frontmatter: {},
                 content: content,
-                hasfrontmatter: false
+                hasFrontmatter: false
             };
         }
     }
@@ -107,7 +119,7 @@ export class FrontmatterProcessor {
     async processContent(content) {
         const parsed = await this.parseFrontmatter(content);
         
-        if (!parsed.hasFoundmatter && !parsed.hasfrontmatter) {
+        if (!parsed.hasFrontmatter) {
             return content;
         }
 

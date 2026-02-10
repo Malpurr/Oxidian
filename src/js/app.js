@@ -1980,7 +1980,7 @@ class OxidianApp {
             // Process frontmatter first (extract and render preview)
             let processedContent = content;
             if (this.frontmatterProcessor) {
-                processedContent = this.frontmatterProcessor.processContent(content);
+                processedContent = await this.frontmatterProcessor.processContent(content);
             }
 
             // Process embeds (after frontmatter)
