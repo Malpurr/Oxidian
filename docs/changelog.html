@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Changelog — Oxidian Docs</title>
+  <meta name="description" content="Full changelog for Oxidian — all versions and changes.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="docs.css">
+</head>
+<body>
+  <nav class="docs-topnav">
+    <div class="topnav-inner">
+      <div class="topnav-left">
+        <button class="mobile-menu-btn" aria-label="Toggle sidebar">☰</button>
+        <a href="../index.html" class="topnav-logo">
+          <span class="logo-icon">⬡</span>
+          <span>Oxidian</span>
+          <span class="logo-sep">/</span>
+          <span class="logo-docs">Docs</span>
+        </a>
+      </div>
+      <div class="topnav-right">
+        <div class="topnav-search">
+          <span class="search-icon">🔍</span>
+          <input type="text" placeholder="Search docs..." aria-label="Search documentation">
+          <div class="search-results-dropdown"></div>
+        </div>
+        <a href="../index.html" class="topnav-link">Home</a>
+        <a href="../releases.html" class="topnav-link">Releases</a>
+        <a href="https://github.com/nicokimmel/oxidian" class="topnav-github" target="_blank" rel="noopener" aria-label="GitHub">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="sidebar-backdrop"></div>
+
+  <div class="docs-layout">
+    <aside class="docs-sidebar">
+
+      <div class="sidebar-section">
+        <div class="sidebar-heading">Getting Started</div>
+        <a href="index.html" class="sidebar-link">Documentation Hub</a>
+        <a href="getting-started.html" class="sidebar-link">Getting Started</a>
+        <a href="user-guide.html" class="sidebar-link">User Guide</a>
+        <a href="user-guide-de.html" class="sidebar-link">User Guide (Deutsch)</a>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-heading">Guides</div>
+        <a href="features.html" class="sidebar-link">Features</a>
+        <a href="architecture.html" class="sidebar-link">Architecture</a>
+        <a href="developer-guide.html" class="sidebar-link">Developer Guide</a>
+        <a href="plugin-api.html" class="sidebar-link">Plugin API</a>
+        <a href="api-reference.html" class="sidebar-link">API Reference</a>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-heading">Support</div>
+        <a href="building.html" class="sidebar-link">Building from Source</a>
+        <a href="troubleshooting.html" class="sidebar-link">Troubleshooting</a>
+        <a href="changelog.html" class="sidebar-link active">Changelog</a>
+      </div>
+
+    </aside>
+
+    <main class="docs-content">
+      <article class="docs-article">
+        <div class="breadcrumb">
+          <a href="../index.html">Oxidian</a>
+          <span class="sep">›</span>
+          <a href="index.html">Docs</a>
+          <span class="sep">›</span>
+          <span>Changelog</span>
+        </div>
+
+        <h1>📋 Changelog</h1>
+        <p>All notable changes to Oxidian are documented here.</p>
+        <hr>
+        <h2 id="140-2026-02-10">[1.4.0] — 2026-02-10 <a href="#140-2026-02-10" class="anchor">#</a></h2>
+        <h3 id="added">✨ Added</h3>
+        <ul>
+        <li>🧠 <strong>Remember — Knowledge Retention System</strong></li>
+        <li>Sources Manager — track books, articles, podcasts, videos with status & ratings</li>
+        <li>Flashcard system — extract highlights into atomic front/back cards</li>
+        <li>Spaced Repetition engine (SM-2 algorithm) with daily review sessions</li>
+        <li>Review Dashboard — due cards, streak tracking, retention stats, daily highlight</li>
+        <li>Smart Connections — discover links between cards and notes</li>
+        <li>Import functionality — bring in existing flashcards from CSV</li>
+        <li>⌘ <strong>Command Palette</strong> (<code>Ctrl+P</code>) — access any action instantly with fuzzy search</li>
+        <li>⭐ <strong>Bookmarks</strong> — star notes for quick access via sidebar tab</li>
+        <li>📅 <strong>Daily Notes</strong> — auto-created journal entries (<code>Ctrl+Alt+D</code>)</li>
+        <li>🔄 <strong>Navigation History</strong> — back/forward through visited notes (<code>Ctrl+Alt+←/→</code>)</li>
+        <li>🔗 <strong>Auto-Link Update</strong> — wiki-links update automatically when renaming files</li>
+        <li>✨ <strong>Highlight support</strong> — <code><mark>highlighted text</mark></code> rendered in editor and preview</li>
+        <li>🏷️ <strong>Tag Autocomplete</strong> — suggestions as you type <code>#</code></li>
+        <li>📝 <strong>Slash Commands</strong> — type <code>/</code> for inline actions</li>
+        <li>📄 <strong>Templates</strong> — create notes from reusable templates</li>
+        <li>🖱️ <strong>Hover Preview</strong> — preview linked notes on hover</li>
+        <li>📊 <strong>Properties Panel</strong> — view and edit frontmatter visually</li>
+        </ul>
+        <hr>
+        <h2 id="130-2026-02-09">[1.3.0] — 2026-02-09 <a href="#130-2026-02-09" class="anchor">#</a></h2>
+        <h3 id="added">✨ Added</h3>
+        <ul>
+        <li>🎨 <strong>Theme system</strong> — dark/light mode with custom CSS support</li>
+        <li>🧩 <strong>Plugin Explorer</strong> — browse, search, and install Obsidian community plugins</li>
+        <li>📊 <strong>Status Bar</strong> — backlinks count, word count, characters, reading time, Ln/Col</li>
+        <li>👁️ <strong>View Modes</strong> — Live Preview / Source / Reading (<code>Ctrl+E</code>)</li>
+        <li>🖼️ <strong>Canvas</strong> — infinite spatial canvas for visual thinking</li>
+        <li>📞 <strong>Callout blocks</strong> — rich admonitions with multiple types</li>
+        <li>🧜 <strong>Mermaid diagram rendering</strong> — inline diagram support</li>
+        <li>🔍 <strong>Find & Replace</strong> — in-document search (<code>Ctrl+F</code>, <code>Ctrl+H</code>)</li>
+        <li>✍️ <strong>Multiple Cursors</strong> — multi-cursor editing support</li>
+        </ul>
+        <h3 id="improved">🔧 Improved</h3>
+        <ul>
+        <li>Editor stability and performance</li>
+        <li>Plugin API shim compatibility</li>
+        </ul>
+        <hr>
+        <h2 id="120-2026-02-08">[1.2.0] — 2026-02-08 <a href="#120-2026-02-08" class="anchor">#</a></h2>
+        <h3 id="added">✨ Added</h3>
+        <ul>
+        <li>🔀 <strong>Split Panes</strong> — edit multiple notes side-by-side</li>
+        <li>🔐 <strong>Encrypted Notes</strong> — AES-256-GCM per-note encryption</li>
+        <li>🔄 <strong>Auto-Updater</strong> — checks GitHub Releases, download progress, auto-restart</li>
+        <li>📊 <strong>Graph View</strong> — interactive network visualization of vault connections</li>
+        <li>🗂️ <strong>Tab system</strong> — open multiple notes in tabs</li>
+        <li>↩️ <strong>Backlinks Panel</strong> — see all notes linking to the current one</li>
+        </ul>
+        <h3 id="improved">🔧 Improved</h3>
+        <ul>
+        <li>File tree performance with large vaults</li>
+        <li>Search indexing speed</li>
+        </ul>
+        <hr>
+        <h2 id="110-2026-02-06">[1.1.0] — 2026-02-06 <a href="#110-2026-02-06" class="anchor">#</a></h2>
+        <h3 id="added">✨ Added</h3>
+        <ul>
+        <li>🧩 <strong>Obsidian Plugin Compatibility</strong> — 3,500+ line API shim</li>
+        <li>🏷️ <strong>Tags</strong> — <code>#tag</code> support with search integration</li>
+        <li>🔗 <strong>Wiki-links</strong> — <code>[[link]]</code> with click-to-navigate</li>
+        <li>📂 <strong>File/Folder Tree</strong> — sidebar navigation with drag & drop</li>
+        <li>⚙️ <strong>Settings UI</strong> — configurable editor options</li>
+        <li>📝 <strong>Frontmatter support</strong> — YAML metadata parsing</li>
+        </ul>
+        <h3 id="improved">🔧 Improved</h3>
+        <ul>
+        <li>Markdown rendering accuracy</li>
+        <li>Startup performance</li>
+        </ul>
+        <hr>
+        <h2 id="100-2026-02-04">[1.0.0] — 2026-02-04 <a href="#100-2026-02-04" class="anchor">#</a></h2>
+        <h3 id="initial-release">🎉 Initial Release</h3>
+        <ul>
+        <li>📝 <strong>Markdown Editor</strong> with live preview (pulldown-cmark)</li>
+        <li>🔍 <strong>Full-text Search</strong> powered by Tantivy</li>
+        <li>📂 Basic file management</li>
+        <li>🎨 Dark theme</li>
+        <li>🚀 ~16MB binary — no Electron, no bloat</li>
+        <li>Built with <strong>Tauri v2</strong> and <strong>Rust</strong></li>
+        </ul>
+        <hr>
+
+        <div class="page-nav"><a href="api-reference.html"><div class="nav-label">← Previous</div><div class="nav-title">API Reference</div></a></div>
+      </article>
+    </main>
+  </div>
+
+  <footer class="docs-footer">
+    <p>© 2026 Oxidian. Open source under the MIT License. Built with 🦀 and Rust.</p>
+  </footer>
+
+  <script src="docs.js"></script>
+</body>
+</html>

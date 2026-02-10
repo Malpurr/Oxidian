@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Developer Guide — Oxidian Docs</title>
+  <meta name="description" content="Guide for contributing to Oxidian — setup, building, and code walkthrough.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="docs.css">
+</head>
+<body>
+  <nav class="docs-topnav">
+    <div class="topnav-inner">
+      <div class="topnav-left">
+        <button class="mobile-menu-btn" aria-label="Toggle sidebar">☰</button>
+        <a href="../index.html" class="topnav-logo">
+          <span class="logo-icon">⬡</span>
+          <span>Oxidian</span>
+          <span class="logo-sep">/</span>
+          <span class="logo-docs">Docs</span>
+        </a>
+      </div>
+      <div class="topnav-right">
+        <div class="topnav-search">
+          <span class="search-icon">🔍</span>
+          <input type="text" placeholder="Search docs..." aria-label="Search documentation">
+          <div class="search-results-dropdown"></div>
+        </div>
+        <a href="../index.html" class="topnav-link">Home</a>
+        <a href="../releases.html" class="topnav-link">Releases</a>
+        <a href="https://github.com/nicokimmel/oxidian" class="topnav-github" target="_blank" rel="noopener" aria-label="GitHub">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="sidebar-backdrop"></div>
+
+  <div class="docs-layout">
+    <aside class="docs-sidebar">
+
+      <div class="sidebar-section">
+        <div class="sidebar-heading">Getting Started</div>
+        <a href="index.html" class="sidebar-link">Documentation Hub</a>
+        <a href="getting-started.html" class="sidebar-link">Getting Started</a>
+        <a href="user-guide.html" class="sidebar-link">User Guide</a>
+        <a href="user-guide-de.html" class="sidebar-link">User Guide (Deutsch)</a>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-heading">Guides</div>
+        <a href="features.html" class="sidebar-link">Features</a>
+        <a href="architecture.html" class="sidebar-link">Architecture</a>
+        <a href="developer-guide.html" class="sidebar-link active">Developer Guide</a>
+        <a href="plugin-api.html" class="sidebar-link">Plugin API</a>
+        <a href="api-reference.html" class="sidebar-link">API Reference</a>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-heading">Support</div>
+        <a href="building.html" class="sidebar-link">Building from Source</a>
+        <a href="troubleshooting.html" class="sidebar-link">Troubleshooting</a>
+        <a href="changelog.html" class="sidebar-link">Changelog</a>
+      </div>
+
+    </aside>
+
+    <main class="docs-content">
+      <article class="docs-article">
+        <div class="breadcrumb">
+          <a href="../index.html">Oxidian</a>
+          <span class="sep">›</span>
+          <a href="index.html">Docs</a>
+          <span class="sep">›</span>
+          <span>Developer Guide</span>
+        </div>
+
+        
+<h1>Developer Guide</h1>
+<p class="subtitle">Everything you need to contribute to Oxidian — setup, building, testing, and architecture walkthrough.</p>
+
+<h2 id="prerequisites">Prerequisites <a href="#prerequisites" class="anchor">#</a></h2>
+
+<table>
+<thead><tr><th>Tool</th><th>Version</th><th>Purpose</th></tr></thead>
+<tbody>
+<tr><td><strong>Rust</strong></td><td>1.75+</td><td>Backend compilation</td></tr>
+<tr><td><strong>Node.js</strong></td><td>18+</td><td>Frontend tooling</td></tr>
+<tr><td><strong>pnpm</strong></td><td>8+</td><td>Package manager</td></tr>
+<tr><td><strong>Tauri CLI</strong></td><td>2.x</td><td>Build & dev server</td></tr>
+</tbody>
+</table>
+
+<h3 id="system-deps">System Dependencies (Linux)</h3>
+
+<div class="code-block-wrapper"><span class="code-lang">bash</span><button class="copy-btn">Copy</button><pre><code># Ubuntu/Debian
+sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget \
+  libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev \
+  libsoup-3.0-dev libjavascriptcoregtk-4.1-dev
+
+# Fedora
+sudo dnf install webkit2gtk4.1-devel openssl-devel gtk3-devel \
+  libsoup3-devel javascriptcoregtk4.1-devel
+
+# Arch
+sudo pacman -S webkit2gtk-4.1 base-devel openssl gtk3 libsoup3</code></pre></div>
+
+<h2 id="setup">Development Setup <a href="#setup" class="anchor">#</a></h2>
+
+<div class="code-block-wrapper"><span class="code-lang">bash</span><button class="copy-btn">Copy</button><pre><code># Clone the repository
+git clone https://github.com/nicokimmel/oxidian.git
+cd oxidian
+
+# Install frontend dependencies
+pnpm install
+
+# Start development mode (hot-reload)
+pnpm tauri dev</code></pre></div>
+
+<p>This starts both the Rust backend and the frontend dev server with hot-reload.</p>
+
+<h2 id="project-structure">Project Structure <a href="#project-structure" class="anchor">#</a></h2>
+
+<div class="code-block-wrapper"><span class="code-lang">text</span><button class="copy-btn">Copy</button><pre><code>oxidian/
+├── src-tauri/              # Rust backend (Tauri)
+│   ├── src/
+│   │   ├── main.rs         # App entry, command registration
+│   │   ├── commands.rs     # IPC command handlers
+│   │   ├── search.rs       # Tantivy full-text search
+│   │   ├── encryption.rs   # AES-256-GCM + Argon2id
+│   │   ├── vault.rs        # Vault open/close/manage
+│   │   └── watcher.rs      # File system watch (notify crate)
+│   ├── Cargo.toml
+│   └── tauri.conf.json     # Tauri configuration
+├── src/                     # Frontend (vanilla JS)
+│   ├── index.html           # Main app shell
+│   ├── styles/              # CSS files
+│   ├── scripts/             # JavaScript modules
+│   │   ├── editor.js        # CodeMirror 6 setup
+│   │   ├── graph.js         # D3.js graph view
+│   │   ├── search.js        # Search UI
+│   │   ├── remember.js      # Remember system UI
+│   │   └── plugins.js       # Plugin loader & shim
+│   └── plugins/             # Obsidian API compatibility shim
+├── docs/                    # Documentation & website
+└── package.json</code></pre></div>
+
+<h2 id="building">Building <a href="#building" class="anchor">#</a></h2>
+
+<div class="code-block-wrapper"><span class="code-lang">bash</span><button class="copy-btn">Copy</button><pre><code># Development build (debug)
+pnpm tauri dev
+
+# Production build
+pnpm tauri build
+
+# Output locations:
+# - AppImage: src-tauri/target/release/bundle/appimage/
+# - .deb:     src-tauri/target/release/bundle/deb/</code></pre></div>
+
+<h2 id="tauri-commands">Adding Tauri Commands <a href="#tauri-commands" class="anchor">#</a></h2>
+
+<p>To add a new IPC command:</p>
+
+<h3>1. Define the Rust handler</h3>
+
+<div class="code-block-wrapper"><span class="code-lang">rust</span><button class="copy-btn">Copy</button><pre><code>#[tauri::command]
+fn my_command(path: String) -> Result&lt;String, String&gt; {
+    // Your logic here
+    Ok("result".to_string())
+}</code></pre></div>
+
+<h3>2. Register in main.rs</h3>
+
+<div class="code-block-wrapper"><span class="code-lang">rust</span><button class="copy-btn">Copy</button><pre><code>tauri::Builder::default()
+    .invoke_handler(tauri::generate_handler![
+        my_command,
+        // ... other commands
+    ])</code></pre></div>
+
+<h3>3. Call from frontend</h3>
+
+<div class="code-block-wrapper"><span class="code-lang">javascript</span><button class="copy-btn">Copy</button><pre><code>const result = await invoke('my_command', { path: '/some/path' });</code></pre></div>
+
+<h2 id="code-style">Code Style <a href="#code-style" class="anchor">#</a></h2>
+
+<ul>
+<li><strong>Rust:</strong> Follow <code>rustfmt</code> defaults. Run <code>cargo fmt</code> before committing.</li>
+<li><strong>JavaScript:</strong> No framework, vanilla JS. Keep it simple and readable.</li>
+<li><strong>CSS:</strong> Catppuccin color palette. Use CSS custom properties from the theme.</li>
+<li><strong>Commits:</strong> Conventional commits (<code>feat:</code>, <code>fix:</code>, <code>docs:</code>, <code>chore:</code>)</li>
+</ul>
+
+<h2 id="contributing">Contributing <a href="#contributing" class="anchor">#</a></h2>
+
+<ol>
+<li>Fork the repository</li>
+<li>Create a feature branch: <code>git checkout -b feat/my-feature</code></li>
+<li>Make your changes and test locally with <code>pnpm tauri dev</code></li>
+<li>Run <code>cargo fmt</code> and <code>cargo clippy</code></li>
+<li>Commit with a conventional commit message</li>
+<li>Open a Pull Request</li>
+</ol>
+
+<div class="callout callout-info">
+<span class="callout-icon">💡</span>
+<div class="callout-content"><p>Check the <a href="https://github.com/nicokimmel/oxidian/issues">GitHub Issues</a> for open tasks and feature requests.</p></div>
+</div>
+
+
+        <div class="page-nav"><a href="architecture.html"><div class="nav-label">← Previous</div><div class="nav-title">Architecture</div></a><a href="plugin-api.html" class="next"><div class="nav-label">Next →</div><div class="nav-title">Plugin API</div></a></div>
+      </article>
+    </main>
+  </div>
+
+  <footer class="docs-footer">
+    <p>© 2026 Oxidian. Open source under the MIT License. Built with 🦀 and Rust.</p>
+  </footer>
+
+  <script src="docs.js"></script>
+</body>
+</html>

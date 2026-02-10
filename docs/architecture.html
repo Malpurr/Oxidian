@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Architecture — Oxidian Docs</title>
+  <meta name="description" content="Technical architecture overview of Oxidian.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="docs.css">
+</head>
+<body>
+  <nav class="docs-topnav">
+    <div class="topnav-inner">
+      <div class="topnav-left">
+        <button class="mobile-menu-btn" aria-label="Toggle sidebar">☰</button>
+        <a href="../index.html" class="topnav-logo">
+          <span class="logo-icon">⬡</span>
+          <span>Oxidian</span>
+          <span class="logo-sep">/</span>
+          <span class="logo-docs">Docs</span>
+        </a>
+      </div>
+      <div class="topnav-right">
+        <div class="topnav-search">
+          <span class="search-icon">🔍</span>
+          <input type="text" placeholder="Search docs..." aria-label="Search documentation">
+          <div class="search-results-dropdown"></div>
+        </div>
+        <a href="../index.html" class="topnav-link">Home</a>
+        <a href="../releases.html" class="topnav-link">Releases</a>
+        <a href="https://github.com/nicokimmel/oxidian" class="topnav-github" target="_blank" rel="noopener" aria-label="GitHub">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="sidebar-backdrop"></div>
+
+  <div class="docs-layout">
+    <aside class="docs-sidebar">
+
+      <div class="sidebar-section">
+        <div class="sidebar-heading">Getting Started</div>
+        <a href="index.html" class="sidebar-link">Documentation Hub</a>
+        <a href="getting-started.html" class="sidebar-link">Getting Started</a>
+        <a href="user-guide.html" class="sidebar-link">User Guide</a>
+        <a href="user-guide-de.html" class="sidebar-link">User Guide (Deutsch)</a>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-heading">Guides</div>
+        <a href="features.html" class="sidebar-link">Features</a>
+        <a href="architecture.html" class="sidebar-link active">Architecture</a>
+        <a href="developer-guide.html" class="sidebar-link">Developer Guide</a>
+        <a href="plugin-api.html" class="sidebar-link">Plugin API</a>
+        <a href="api-reference.html" class="sidebar-link">API Reference</a>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-heading">Support</div>
+        <a href="building.html" class="sidebar-link">Building from Source</a>
+        <a href="troubleshooting.html" class="sidebar-link">Troubleshooting</a>
+        <a href="changelog.html" class="sidebar-link">Changelog</a>
+      </div>
+
+    </aside>
+
+    <main class="docs-content">
+      <article class="docs-article">
+        <div class="breadcrumb">
+          <a href="../index.html">Oxidian</a>
+          <span class="sep">›</span>
+          <a href="index.html">Docs</a>
+          <span class="sep">›</span>
+          <span>Architecture</span>
+        </div>
+
+        
+<h1>Architecture</h1>
+<p class="subtitle">Technical architecture overview of Oxidian — how the Rust backend, Tauri bridge, and frontend work together.</p>
+
+<h2 id="overview">Overview <a href="#overview" class="anchor">#</a></h2>
+
+<p>Oxidian is built on a <strong>three-layer architecture</strong>:</p>
+
+<div class="mermaid">
+graph TB
+    subgraph Frontend
+        A[HTML/CSS/JS UI] --> B[CodeMirror 6 Editor]
+        A --> C[Graph View D3.js]
+        A --> D[Canvas Engine]
+    end
+    subgraph Bridge
+        E[Tauri v2 IPC]
+    end
+    subgraph Backend
+        F[Rust Core] --> G[File System Ops]
+        F --> H[Tantivy Search Engine]
+        F --> I[AES-256-GCM Encryption]
+        F --> J[pulldown-cmark Renderer]
+        F --> K[Plugin Host]
+    end
+    A --> E --> F
+</div>
+
+<h2 id="backend">Rust Backend <a href="#backend" class="anchor">#</a></h2>
+
+<p>The backend is pure Rust, handling all file I/O, search indexing, encryption, and markdown rendering.</p>
+
+<h3 id="core-components">Core Components</h3>
+
+<table>
+<thead><tr><th>Component</th><th>Technology</th><th>Purpose</th></tr></thead>
+<tbody>
+<tr><td><strong>File System</strong></td><td><code>std::fs</code>, <code>notify</code></td><td>Read/write notes, watch for changes</td></tr>
+<tr><td><strong>Search</strong></td><td>Tantivy</td><td>Full-text search with fuzzy matching</td></tr>
+<tr><td><strong>Encryption</strong></td><td>AES-256-GCM + Argon2id</td><td>Vault and per-note encryption</td></tr>
+<tr><td><strong>Markdown</strong></td><td>pulldown-cmark</td><td>CommonMark parsing and rendering</td></tr>
+<tr><td><strong>Auto-Update</strong></td><td>tauri-plugin-updater</td><td>GitHub Releases integration</td></tr>
+</tbody>
+</table>
+
+<h3 id="file-structure">Project Structure</h3>
+
+<div class="code-block-wrapper"><span class="code-lang">text</span><button class="copy-btn">Copy</button><pre><code>oxidian/
+├── src-tauri/           # Rust backend
+│   ├── src/
+│   │   ├── main.rs      # Entry point
+│   │   ├── commands.rs   # Tauri command handlers
+│   │   ├── search.rs     # Tantivy search engine
+│   │   ├── encryption.rs # AES-256-GCM encryption
+│   │   ├── vault.rs      # Vault management
+│   │   └── watcher.rs    # File system watcher
+│   ├── Cargo.toml
+│   └── tauri.conf.json
+├── src/                  # Frontend
+│   ├── index.html
+│   ├── styles/
+│   ├── scripts/
+│   └── plugins/          # Plugin compatibility shim
+├── docs/                 # Documentation (this site)
+└── package.json</code></pre></div>
+
+<h2 id="frontend">Frontend <a href="#frontend" class="anchor">#</a></h2>
+
+<p>The frontend is vanilla HTML/CSS/JS (no framework) with key libraries:</p>
+
+<ul>
+<li><strong>CodeMirror 6</strong> — Editor engine with extensions for markdown, vim mode, etc.</li>
+<li><strong>D3.js</strong> — Graph view visualization</li>
+<li><strong>Mermaid</strong> — Diagram rendering</li>
+<li><strong>highlight.js</strong> — Code syntax highlighting</li>
+</ul>
+
+<h2 id="tauri-bridge">Tauri IPC Bridge <a href="#tauri-bridge" class="anchor">#</a></h2>
+
+<p>Communication between frontend and backend uses Tauri's <strong>IPC (Inter-Process Communication)</strong> via <code>invoke()</code> calls:</p>
+
+<div class="code-block-wrapper"><span class="code-lang">javascript</span><button class="copy-btn">Copy</button><pre><code>// Frontend calls Rust backend
+const content = await invoke('read_file', { path: 'notes/hello.md' });
+const results = await invoke('search', { query: 'rust programming' });
+await invoke('save_file', { path: 'notes/hello.md', content: '# Hello' });</code></pre></div>
+
+<h2 id="plugin-system">Plugin System <a href="#plugin-system" class="anchor">#</a></h2>
+
+<p>Oxidian implements a <strong>3,500+ line compatibility shim</strong> that emulates the Obsidian Plugin API:</p>
+
+<ul>
+<li>Plugins are loaded from the <code>.obsidian/plugins/</code> directory</li>
+<li>Each plugin runs in an isolated context</li>
+<li>The shim provides <code>Plugin</code>, <code>App</code>, <code>Vault</code>, <code>Workspace</code>, and <code>MetadataCache</code> APIs</li>
+<li>Commands registered by plugins appear in the Command Palette</li>
+</ul>
+
+<h2 id="search-engine">Search Engine <a href="#search-engine" class="anchor">#</a></h2>
+
+<p>Full-text search is powered by <strong>Tantivy</strong>, a Rust search engine library (similar to Apache Lucene):</p>
+
+<ul>
+<li>Automatic indexing on vault open and file changes</li>
+<li>Fuzzy search with typo tolerance</li>
+<li>Highlighted search result snippets</li>
+<li>Index stored in <code>.search_index/</code> directory</li>
+</ul>
+
+<h2 id="encryption-arch">Encryption <a href="#encryption-arch" class="anchor">#</a></h2>
+
+<div class="mermaid">
+graph LR
+    A[Master Password] --> B[Argon2id KDF]
+    B --> C[256-bit Key]
+    C --> D[AES-256-GCM]
+    D --> E[Encrypted Vault]
+</div>
+
+<ul>
+<li><strong>Key Derivation:</strong> Argon2id with configurable memory/time parameters</li>
+<li><strong>Encryption:</strong> AES-256-GCM authenticated encryption</li>
+<li><strong>Granularity:</strong> Full vault or per-note encryption</li>
+<li><strong>Zero-knowledge:</strong> Password never stored, only derived key hash for verification</li>
+</ul>
+
+<h2 id="performance">Performance <a href="#performance" class="anchor">#</a></h2>
+
+<table>
+<thead><tr><th>Metric</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>Binary size</td><td>~16 MB</td></tr>
+<tr><td>Cold start</td><td>&lt; 1 second</td></tr>
+<tr><td>Memory (idle)</td><td>~50 MB</td></tr>
+<tr><td>Search (10k notes)</td><td>&lt; 50ms</td></tr>
+<tr><td>File save</td><td>&lt; 5ms</td></tr>
+</tbody>
+</table>
+
+
+        <div class="page-nav"><a href="features.html"><div class="nav-label">← Previous</div><div class="nav-title">Features</div></a><a href="developer-guide.html" class="next"><div class="nav-label">Next →</div><div class="nav-title">Developer Guide</div></a></div>
+      </article>
+    </main>
+  </div>
+
+  <footer class="docs-footer">
+    <p>© 2026 Oxidian. Open source under the MIT License. Built with 🦀 and Rust.</p>
+  </footer>
+
+  <script src="docs.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+  <script>mermaid.initialize({startOnLoad:true, theme:'dark', themeVariables:{primaryColor:'#7f6df2',primaryTextColor:'#cdd6f4',primaryBorderColor:'#45475a',lineColor:'#89b4fa',secondaryColor:'#1a1a2e',tertiaryColor:'#131320'}});</script>
+</body>
+</html>

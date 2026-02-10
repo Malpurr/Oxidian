@@ -93,10 +93,17 @@
   // Also add cross-page entries
   const pages = [
     { file: 'getting-started.html', title: 'Getting Started', sections: ['Installation', 'First Launch', 'Creating Notes', 'Markdown', 'Wiki-Links', 'Tags', 'Daily Notes', 'Keyboard Shortcuts', 'Slash Commands', 'Command Palette'] },
+    { file: 'user-guide.html', title: 'User Guide', sections: ['Getting Started', 'Editor Basics', 'Organization', 'Linking & Navigation', 'Remember', 'Command Palette', 'Canvas', 'Themes & Settings', 'Plugins', 'Keyboard Shortcuts'] },
+    { file: 'user-guide-de.html', title: 'Benutzerhandbuch', sections: ['Erste Schritte', 'Editor', 'Organisation', 'Verlinkung', 'Remember', 'Tastenkürzel'] },
     { file: 'features.html', title: 'Features', sections: ['Split Panes', 'Graph View', 'Full-Text Search', 'File Management', 'Encrypted Vaults', 'Themes', 'Settings'] },
+    { file: 'architecture.html', title: 'Architecture', sections: ['Overview', 'Rust Backend', 'Frontend', 'Tauri Bridge', 'Plugin System', 'Search Engine', 'Encryption', 'Performance'] },
+    { file: 'developer-guide.html', title: 'Developer Guide', sections: ['Prerequisites', 'Development Setup', 'Project Structure', 'Building', 'Tauri Commands', 'Code Style', 'Contributing'] },
+    { file: 'plugin-api.html', title: 'Plugin API', sections: ['Overview', 'Supported APIs', 'Plugin Class', 'Vault API', 'Workspace API', 'MetadataCache', 'Installing Plugins', 'Limitations', 'Tested Plugins'] },
+    { file: 'api-reference.html', title: 'API Reference', sections: ['File Operations', 'Search', 'Encryption', 'Vault Management', 'Graph', 'Remember', 'Events'] },
     { file: 'plugins.html', title: 'Plugins', sections: ['Plugin Compatibility', 'Installing Plugins', 'Supported APIs', 'Limitations', 'Tested Plugins'] },
     { file: 'troubleshooting.html', title: 'Troubleshooting', sections: ['App Won\'t Start', 'NixOS Issues', 'Plugin Problems', 'Encryption Issues', 'Search Issues'] },
     { file: 'building.html', title: 'Building from Source', sections: ['Prerequisites', 'Build Steps', 'Development Mode', 'Contributing'] },
+    { file: 'changelog.html', title: 'Changelog', sections: ['v1.4.0', 'v1.3.0', 'v1.2.0', 'v1.1.0', 'v1.0.0'] },
   ];
 
   pages.forEach(page => {

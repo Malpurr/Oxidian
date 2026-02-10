@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User Guide — Oxidian Docs</title>
+  <meta name="description" content="Complete user guide for Oxidian — editor, organization, linking, Remember, and more.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="docs.css">
+</head>
+<body>
+  <nav class="docs-topnav">
+    <div class="topnav-inner">
+      <div class="topnav-left">
+        <button class="mobile-menu-btn" aria-label="Toggle sidebar">☰</button>
+        <a href="../index.html" class="topnav-logo">
+          <span class="logo-icon">⬡</span>
+          <span>Oxidian</span>
+          <span class="logo-sep">/</span>
+          <span class="logo-docs">Docs</span>
+        </a>
+      </div>
+      <div class="topnav-right">
+        <div class="topnav-search">
+          <span class="search-icon">🔍</span>
+          <input type="text" placeholder="Search docs..." aria-label="Search documentation">
+          <div class="search-results-dropdown"></div>
+        </div>
+        <a href="../index.html" class="topnav-link">Home</a>
+        <a href="../releases.html" class="topnav-link">Releases</a>
+        <a href="https://github.com/nicokimmel/oxidian" class="topnav-github" target="_blank" rel="noopener" aria-label="GitHub">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="sidebar-backdrop"></div>
+
+  <div class="docs-layout">
+    <aside class="docs-sidebar">
+
+      <div class="sidebar-section">
+        <div class="sidebar-heading">Getting Started</div>
+        <a href="index.html" class="sidebar-link">Documentation Hub</a>
+        <a href="getting-started.html" class="sidebar-link">Getting Started</a>
+        <a href="user-guide.html" class="sidebar-link active">User Guide</a>
+        <a href="user-guide-de.html" class="sidebar-link">User Guide (Deutsch)</a>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-heading">Guides</div>
+        <a href="features.html" class="sidebar-link">Features</a>
+        <a href="architecture.html" class="sidebar-link">Architecture</a>
+        <a href="developer-guide.html" class="sidebar-link">Developer Guide</a>
+        <a href="plugin-api.html" class="sidebar-link">Plugin API</a>
+        <a href="api-reference.html" class="sidebar-link">API Reference</a>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-heading">Support</div>
+        <a href="building.html" class="sidebar-link">Building from Source</a>
+        <a href="troubleshooting.html" class="sidebar-link">Troubleshooting</a>
+        <a href="changelog.html" class="sidebar-link">Changelog</a>
+      </div>
+
+    </aside>
+
+    <main class="docs-content">
+      <article class="docs-article">
+        <div class="breadcrumb">
+          <a href="../index.html">Oxidian</a>
+          <span class="sep">›</span>
+          <a href="index.html">Docs</a>
+          <span class="sep">›</span>
+          <span>User Guide</span>
+        </div>
+
+        <h1>📖 Oxidian User Guide</h1>
+        <blockquote><p><strong>Version 1.4.0</strong> — The complete guide to Oxidian, the open-source Obsidian alternative built in Rust.</p></blockquote>
+        <hr>
+        <h2 id="table-of-contents">Table of Contents <a href="#table-of-contents" class="anchor">#</a></h2>
+        <ol>
+        <li><a href="#-getting-started" >Getting Started</a></li>
+        <li><a href="#-editor-basics" >Editor Basics</a></li>
+        <li><a href="#-organization" >Organization</a></li>
+        <li><a href="#-linking--navigation" >Linking & Navigation</a></li>
+        <li><a href="#-remember--knowledge-retention" >Remember — Knowledge Retention</a></li>
+        <li><a href="#-command-palette" >Command Palette</a></li>
+        <li><a href="#-canvas" >Canvas</a></li>
+        <li><a href="#-themes--settings" >Themes & Settings</a></li>
+        <li><a href="#-plugins" >Plugins</a></li>
+        <li><a href="#-keyboard-shortcuts" >Keyboard Shortcuts</a></li>
+        </ol>
+        <hr>
+        <h2 id="getting-started">🚀 Getting Started <a href="#getting-started" class="anchor">#</a></h2>
+        <h3 id="opening-a-vault">Opening a Vault</h3>
+        <p>When you first launch Oxidian, you'll be prompted to <strong>open a vault</strong> — a folder on your computer that holds all your notes.</p>
+        <ol>
+        <li>Click <strong>Open Vault</strong> (or use the onboarding dialog)</li>
+        <li>Select any folder — or create a new empty one</li>
+        <li>Oxidian indexes your files and you're ready to go</li>
+        </ol>
+        <blockquote><p>💡 A vault is just a regular folder of <code>.md</code> files. No lock-in, no proprietary format.</p></blockquote>
+        <h3 id="creating-your-first-note">Creating Your First Note</h3>
+        <ul>
+        <li>Click the <strong>New Note</strong> button in the sidebar (or press <code>Ctrl+N</code>)</li>
+        <li>Give it a name and start typing Markdown</li>
+        <li>Your note auto-saves as you type</li>
+        </ul>
+        <h3 id="the-interface">The Interface</h3>
+        <table>
+        <thead><tr>
+        <th>Area</th>
+        <th>Description</th>
+        </tr></thead>
+        <tbody>
+        <tr>
+        <td><strong>Left Sidebar</strong></td>
+        <td>File tree, search, graph, bookmarks, Remember</td>
+        </tr>
+        <tr>
+        <td><strong>Editor</strong></td>
+        <td>Main editing area (supports tabs & split panes)</td>
+        </tr>
+        <tr>
+        <td><strong>Right Sidebar</strong></td>
+        <td>Backlinks panel, properties</td>
+        </tr>
+        <tr>
+        <td><strong>Status Bar</strong></td>
+        <td>Word count, backlinks, reading time, line/column</td>
+        </tr>
+        </tbody></table>
+        <hr>
+        <h2 id="editor-basics">✏️ Editor Basics <a href="#editor-basics" class="anchor">#</a></h2>
+        <p>Oxidian uses <strong>CodeMirror 6</strong> as its editor engine with <strong>pulldown-cmark</strong> for Markdown rendering.</p>
+        <h3 id="markdown-syntax">Markdown Syntax</h3>
+        <table>
+        <thead><tr>
+        <th>Syntax</th>
+        <th>Result</th>
+        </tr></thead>
+        <tbody>
+        <tr>
+        <td><code># Heading 1</code></td>
+        <td>Heading 1</td>
+        </tr>
+        <tr>
+        <td><code>## Heading 2</code></td>
+        <td>Heading 2</td>
+        </tr>
+        <tr>
+        <td><code><strong>bold</strong></code></td>
+        <td><strong>bold</strong></td>
+        </tr>
+        <tr>
+        <td><code><em>italic</em></code></td>
+        <td><em>italic</em></td>
+        </tr>
+        <tr>
+        <td><code><del>strikethrough</del></code></td>
+        <td><del>strikethrough</del></td>
+        </tr>
+        <tr>
+        <td><code><mark>highlight</mark></code></td>
+        <td>Highlighted text</td>
+        </tr>
+        <tr>
+        <td>`<code> </code>inline code<code> </code>`</td>
+        <td><code>inline code</code></td>
+        </tr>
+        <tr>
+        <td><code>- item</code></td>
+        <td>Bullet list</td>
+        </tr>
+        <tr>
+        <td><code>1. item</code></td>
+        <td>Numbered list</td>
+        </tr>
+        <tr>
+        <td><code>- [ ] task</code></td>
+        <td>Checkbox</td>
+        </tr>
+        <tr>
+        <td><code>&gt; quote</code></td>
+        <td>Blockquote</td>
+        </tr>
+        <tr>
+        <td><code>---</code></td>
+        <td>Horizontal rule</td>
+        </tr>
+        <tr>
+        <td><code>[[note]]</code></td>
+        <td>Wiki-link</td>
+        </tr>
+        <tr>
+        <td><code>#tag</code></td>
+        <td>Tag</td>
+        </tr>
+        </tbody></table>
+        <h3 id="code-blocks">Code Blocks</h3>
+        <p>Use triple backticks with a language identifier for syntax highlighting:</p>
+        <div class="code-block-wrapper"><button class="copy-btn">Copy</button><pre><code></code></pre></div>
+        <p>const hello = "world";</p>
+        <div class="code-block-wrapper"><button class="copy-btn">Copy</button><pre><code></code></pre></div>
+        <h3 id="callouts">Callouts</h3>
+        <div class="code-block-wrapper"><span class="code-lang">markdown</span><button class="copy-btn">Copy</button><pre><code>&gt; [!note] Title
+&gt; This is a callout block.
+
+&gt; [!warning] Be careful
+&gt; This is a warning callout.</code></pre></div>
+        <p>Supported types: <code>note</code>, <code>tip</code>, <code>warning</code>, <code>danger</code>, <code>info</code>, <code>example</code>, <code>quote</code>, <code>abstract</code>, <code>todo</code>, <code>success</code>, <code>failure</code>, <code>bug</code>.</p>
+        <h3 id="mermaid-diagrams">Mermaid Diagrams</h3>
+        <div class="code-block-wrapper"><button class="copy-btn">Copy</button><pre><code></code></pre></div>
+        <p>graph TD</p>
+        <p>A[Start] --> B{Decision}</p>
+        <p>B -->|Yes| C[Do it]</p>
+        <p>B -->|No| D[Skip]</p>
+        <div class="code-block-wrapper"><button class="copy-btn">Copy</button><pre><code></code></pre></div>
+        <h3 id="view-modes">View Modes</h3>
+        <p>Toggle with <code>Ctrl+E</code>:</p>
+        <ul>
+        <li><strong>Live Preview</strong> — edit Markdown with inline rendering</li>
+        <li><strong>Source Mode</strong> — raw Markdown text</li>
+        <li><strong>Reading Mode</strong> — fully rendered, read-only view</li>
+        </ul>
+        <h3 id="frontmatter">Frontmatter</h3>
+        <p>Add YAML metadata at the top of any note:</p>
+        <div class="code-block-wrapper"><span class="code-lang">yaml</span><button class="copy-btn">Copy</button><pre><code>---
+title: My Note
+tags: [philosophy, reading]
+date: 2026-02-10
+---</code></pre></div>
+        <hr>
+        <h2 id="organization">📂 Organization <a href="#organization" class="anchor">#</a></h2>
+        <h3 id="file-folder-tree">File & Folder Tree</h3>
+        <p>The left sidebar shows your vault's folder structure. Right-click for options:</p>
+        <ul>
+        <li>Create new note or folder</li>
+        <li>Rename, delete, move files</li>
+        <li>Drag & drop to reorganize</li>
+        </ul>
+        <h3 id="tags">Tags</h3>
+        <p>Add tags anywhere in your notes with <code>#tag</code>. Use them to categorize across folders.</p>
+        <ul>
+        <li>Tags appear in search results</li>
+        <li>Autocomplete suggests existing tags as you type (<code>#ph...</code> → <code>#philosophy</code>)</li>
+        </ul>
+        <h3 id="bookmarks-">Bookmarks ⭐</h3>
+        <p>Star notes for quick access:</p>
+        <ul>
+        <li>Right-click a note → <strong>Bookmark</strong></li>
+        <li>Or use the Command Palette → "Toggle Bookmark"</li>
+        <li>Access all bookmarks from the <strong>Bookmarks</strong> tab in the sidebar</li>
+        </ul>
+        <h3 id="daily-notes-">Daily Notes 📅</h3>
+        <p>Automatically create a journal entry for today:</p>
+        <ul>
+        <li>Press <code>Ctrl+Alt+D</code> or click the calendar icon</li>
+        <li>Creates a file like <code>2026-02-10.md</code> in your Daily Notes folder</li>
+        <li>Great for journaling, standup notes, or daily logs</li>
+        </ul>
+        <h3 id="templates">Templates</h3>
+        <p>Create reusable note templates:</p>
+        <ol>
+        <li>Create a <code>Templates/</code> folder in your vault</li>
+        <li>Add <code>.md</code> files with your template content</li>
+        <li>When creating a new note, select <strong>Insert Template</strong> from the Command Palette</li>
+        </ol>
+        <hr>
+        <h2 id="linking-navigation">🔗 Linking & Navigation <a href="#linking-navigation" class="anchor">#</a></h2>
+        <h3 id="wiki-links">Wiki-Links</h3>
+        <p>Link between notes using double brackets:</p>
+        <div class="code-block-wrapper"><span class="code-lang">markdown</span><button class="copy-btn">Copy</button><pre><code>Check out [[My Other Note]] for details.
+Link to a specific heading: [[Note#Heading]]
+Alias links: [[Note|Display Text]]</code></pre></div>
+        <p>Click any wiki-link to navigate to that note. If the note doesn't exist yet, Oxidian will create it.</p>
+        <h3 id="backlinks">Backlinks</h3>
+        <p>The <strong>Backlinks Panel</strong> (right sidebar) shows every note that links to the current one. This helps you discover unexpected connections.</p>
+        <h3 id="graph-view">Graph View</h3>
+        <p>Open the <strong>Graph View</strong> from the sidebar to see your entire vault as an interactive network:</p>
+        <ul>
+        <li>Nodes = notes</li>
+        <li>Edges = links between them</li>
+        <li>Click a node to open that note</li>
+        <li>Zoom, pan, and drag to explore</li>
+        </ul>
+        <h3 id="auto-link-update-on-rename">Auto-Link Update on Rename</h3>
+        <p>When you rename a file, <strong>all wiki-links pointing to it are automatically updated</strong> across your entire vault. No broken links.</p>
+        <h3 id="navigation-history">Navigation History</h3>
+        <p>Navigate through your recently viewed notes:</p>
+        <ul>
+        <li><strong>Back:</strong> <code>Ctrl+Alt+←</code></li>
+        <li><strong>Forward:</strong> <code>Ctrl+Alt+→</code></li>
+        </ul>
+        <p>Works just like browser history.</p>
+        <h3 id="hover-preview">Hover Preview</h3>
+        <p>Hover over any <code>[[wiki-link]]</code> to see a preview popup of the linked note without leaving your current document.</p>
+        <hr>
+        <h2 id="remember-knowledge-retention">🧠 Remember — Knowledge Retention <a href="#remember-knowledge-retention" class="anchor">#</a></h2>
+        <p>The <strong>Remember</strong> system helps you retain what you read using spaced repetition and flashcards, inspired by Ryan Holiday's notecard system and Anki.</p>
+        <p>Access it from the <strong>🧠 brain icon</strong> in the left sidebar.</p>
+        <h3 id="sources">Sources</h3>
+        <p>Track everything you read, watch, or listen to:</p>
+        <ol>
+        <li>Open Remember → <strong>Sources</strong> tab</li>
+        <li>Click <strong>Add Source</strong></li>
+        <li>Fill in: Title, Author, Type (Book/Article/Video/Podcast), Status</li>
+        <li>Each source gets a literature note in the <code>Sources/</code> folder</li>
+        </ol>
+        <p><strong>Status tracking:</strong> Want to Read → Reading → Finished</p>
+        <h3 id="cards-flashcards">Cards (Flashcards)</h3>
+        <p>Extract key ideas into atomic flashcards:</p>
+        <ol>
+        <li>From a source or any note, select a highlight</li>
+        <li>Click <strong>Extract to Card</strong> (or use Command Palette)</li>
+        <li>Fill in the <strong>front</strong> (question/prompt) and <strong>back</strong> (answer/explanation)</li>
+        <li>Cards are saved as <code>.md</code> files in the <code>Cards/</code> folder</li>
+        </ol>
+        <h3 id="review-spaced-repetition">Review (Spaced Repetition)</h3>
+        <p>Oxidian uses the <strong>SM-2 algorithm</strong> (same as Anki) to schedule reviews:</p>
+        <ol>
+        <li>Open Remember → <strong>Review</strong> tab</li>
+        <li>See how many cards are <strong>due today</strong></li>
+        <li>Click <strong>Start Review</strong></li>
+        <li>For each card:</li>
+        </ol>
+        <ul>
+        <li>Read the front (question)</li>
+        <li>Click to reveal the back (answer)</li>
+        <li>Rate yourself: <strong>Again</strong> / <strong>Hard</strong> / <strong>Good</strong> / <strong>Easy</strong></li>
+        </ul>
+        <ol>
+        <li>Cards you struggle with appear more frequently</li>
+        </ol>
+        <h3 id="dashboard">Dashboard</h3>
+        <p>The Remember dashboard shows:</p>
+        <ul>
+        <li>📊 Cards due today</li>
+        <li>🔥 Review streak</li>
+        <li>📈 Retention rate</li>
+        <li>🎯 Daily random highlight</li>
+        <li>📚 Recently added sources</li>
+        </ul>
+        <h3 id="import">Import</h3>
+        <p>Bring in existing flashcards:</p>
+        <ul>
+        <li>Use <strong>Remember → Import</strong> to load cards from CSV or other formats</li>
+        <li>Map fields to front/back/tags/source</li>
+        </ul>
+        <h3 id="smart-connections">Smart Connections</h3>
+        <p>Oxidian finds links between your cards and notes automatically, helping you build a connected knowledge base rather than isolated flashcards.</p>
+        <hr>
+        <h2 id="-command-palette">⌘ Command Palette <a href="#-command-palette" class="anchor">#</a></h2>
+        <p>Press <code>Ctrl+P</code> (or <code>Cmd+P</code> on macOS) to open the <strong>Command Palette</strong> — your fastest way to do anything in Oxidian.</p>
+        <p>Start typing to filter commands:</p>
+        <ul>
+        <li><strong>Open note</strong> — jump to any note by name</li>
+        <li><strong>Toggle bookmark</strong> — star/unstar the current note</li>
+        <li><strong>Insert template</strong> — apply a template</li>
+        <li><strong>Toggle view mode</strong> — switch Live Preview / Source / Reading</li>
+        <li><strong>Open graph view</strong></li>
+        <li><strong>Open daily note</strong></li>
+        <li><strong>Toggle dark/light theme</strong></li>
+        <li>And every plugin command...</li>
+        </ul>
+        <blockquote><p>💡 The Command Palette also shows keyboard shortcuts next to each command.</p></blockquote>
+        <hr>
+        <h2 id="canvas">🎨 Canvas <a href="#canvas" class="anchor">#</a></h2>
+        <p>The <strong>Canvas</strong> is an infinite spatial workspace for visual thinking:</p>
+        <ul>
+        <li>Create text cards, note cards, and media cards</li>
+        <li>Drag, resize, and connect them with arrows</li>
+        <li>Great for brainstorming, mind mapping, and project planning</li>
+        <li>Access from the sidebar or Command Palette</li>
+        </ul>
+        <hr>
+        <h2 id="themes-settings">⚙️ Themes & Settings <a href="#themes-settings" class="anchor">#</a></h2>
+        <h3 id="themes">Themes</h3>
+        <ul>
+        <li><strong>Dark Mode / Light Mode</strong> — toggle from settings or Command Palette</li>
+        <li><strong>Custom CSS</strong> — drop a <code>.css</code> file into your vault's <code>.oxidian/</code> folder to customize everything</li>
+        <li><strong>Community Themes</strong> — compatible with many Obsidian CSS themes</li>
+        </ul>
+        <h3 id="settings">Settings</h3>
+        <p>Open settings with <code>Ctrl+,</code>:</p>
+        <table>
+        <thead><tr>
+        <th>Category</th>
+        <th>Options</th>
+        </tr></thead>
+        <tbody>
+        <tr>
+        <td><strong>Editor</strong></td>
+        <td>Font size, font family, line height, tab size, spell check</td>
+        </tr>
+        <tr>
+        <td><strong>Files</strong></td>
+        <td>Default location for new notes, daily notes folder, templates folder</td>
+        </tr>
+        <tr>
+        <td><strong>Appearance</strong></td>
+        <td>Theme, custom CSS, accent color</td>
+        </tr>
+        <tr>
+        <td><strong>Plugins</strong></td>
+        <td>Enable/disable, plugin settings</td>
+        </tr>
+        <tr>
+        <td><strong>Encryption</strong></td>
+        <td>Set/change vault password</td>
+        </tr>
+        <tr>
+        <td><strong>Updates</strong></td>
+        <td>Check for updates, auto-update toggle</td>
+        </tr>
+        </tbody></table>
+        <hr>
+        <h2 id="plugins">🧩 Plugins <a href="#plugins" class="anchor">#</a></h2>
+        <p>Oxidian runs <strong>real Obsidian community plugins</strong> through a compatibility shim:</p>
+        <ol>
+        <li>Open Settings → <strong>Plugins</strong></li>
+        <li>Browse the <strong>Plugin Explorer</strong></li>
+        <li>Click <strong>Install</strong> on any plugin</li>
+        <li>Enable it and configure in settings</li>
+        </ol>
+        <h3 id="whats-supported">What's Supported</h3>
+        <ul>
+        <li>✅ Commands & Command Palette integration</li>
+        <li>✅ Settings tabs</li>
+        <li>✅ Markdown post-processing</li>
+        <li>✅ File events (open, save, delete)</li>
+        <li>✅ Vault API, Workspace API, MetadataCache</li>
+        </ul>
+        <hr>
+        <h2 id="-keyboard-shortcuts">⌨️ Keyboard Shortcuts <a href="#-keyboard-shortcuts" class="anchor">#</a></h2>
+        <h3 id="general">General</h3>
+        <table>
+        <thead><tr>
+        <th>Shortcut</th>
+        <th>Action</th>
+        </tr></thead>
+        <tbody>
+        <tr>
+        <td><code>Ctrl+N</code></td>
+        <td>New note</td>
+        </tr>
+        <tr>
+        <td><code>Ctrl+O</code></td>
+        <td>Open file</td>
+        </tr>
+        <tr>
+        <td><code>Ctrl+P</code></td>
+        <td>Command Palette</td>
+        </tr>
+        <tr>
+        <td><code>Ctrl+S</code></td>
+        <td>Save</td>
+        </tr>
+        <tr>
+        <td><code>Ctrl+W</code></td>
+        <td>Close tab</td>
+        </tr>
+        <tr>
+        <td><code>Ctrl+Shift+N</code></td>
+        <td>New folder</td>
+        </tr>
+        <tr>
+        <td><code>Ctrl+,</code></td>
+        <td>Open settings</td>
+        </tr>
+        <tr>
+        <td><code>Ctrl+Q</code></td>
+        <td>Quit</td>
+        </tr>
+        </tbody></table>
+        <h3 id="editor">Editor</h3>
+        <table>
+        <thead><tr>
+        <th>Shortcut</th>
+        <th>Action</th>
+        </tr></thead>
+        <tbody>
+        <tr>
+        <td><code>Ctrl+B</code></td>
+        <td>Bold</td>
+        </tr>
+        <tr>
+        <td><code>Ctrl+I</code></td>
+        <td>Italic</td>
+        </tr>
+        <tr>
+        <td><code>Ctrl+K</code></td>
+        <td>Insert link</td>
+        </tr>
+        <tr>
+        <td><code>Ctrl+E</code></td>
+        <td>Toggle view mode</td>
+        </tr>
+        <tr>
+        <td><code>Ctrl+D</code></td>
+        <td>Delete line</td>
+        </tr>
+        <tr>
+        <td><code>Ctrl+/</code></td>
+        <td>Toggle comment</td>
+        </tr>
+        <tr>
+        <td><code>Ctrl+Z</code></td>
+        <td>Undo</td>
+        </tr>
+        <tr>
+        <td><code>Ctrl+Shift+Z</code></td>
+        <td>Redo</td>
+        </tr>
+        <tr>
+        <td><code>Ctrl+F</code></td>
+        <td>Find</td>
+        </tr>
+        <tr>
+        <td><code>Ctrl+H</code></td>
+        <td>Find & Replace</td>
+        </tr>
+        <tr>
+        <td><code>Ctrl+L</code></td>
+        <td>Select line</td>
+        </tr>
+        <tr>
+        <td><code>Ctrl+Shift+K</code></td>
+        <td>Delete line</td>
+        </tr>
+        <tr>
+        <td><code>Alt+↑</code></td>
+        <td>Move line up</td>
+        </tr>
+        <tr>
+        <td><code>Alt+↓</code></td>
+        <td>Move line down</td>
+        </tr>
+        <tr>
+        <td><code>Ctrl+Shift+↑</code></td>
+        <td>Copy line up</td>
+        </tr>
+        <tr>
+        <td><code>Ctrl+Shift+↓</code></td>
+        <td>Copy line down</td>
+        </tr>
+        <tr>
+        <td><code>Tab</code></td>
+        <td>Indent</td>
+        </tr>
+        <tr>
+        <td><code>Shift+Tab</code></td>
+        <td>Outdent</td>
+        </tr>
+        <tr>
+        <td><code>Ctrl+]</code></td>
+        <td>Indent</td>
+        </tr>
+        <tr>
+        <td><code>Ctrl+[</code></td>
+        <td>Outdent</td>
+        </tr>
+        </tbody></table>
+        <h3 id="navigation">Navigation</h3>
+        <table>
+        <thead><tr>
+        <th>Shortcut</th>
+        <th>Action</th>
+        </tr></thead>
+        <tbody>
+        <tr>
+        <td><code>Ctrl+Alt+←</code></td>
+        <td>Navigate back</td>
+        </tr>
+        <tr>
+        <td><code>Ctrl+Alt+→</code></td>
+        <td>Navigate forward</td>
+        </tr>
+        <tr>
+        <td><code>Ctrl+Alt+D</code></td>
+        <td>Open daily note</td>
+        </tr>
+        <tr>
+        <td><code>Ctrl+Tab</code></td>
+        <td>Next tab</td>
+        </tr>
+        <tr>
+        <td><code>Ctrl+Shift+Tab</code></td>
+        <td>Previous tab</td>
+        </tr>
+        <tr>
+        <td><code>Ctrl+1-9</code></td>
+        <td>Switch to tab 1-9</td>
+        </tr>
+        <tr>
+        <td><code>Ctrl+Click</code></td>
+        <td>Open link in new tab</td>
+        </tr>
+        <tr>
+        <td><code>Ctrl+Shift+F</code></td>
+        <td>Search vault</td>
+        </tr>
+        </tbody></table>
+        <h3 id="panes">Panes</h3>
+        <table>
+        <thead><tr>
+        <th>Shortcut</th>
+        <th>Action</th>
+        </tr></thead>
+        <tbody>
+        <tr>
+        <td><code>Ctrl+\</code></td>
+        <td>Split pane vertically</td>
+        </tr>
+        <tr>
+        <td><code>Ctrl+Shift+\</code></td>
+        <td>Split pane horizontally</td>
+        </tr>
+        </tbody></table>
+        <h3 id="remember">Remember</h3>
+        <table>
+        <thead><tr>
+        <th>Shortcut</th>
+        <th>Action</th>
+        </tr></thead>
+        <tbody>
+        <tr>
+        <td><code>Ctrl+Shift+R</code></td>
+        <td>Start review session</td>
+        </tr>
+        </tbody></table>
+        <hr>
+        <h2 id="tips-tricks">💡 Tips & Tricks <a href="#tips-tricks" class="anchor">#</a></h2>
+        <ul>
+        <li><strong>Quick Switcher:</strong> <code>Ctrl+P</code> then start typing a note name to jump to it instantly</li>
+        <li><strong>Daily workflow:</strong> Open daily note (<code>Ctrl+Alt+D</code>) → review Remember cards → start writing</li>
+        <li><strong>Link everything:</strong> The more you use <code>[[wiki-links]]</code>, the more powerful Graph View and Backlinks become</li>
+        <li><strong>Use tags AND folders:</strong> Folders for broad categories, tags for cross-cutting themes</li>
+        <li><strong>Keyboard-first:</strong> Learn the shortcuts — Oxidian is designed to keep your hands on the keyboard</li>
+        </ul>
+        <hr>
+
+        <div class="page-nav"><a href="getting-started.html"><div class="nav-label">← Previous</div><div class="nav-title">Getting Started</div></a><a href="features.html" class="next"><div class="nav-label">Next →</div><div class="nav-title">Features</div></a></div>
+      </article>
+    </main>
+  </div>
+
+  <footer class="docs-footer">
+    <p>© 2026 Oxidian. Open source under the MIT License. Built with 🦀 and Rust.</p>
+  </footer>
+
+  <script src="docs.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+  <script>mermaid.initialize({startOnLoad:true, theme:'dark', themeVariables:{primaryColor:'#7f6df2',primaryTextColor:'#cdd6f4',primaryBorderColor:'#45475a',lineColor:'#89b4fa',secondaryColor:'#1a1a2e',tertiaryColor:'#131320'}});</script>
+</body>
+</html>

@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API Reference — Oxidian Docs</title>
+  <meta name="description" content="Complete API reference for Oxidian Tauri IPC commands.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="docs.css">
+</head>
+<body>
+  <nav class="docs-topnav">
+    <div class="topnav-inner">
+      <div class="topnav-left">
+        <button class="mobile-menu-btn" aria-label="Toggle sidebar">☰</button>
+        <a href="../index.html" class="topnav-logo">
+          <span class="logo-icon">⬡</span>
+          <span>Oxidian</span>
+          <span class="logo-sep">/</span>
+          <span class="logo-docs">Docs</span>
+        </a>
+      </div>
+      <div class="topnav-right">
+        <div class="topnav-search">
+          <span class="search-icon">🔍</span>
+          <input type="text" placeholder="Search docs..." aria-label="Search documentation">
+          <div class="search-results-dropdown"></div>
+        </div>
+        <a href="../index.html" class="topnav-link">Home</a>
+        <a href="../releases.html" class="topnav-link">Releases</a>
+        <a href="https://github.com/nicokimmel/oxidian" class="topnav-github" target="_blank" rel="noopener" aria-label="GitHub">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="sidebar-backdrop"></div>
+
+  <div class="docs-layout">
+    <aside class="docs-sidebar">
+
+      <div class="sidebar-section">
+        <div class="sidebar-heading">Getting Started</div>
+        <a href="index.html" class="sidebar-link">Documentation Hub</a>
+        <a href="getting-started.html" class="sidebar-link">Getting Started</a>
+        <a href="user-guide.html" class="sidebar-link">User Guide</a>
+        <a href="user-guide-de.html" class="sidebar-link">User Guide (Deutsch)</a>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-heading">Guides</div>
+        <a href="features.html" class="sidebar-link">Features</a>
+        <a href="architecture.html" class="sidebar-link">Architecture</a>
+        <a href="developer-guide.html" class="sidebar-link">Developer Guide</a>
+        <a href="plugin-api.html" class="sidebar-link">Plugin API</a>
+        <a href="api-reference.html" class="sidebar-link active">API Reference</a>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-heading">Support</div>
+        <a href="building.html" class="sidebar-link">Building from Source</a>
+        <a href="troubleshooting.html" class="sidebar-link">Troubleshooting</a>
+        <a href="changelog.html" class="sidebar-link">Changelog</a>
+      </div>
+
+    </aside>
+
+    <main class="docs-content">
+      <article class="docs-article">
+        <div class="breadcrumb">
+          <a href="../index.html">Oxidian</a>
+          <span class="sep">›</span>
+          <a href="index.html">Docs</a>
+          <span class="sep">›</span>
+          <span>API Reference</span>
+        </div>
+
+        
+<h1>API Reference</h1>
+<p class="subtitle">Complete reference of Oxidian's Tauri IPC commands — the bridge between frontend and Rust backend.</p>
+
+<h2 id="file-operations">File Operations <a href="#file-operations" class="anchor">#</a></h2>
+
+<h3 id="read-file"><code>read_file</code></h3>
+<p>Read the contents of a file from the vault.</p>
+<div class="code-block-wrapper"><span class="code-lang">typescript</span><button class="copy-btn">Copy</button><pre><code>invoke('read_file', { path: string }): Promise&lt;string&gt;</code></pre></div>
+<table>
+<thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>path</code></td><td><code>string</code></td><td>Relative path within the vault</td></tr>
+</tbody>
+</table>
+
+<h3 id="save-file"><code>save_file</code></h3>
+<p>Write content to a file. Creates the file if it doesn't exist.</p>
+<div class="code-block-wrapper"><span class="code-lang">typescript</span><button class="copy-btn">Copy</button><pre><code>invoke('save_file', { path: string, content: string }): Promise&lt;void&gt;</code></pre></div>
+
+<h3 id="delete-file"><code>delete_file</code></h3>
+<p>Delete a file from the vault.</p>
+<div class="code-block-wrapper"><span class="code-lang">typescript</span><button class="copy-btn">Copy</button><pre><code>invoke('delete_file', { path: string }): Promise&lt;void&gt;</code></pre></div>
+
+<h3 id="rename-file"><code>rename_file</code></h3>
+<p>Rename or move a file within the vault. Automatically updates wiki-links.</p>
+<div class="code-block-wrapper"><span class="code-lang">typescript</span><button class="copy-btn">Copy</button><pre><code>invoke('rename_file', { oldPath: string, newPath: string }): Promise&lt;void&gt;</code></pre></div>
+
+<h3 id="list-files"><code>list_files</code></h3>
+<p>List all files in the vault or a subdirectory.</p>
+<div class="code-block-wrapper"><span class="code-lang">typescript</span><button class="copy-btn">Copy</button><pre><code>invoke('list_files', { path?: string }): Promise&lt;FileEntry[]&gt;</code></pre></div>
+
+<h3 id="create-folder"><code>create_folder</code></h3>
+<p>Create a new folder in the vault.</p>
+<div class="code-block-wrapper"><span class="code-lang">typescript</span><button class="copy-btn">Copy</button><pre><code>invoke('create_folder', { path: string }): Promise&lt;void&gt;</code></pre></div>
+
+<h2 id="search">Search <a href="#search" class="anchor">#</a></h2>
+
+<h3 id="search-vault"><code>search</code></h3>
+<p>Full-text search across the vault using Tantivy.</p>
+<div class="code-block-wrapper"><span class="code-lang">typescript</span><button class="copy-btn">Copy</button><pre><code>invoke('search', { query: string, limit?: number }): Promise&lt;SearchResult[]&gt;
+
+interface SearchResult {
+  path: string;
+  title: string;
+  snippet: string;
+  score: number;
+}</code></pre></div>
+
+<h3 id="rebuild-index"><code>rebuild_search_index</code></h3>
+<p>Force a full re-index of the vault.</p>
+<div class="code-block-wrapper"><span class="code-lang">typescript</span><button class="copy-btn">Copy</button><pre><code>invoke('rebuild_search_index'): Promise&lt;void&gt;</code></pre></div>
+
+<h2 id="encryption">Encryption <a href="#encryption" class="anchor">#</a></h2>
+
+<h3 id="encrypt-vault"><code>encrypt_vault</code></h3>
+<p>Enable encryption for the entire vault.</p>
+<div class="code-block-wrapper"><span class="code-lang">typescript</span><button class="copy-btn">Copy</button><pre><code>invoke('encrypt_vault', { password: string }): Promise&lt;void&gt;</code></pre></div>
+
+<h3 id="decrypt-vault"><code>decrypt_vault</code></h3>
+<p>Decrypt and disable vault encryption.</p>
+<div class="code-block-wrapper"><span class="code-lang">typescript</span><button class="copy-btn">Copy</button><pre><code>invoke('decrypt_vault', { password: string }): Promise&lt;void&gt;</code></pre></div>
+
+<h3 id="unlock-vault"><code>unlock_vault</code></h3>
+<p>Unlock an encrypted vault for the current session.</p>
+<div class="code-block-wrapper"><span class="code-lang">typescript</span><button class="copy-btn">Copy</button><pre><code>invoke('unlock_vault', { password: string }): Promise&lt;boolean&gt;</code></pre></div>
+
+<h2 id="vault-management">Vault Management <a href="#vault-management" class="anchor">#</a></h2>
+
+<h3 id="open-vault"><code>open_vault</code></h3>
+<p>Open a vault directory and initialize indexing.</p>
+<div class="code-block-wrapper"><span class="code-lang">typescript</span><button class="copy-btn">Copy</button><pre><code>invoke('open_vault', { path: string }): Promise&lt;VaultInfo&gt;
+
+interface VaultInfo {
+  path: string;
+  fileCount: number;
+  encrypted: boolean;
+}</code></pre></div>
+
+<h3 id="get-vault-info"><code>get_vault_info</code></h3>
+<p>Get information about the current vault.</p>
+<div class="code-block-wrapper"><span class="code-lang">typescript</span><button class="copy-btn">Copy</button><pre><code>invoke('get_vault_info'): Promise&lt;VaultInfo&gt;</code></pre></div>
+
+<h2 id="graph">Graph <a href="#graph" class="anchor">#</a></h2>
+
+<h3 id="get-graph-data"><code>get_graph_data</code></h3>
+<p>Get the full graph of notes and their connections for the Graph View.</p>
+<div class="code-block-wrapper"><span class="code-lang">typescript</span><button class="copy-btn">Copy</button><pre><code>invoke('get_graph_data'): Promise&lt;GraphData&gt;
+
+interface GraphData {
+  nodes: { id: string; label: string; connections: number }[];
+  edges: { source: string; target: string }[];
+}</code></pre></div>
+
+<h2 id="remember-api">Remember <a href="#remember-api" class="anchor">#</a></h2>
+
+<h3 id="get-due-cards"><code>get_due_cards</code></h3>
+<p>Get all flashcards due for review today.</p>
+<div class="code-block-wrapper"><span class="code-lang">typescript</span><button class="copy-btn">Copy</button><pre><code>invoke('get_due_cards'): Promise&lt;Card[]&gt;
+
+interface Card {
+  id: string;
+  front: string;
+  back: string;
+  source?: string;
+  tags: string[];
+  nextReview: string;
+  ease: number;
+  interval: number;
+}</code></pre></div>
+
+<h3 id="review-card"><code>review_card</code></h3>
+<p>Submit a review rating for a flashcard.</p>
+<div class="code-block-wrapper"><span class="code-lang">typescript</span><button class="copy-btn">Copy</button><pre><code>invoke('review_card', { cardId: string, rating: 'again' | 'hard' | 'good' | 'easy' }): Promise&lt;void&gt;</code></pre></div>
+
+<h2 id="events">Events <a href="#events" class="anchor">#</a></h2>
+
+<p>Listen for backend events using Tauri's event system:</p>
+
+<div class="code-block-wrapper"><span class="code-lang">javascript</span><button class="copy-btn">Copy</button><pre><code>import { listen } from '@tauri-apps/api/event';
+
+// File changes
+await listen('file-changed', (event) =&gt; {
+  console.log('File changed:', event.payload.path);
+});
+
+// Search index updated
+await listen('index-updated', (event) =&gt; {
+  console.log('Index updated, files:', event.payload.count);
+});</code></pre></div>
+
+<table>
+<thead><tr><th>Event</th><th>Payload</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>file-changed</code></td><td><code>{ path, kind }</code></td><td>File created, modified, or deleted</td></tr>
+<tr><td><code>index-updated</code></td><td><code>{ count }</code></td><td>Search index rebuilt</td></tr>
+<tr><td><code>vault-locked</code></td><td><code>{}</code></td><td>Vault was locked</td></tr>
+<tr><td><code>vault-unlocked</code></td><td><code>{}</code></td><td>Vault was unlocked</td></tr>
+<tr><td><code>plugin-loaded</code></td><td><code>{ id, name }</code></td><td>Plugin finished loading</td></tr>
+</tbody>
+</table>
+
+
+        <div class="page-nav"><a href="plugin-api.html"><div class="nav-label">← Previous</div><div class="nav-title">Plugin API</div></a><a href="changelog.html" class="next"><div class="nav-label">Next →</div><div class="nav-title">Changelog</div></a></div>
+      </article>
+    </main>
+  </div>
+
+  <footer class="docs-footer">
+    <p>© 2026 Oxidian. Open source under the MIT License. Built with 🦀 and Rust.</p>
+  </footer>
+
+  <script src="docs.js"></script>
+</body>
+</html>
