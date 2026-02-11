@@ -51,6 +51,7 @@ import { Workspaces } from './workspaces.js';
 import { OutgoingLinks } from './outgoing-links.js';
 import { CSSSnippets } from './css-snippets.js';
 import { AudioRecorder } from './audio-recorder.js';
+import { MobileSupport } from './mobile.js';
 
 // DOM Safety Helpers
 function safeGetElement(id) {
@@ -203,6 +204,7 @@ class OxidianApp {
         this.audioRecorder = safeInitModule('AudioRecorder', () => new AudioRecorder(this));
         this.dailyNotes = safeInitModule('DailyNotes', () => new DailyNotes(this));
         this.vaultPicker = safeInitModule('VaultPicker', () => new VaultPicker(this));
+        this.mobileSupport = safeInitModule('MobileSupport', () => new MobileSupport(this));
         this.workspaces = safeInitModule('Workspaces', () => new Workspaces(this));
         // PERF: Lazy-load Remember system — only init when Remember tab is opened
         // This saves ~100+ IPC calls on startup (reading all Cards/ and Sources/)
