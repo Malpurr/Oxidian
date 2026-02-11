@@ -6,9 +6,10 @@ use serde::Serialize;
 
 /// Returns the default vault path (~/.oxidian/vault/)
 pub fn default_vault_path() -> String {
-    let home = dirs::home_dir().expect("Could not find home directory");
-    let vault = home.join(".oxidian").join("vault");
-    vault.to_string_lossy().to_string()
+    match dirs::home_dir() {
+        Some(home) => home.join(".oxidian").join("vault").to_string_lossy().to_string(),
+        None => "/data/local/tmp/.oxidian/vault".to_string(),
+    }
 }
 
 #[derive(Debug, Serialize, Clone)]

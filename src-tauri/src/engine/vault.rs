@@ -66,8 +66,19 @@ static WIKI_LINK_RE: LazyLock<regex::Regex> = LazyLock::new(|| {
 // ─── Default vault path ─────────────────────────────────────────────
 
 pub fn default_vault_path() -> String {
-    let home = dirs::home_dir().expect("Could not find home directory");
-    home.join(".oxidian").join("vault").to_string_lossy().to_string()
+    match dirs::home_dir() {
+        Some(home) => home.join(".oxidian").join("vault").to_string_lossy().to_string(),
+        None => {
+            // Fallback for Android/environments where home_dir is unavailable.
+            // The caller (lib.rs setup) should override this with the app data dir.
+            "/data/local/tmp/.oxidian/vault".to_string()
+        }
+    }
+}
+
+/// Build a vault path using a custom base directory (used on mobile).
+pub fn vault_path_with_base(base: &std::path::Path) -> String {
+    base.join("vault").to_string_lossy().to_string()
 }
 
 // ─── Path helpers ────────────────────────────────────────────────────

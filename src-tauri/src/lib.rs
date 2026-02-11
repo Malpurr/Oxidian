@@ -20,48 +20,24 @@ use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    env_logger::init();
-
-    let vault_path = vault::default_vault_path();
-    std::fs::create_dir_all(&vault_path).expect("Failed to create vault directory");
-    std::fs::create_dir_all(format!("{}/daily", vault_path)).ok();
-
-    let search_index =
-        SearchIndex::new(&vault_path).expect("Failed to initialize search index");
-
-    let mut idx = search_index;
-    if let Err(e) = idx.reindex_vault(&vault_path) {
-        log::error!("Failed to index vault: {}", e);
+    // Platform-appropriate logger init
+    #[cfg(target_os = "android")]
+    {
+        android_logger::init_once(
+            android_logger::Config::default()
+                .with_max_level(log::LevelFilter::Info)
+                .with_tag("oxidian"),
+        );
     }
-
-    let loaded_settings = settings::load_settings(&vault_path);
-    let vault_locked = loaded_settings.vault.encryption_enabled;
-
-    let mut meta_cache = VaultMetaCache::new();
-    meta_cache.rebuild(&vault_path);
-
-    let nav_history = NavHistory::load_from_disk(&vault_path, 200);
-    let bookmarks = BookmarkManager::new(&vault_path);
-
-    let mut tag_index = TagIndex::new();
-    tag_index.build_from_vault(&vault_path);
-
-    let state = AppState {
-        search_index: Mutex::new(idx),
-        vault_path: Mutex::new(vault_path),
-        vault_password: Mutex::new(None),
-        vault_locked: Mutex::new(vault_locked),
-        meta_cache: Mutex::new(meta_cache),
-        nav_history: Mutex::new(nav_history),
-        bookmarks: Mutex::new(bookmarks),
-        tag_index: Mutex::new(tag_index),
-    };
+    #[cfg(not(target_os = "android"))]
+    {
+        env_logger::init();
+    }
 
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
-        .manage(state)
         .invoke_handler(tauri::generate_handler![
             // ── Core: CRUD ──
             commands::read_note,
@@ -231,10 +207,60 @@ pub fn run() {
             commands::search_by_tag,
             commands::resolve_embeds,
         ])
-        .setup(|_app| {
+        .setup(|app| {
+            // Resolve vault path — use app data dir on mobile, home dir on desktop
+            #[cfg(mobile)]
+            let vault_path = {
+                let base = app.path().app_data_dir().expect("Failed to get app data dir");
+                // Also set vault manager base for mobile
+                engine::vault_manager::set_vaults_base(base.clone());
+                vault::vault_path_with_base(&base)
+            };
+            #[cfg(not(mobile))]
+            let vault_path = vault::default_vault_path();
+
+            std::fs::create_dir_all(&vault_path).ok();
+            std::fs::create_dir_all(format!("{}/daily", vault_path)).ok();
+
+            let search_index = SearchIndex::new(&vault_path)
+                .unwrap_or_else(|e| {
+                    log::error!("Failed to initialize search index: {}", e);
+                    panic!("Search index init failed: {}", e);
+                });
+
+            let mut idx = search_index;
+            if let Err(e) = idx.reindex_vault(&vault_path) {
+                log::error!("Failed to index vault: {}", e);
+            }
+
+            let loaded_settings = settings::load_settings(&vault_path);
+            let vault_locked = loaded_settings.vault.encryption_enabled;
+
+            let mut meta_cache = VaultMetaCache::new();
+            meta_cache.rebuild(&vault_path);
+
+            let nav_history = NavHistory::load_from_disk(&vault_path, 200);
+            let bookmarks = BookmarkManager::new(&vault_path);
+
+            let mut tag_index = TagIndex::new();
+            tag_index.build_from_vault(&vault_path);
+
+            let state = AppState {
+                search_index: Mutex::new(idx),
+                vault_path: Mutex::new(vault_path),
+                vault_password: Mutex::new(None),
+                vault_locked: Mutex::new(vault_locked),
+                meta_cache: Mutex::new(meta_cache),
+                nav_history: Mutex::new(nav_history),
+                bookmarks: Mutex::new(bookmarks),
+                tag_index: Mutex::new(tag_index),
+            };
+
+            app.manage(state);
+
             #[cfg(desktop)]
             {
-                let window = _app.get_webview_window("main").unwrap();
+                let window = app.get_webview_window("main").unwrap();
                 window.set_title("Oxidian").ok();
             }
             Ok(())

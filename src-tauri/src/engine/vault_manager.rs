@@ -10,12 +10,32 @@ pub struct VaultInfo {
 }
 
 fn vaults_file() -> PathBuf {
-    let home = dirs::home_dir().expect("Could not find home directory");
-    home.join(".oxidian").join("vaults.json")
+    match dirs::home_dir() {
+        Some(home) => home.join(".oxidian").join("vaults.json"),
+        None => {
+            // Fallback for Android — will be overridden at runtime via OXIDIAN_BASE_DIR
+            PathBuf::from("/data/local/tmp/.oxidian/vaults.json")
+        }
+    }
+}
+
+/// Set a custom base directory for vault manager storage (called on mobile).
+static VAULTS_BASE: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
+
+pub fn set_vaults_base(base: PathBuf) {
+    let _ = VAULTS_BASE.set(base);
+}
+
+fn vaults_file_resolved() -> PathBuf {
+    if let Some(base) = VAULTS_BASE.get() {
+        base.join("vaults.json")
+    } else {
+        vaults_file()
+    }
 }
 
 pub fn list_vaults() -> Vec<VaultInfo> {
-    let path = vaults_file();
+    let path = vaults_file_resolved();
     if !path.exists() {
         return Vec::new();
     }
@@ -26,7 +46,7 @@ pub fn list_vaults() -> Vec<VaultInfo> {
 }
 
 pub fn save_vaults(vaults: &[VaultInfo]) -> Result<(), String> {
-    let path = vaults_file();
+    let path = vaults_file_resolved();
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|e| format!("Failed to create dir: {}", e))?;
     }
