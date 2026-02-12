@@ -5,10 +5,20 @@ use walkdir::WalkDir;
 use serde::Serialize;
 
 /// Returns the default vault path (~/.oxidian/vault/)
+/// On Android, dirs::home_dir() returns None — caller must provide path via app_data_dir
 pub fn default_vault_path() -> String {
-    match dirs::home_dir() {
-        Some(home) => home.join(".oxidian").join("vault").to_string_lossy().to_string(),
-        None => "/data/local/tmp/.oxidian/vault".to_string(),
+    #[cfg(target_os = "android")]
+    {
+        // On Android, this should never be called without a base path
+        // Return a safe app-private location as fallback
+        "/data/data/com.oxidian.app/files/vault".to_string()
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        match dirs::home_dir() {
+            Some(home) => home.join(".oxidian").join("vault").to_string_lossy().to_string(),
+            None => "/tmp/.oxidian/vault".to_string(),
+        }
     }
 }
 

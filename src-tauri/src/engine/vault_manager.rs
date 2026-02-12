@@ -10,11 +10,15 @@ pub struct VaultInfo {
 }
 
 fn vaults_file() -> PathBuf {
-    match dirs::home_dir() {
-        Some(home) => home.join(".oxidian").join("vaults.json"),
-        None => {
-            // Fallback for Android — will be overridden at runtime via OXIDIAN_BASE_DIR
-            PathBuf::from("/data/local/tmp/.oxidian/vaults.json")
+    #[cfg(target_os = "android")]
+    {
+        PathBuf::from("/data/data/com.oxidian.app/files/vaults.json")
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        match dirs::home_dir() {
+            Some(home) => home.join(".oxidian").join("vaults.json"),
+            None => PathBuf::from("/tmp/.oxidian/vaults.json"),
         }
     }
 }

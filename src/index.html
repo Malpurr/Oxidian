@@ -482,13 +482,21 @@
                     if (navigator.vibrate) navigator.vibrate(10);
                     
                     if (!window.app) return;
+                    // BUG-04 FIX: Use shared helper that updates aria state
+                    const openSidebarFromNav = () => {
+                        document.body.classList.add('sidebar-mobile-open');
+                        const mb = document.getElementById('mobile-menu-btn');
+                        if (mb) mb.setAttribute('aria-expanded', 'true');
+                        const ov = document.getElementById('sidebar-overlay');
+                        if (ov) ov.setAttribute('aria-hidden', 'false');
+                    };
                     switch (action) {
                         case 'explorer':
-                            document.body.classList.add('sidebar-mobile-open');
+                            openSidebarFromNav();
                             if (app.switchSidebarPanel) app.switchSidebarPanel('explorer');
                             break;
                         case 'search':
-                            document.body.classList.add('sidebar-mobile-open');
+                            openSidebarFromNav();
                             if (app.switchSidebarPanel) app.switchSidebarPanel('search');
                             break;
                         case 'new-note':

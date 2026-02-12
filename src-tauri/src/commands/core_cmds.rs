@@ -445,14 +445,21 @@ pub async fn check_update() -> Result<Option<crate::updater::UpdateInfo>, String
 
 #[tauri::command]
 pub async fn download_and_install_update(download_url: String) -> Result<(), String> {
-    let temp_dir = std::env::temp_dir();
-    let dest = temp_dir.join("oxidian-update-binary");
-    let dest_str = dest.to_string_lossy().to_string();
+    #[cfg(target_os = "android")]
+    {
+        return Err("Self-update is not supported on Android. Please download the latest APK from GitHub Releases.".to_string());
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let temp_dir = std::env::temp_dir();
+        let dest = temp_dir.join("oxidian-update-binary");
+        let dest_str = dest.to_string_lossy().to_string();
 
-    crate::updater::download_update(&download_url, &dest_str).await?;
-    crate::updater::apply_update(&dest_str)?;
+        crate::updater::download_update(&download_url, &dest_str).await?;
+        crate::updater::apply_update(&dest_str)?;
 
-    Ok(())
+        Ok(())
+    }
 }
 
 #[tauri::command]

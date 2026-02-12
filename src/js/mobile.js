@@ -45,7 +45,9 @@ export class MobileSupport {
     this.initFloatingEditorToolbar();
     this.initKeyboardDetection();
     this.initSidebarAutoClose();
+    this.initBackButton();
     this.ensureSidebarStartsClosed();
+    this.initGlobalErrorHandler();
     // NOTE: We do NOT call initMobileRibbon() — the static HTML #mobile-bottom-nav
     // is the single source of truth. No JS-created duplicate.
   }
@@ -60,6 +62,11 @@ export class MobileSupport {
     // Remove collapsed/hidden so CSS transition works
     const sidebar = document.getElementById('sidebar');
     if (sidebar) { sidebar.classList.remove('collapsed'); sidebar.classList.remove('hidden'); }
+    // BUG-01 FIX: Push history state so Android back button can close sidebar
+    if (this.isMobile && !this._sidebarHistoryPushed) {
+      history.pushState({ sidebarOpen: true }, '');
+      this._sidebarHistoryPushed = true;
+    }
   }
 
   closeSidebar() {
@@ -68,6 +75,7 @@ export class MobileSupport {
     if (menuBtn) menuBtn.setAttribute('aria-expanded', 'false');
     const overlay = document.getElementById('sidebar-overlay');
     if (overlay) overlay.setAttribute('aria-hidden', 'true');
+    this._sidebarHistoryPushed = false;
   }
 
   ensureSidebarStartsClosed() {
@@ -79,7 +87,8 @@ export class MobileSupport {
   // Auto-close sidebar when a file is tapped
   initSidebarAutoClose() {
     document.addEventListener('click', (e) => {
-      const treeItem = e.target.closest('.tree-item, .tree-item-name, .tree-item-inner');
+      // BUG-10 FIX: Use [data-path] as the reliable selector for file tree items
+      const treeItem = e.target.closest('[data-path], .tree-item, .tree-item-name, .tree-item-inner');
       if (treeItem && document.body.classList.contains('sidebar-mobile-open')) {
         setTimeout(() => this.closeSidebar(), 150);
       }
@@ -118,24 +127,45 @@ export class MobileSupport {
     }, { passive: true });
   }
 
+  // --- Back Button (Android) --- BUG-01 FIX
+  initBackButton() {
+    this._sidebarHistoryPushed = false;
+    window.addEventListener('popstate', (e) => {
+      if (document.body.classList.contains('sidebar-mobile-open')) {
+        this.closeSidebar();
+      }
+    });
+  }
+
+  // --- Global Error Handler --- BUG-12 FIX
+  initGlobalErrorHandler() {
+    window.addEventListener('unhandledrejection', (e) => {
+      console.error('[Oxidian] Unhandled promise rejection:', e.reason);
+    });
+  }
+
   // --- Long Press ---
   initLongPress() {
+    let longPressTouch = null;
     document.addEventListener('touchstart', (e) => {
       const fileItem = e.target.closest('.file-tree-item, .file-item, [data-path]');
       if (!fileItem) return;
 
+      // BUG-02 FIX: Store touch coords synchronously since we can't preventDefault in setTimeout
+      if (e.touches[0]) {
+        longPressTouch = { clientX: e.touches[0].clientX, clientY: e.touches[0].clientY };
+      }
       this.longPressTimer = setTimeout(() => {
-        e.preventDefault();
-        const touch = e.touches[0];
         const fakeEvent = new MouseEvent('contextmenu', {
           bubbles: true,
-          clientX: touch.clientX,
-          clientY: touch.clientY
+          clientX: longPressTouch?.clientX || 0,
+          clientY: longPressTouch?.clientY || 0
         });
         fileItem.dispatchEvent(fakeEvent);
         if (navigator.vibrate) navigator.vibrate(50);
+        longPressTouch = null;
       }, this.LONG_PRESS_DURATION);
-    }, { passive: false });
+    }, { passive: true });
 
     const cancel = () => {
       if (this.longPressTimer) {
@@ -205,8 +235,19 @@ export class MobileSupport {
         e.preventDefault();
         if (navigator.vibrate) navigator.vibrate(5);
 
-        if (action === 'undo') { document.execCommand('undo'); return; }
-        if (action === 'redo') { document.execCommand('redo'); return; }
+        // BUG-09 FIX: Use CM6 undo/redo when available, fall back to execCommand
+        if (action === 'undo') {
+          const cm = document.querySelector('.cm-editor');
+          if (cm?.__view) { cm.__view.dispatch({ effects: [] }); } // trigger via app
+          document.dispatchEvent(new CustomEvent('oxidian:editor-action', { detail: { action: 'undo' } }));
+          document.execCommand('undo'); // fallback for textarea
+          return;
+        }
+        if (action === 'redo') {
+          document.dispatchEvent(new CustomEvent('oxidian:editor-action', { detail: { action: 'redo' } }));
+          document.execCommand('redo'); // fallback for textarea
+          return;
+        }
 
         const textarea = document.querySelector('.editor-textarea:focus, .editor-textarea');
         if (!textarea) return;
@@ -240,35 +281,51 @@ export class MobileSupport {
     if (window.visualViewport) {
       let initialHeight = window.visualViewport.height;
       const KEYBOARD_THRESHOLD = 150;
+      let _rafPending = false; // BUG-03 FIX: debounce with rAF
 
       const onResize = () => {
-        const diff = initialHeight - window.visualViewport.height;
-        const keyboardOpen = diff > KEYBOARD_THRESHOLD;
-        const activeEl = document.activeElement;
-        const isEditorFocused = activeEl && (
-          activeEl.classList.contains('editor-textarea') ||
-          activeEl.closest('.editor-pane-half, .cm-editor')
-        );
+        if (_rafPending) return;
+        _rafPending = true;
+        requestAnimationFrame(() => {
+          _rafPending = false;
+          const diff = initialHeight - window.visualViewport.height;
+          const keyboardOpen = diff > KEYBOARD_THRESHOLD;
+          const activeEl = document.activeElement;
+          const isEditorFocused = activeEl && (
+            activeEl.classList.contains('editor-textarea') ||
+            activeEl.closest('.editor-pane-half, .cm-editor')
+          );
 
-        if (this.editorToolbar) {
-          if (keyboardOpen && isEditorFocused) {
-            this.editorToolbar.style.bottom = `${diff}px`;
-            this.editorToolbar.classList.add('visible');
-            const bottomNav = document.getElementById('mobile-bottom-nav');
-            if (bottomNav) bottomNav.style.display = 'none';
-          } else {
-            this.editorToolbar.classList.remove('visible');
-            const bottomNav = document.getElementById('mobile-bottom-nav');
-            if (bottomNav) bottomNav.style.display = '';
+          if (this.editorToolbar) {
+            if (keyboardOpen && isEditorFocused) {
+              this.editorToolbar.style.bottom = `${diff}px`;
+              this.editorToolbar.classList.add('visible');
+              const bottomNav = document.getElementById('mobile-bottom-nav');
+              if (bottomNav) bottomNav.style.display = 'none';
+            } else {
+              this.editorToolbar.classList.remove('visible');
+              const bottomNav = document.getElementById('mobile-bottom-nav');
+              if (bottomNav) bottomNav.style.display = '';
+            }
           }
-        }
+        });
       };
 
       window.visualViewport.addEventListener('resize', onResize);
       window.visualViewport.addEventListener('scroll', onResize);
 
+      // BUG-07 FIX: Use next resize event after orientation change instead of fixed 500ms
       window.addEventListener('orientationchange', () => {
-        setTimeout(() => { initialHeight = window.visualViewport.height; }, 500);
+        const updateHeight = () => {
+          initialHeight = window.visualViewport.height;
+          window.visualViewport.removeEventListener('resize', updateHeight);
+        };
+        window.visualViewport.addEventListener('resize', updateHeight);
+        // Fallback in case resize doesn't fire
+        setTimeout(() => {
+          window.visualViewport.removeEventListener('resize', updateHeight);
+          initialHeight = window.visualViewport.height;
+        }, 1000);
       });
     } else {
       // Fallback

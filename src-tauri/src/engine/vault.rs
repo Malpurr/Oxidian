@@ -66,12 +66,15 @@ static WIKI_LINK_RE: LazyLock<regex::Regex> = LazyLock::new(|| {
 // ─── Default vault path ─────────────────────────────────────────────
 
 pub fn default_vault_path() -> String {
-    match dirs::home_dir() {
-        Some(home) => home.join(".oxidian").join("vault").to_string_lossy().to_string(),
-        None => {
-            // Fallback for Android/environments where home_dir is unavailable.
-            // The caller (lib.rs setup) should override this with the app data dir.
-            "/data/local/tmp/.oxidian/vault".to_string()
+    #[cfg(target_os = "android")]
+    {
+        "/data/data/com.oxidian.app/files/vault".to_string()
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        match dirs::home_dir() {
+            Some(home) => home.join(".oxidian").join("vault").to_string_lossy().to_string(),
+            None => "/tmp/.oxidian/vault".to_string(),
         }
     }
 }
