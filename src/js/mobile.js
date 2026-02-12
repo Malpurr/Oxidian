@@ -52,6 +52,8 @@ export class MobileSupport {
     this.disableHoverOnTouch();
     this.initMobileRibbon();
     this.preventDoubleTapZoom();
+    this.initFloatingEditorToolbar();
+    this.initKeyboardDetection();
   }
 
   // === Swipe Gestures ===
@@ -224,5 +226,157 @@ export class MobileSupport {
       }
       lastTapTime = now;
     }, { passive: false });
+  }
+
+  // === Floating Markdown Editor Toolbar ===
+  initFloatingEditorToolbar() {
+    if (!this.isMobile) return;
+
+    // Create toolbar element
+    this.editorToolbar = document.createElement('div');
+    this.editorToolbar.className = 'mobile-editor-toolbar';
+    this.editorToolbar.setAttribute('role', 'toolbar');
+    this.editorToolbar.setAttribute('aria-label', 'Markdown formatting');
+
+    const actions = [
+      { label: 'Bold', icon: 'B', insert: '**', wrap: true },
+      { label: 'Italic', icon: 'I', insert: '_', wrap: true, style: 'font-style:italic' },
+      { label: 'Heading', icon: 'H', insert: '# ', wrap: false },
+      { label: 'sep' },
+      { label: 'Link', icon: '🔗', insert: '[](url)', wrap: false },
+      { label: 'Code', icon: '`', insert: '`', wrap: true, style: 'font-family:monospace' },
+      { label: 'List', icon: '•', insert: '- ', wrap: false },
+      { label: 'Task', icon: '☐', insert: '- [ ] ', wrap: false },
+      { label: 'sep' },
+      { label: 'Quote', icon: '❝', insert: '> ', wrap: false },
+      { label: 'Strikethrough', icon: 'S̶', insert: '~~', wrap: true },
+      { label: 'sep' },
+      { label: 'Tab', icon: '⇥', insert: '\t', wrap: false },
+      { label: 'Undo', icon: '↩', action: 'undo' },
+      { label: 'Redo', icon: '↪', action: 'redo' },
+    ];
+
+    actions.forEach(({ label, icon, insert, wrap, style, action }) => {
+      if (label === 'sep') {
+        const sep = document.createElement('div');
+        sep.className = 'toolbar-separator';
+        this.editorToolbar.appendChild(sep);
+        return;
+      }
+
+      const btn = document.createElement('button');
+      btn.setAttribute('aria-label', label);
+      btn.title = label;
+      btn.textContent = icon;
+      if (style) btn.style.cssText = style;
+
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (navigator.vibrate) navigator.vibrate(5);
+
+        if (action === 'undo') {
+          document.execCommand('undo');
+          return;
+        }
+        if (action === 'redo') {
+          document.execCommand('redo');
+          return;
+        }
+
+        // Find active textarea
+        const textarea = document.querySelector('.editor-textarea:focus, .editor-textarea');
+        if (!textarea) return;
+        textarea.focus();
+
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const text = textarea.value;
+        const selected = text.substring(start, end);
+
+        if (wrap && selected) {
+          // Wrap selection
+          const newText = insert + selected + insert;
+          textarea.setRangeText(newText, start, end, 'select');
+        } else if (wrap && !selected) {
+          // Insert pair and place cursor inside
+          textarea.setRangeText(insert + insert, start, end, 'end');
+          textarea.selectionStart = textarea.selectionEnd = start + insert.length;
+        } else {
+          // Insert at cursor (line-level commands like # or -)
+          textarea.setRangeText(insert, start, end, 'end');
+        }
+
+        // Trigger input event for app to pick up changes
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+
+      this.editorToolbar.appendChild(btn);
+    });
+
+    document.body.appendChild(this.editorToolbar);
+  }
+
+  // === Keyboard Detection ===
+  // Show/hide floating toolbar when virtual keyboard opens/closes
+  initKeyboardDetection() {
+    if (!this.isMobile) return;
+
+    // Use visualViewport API for reliable keyboard detection
+    if (window.visualViewport) {
+      let initialHeight = window.visualViewport.height;
+      const KEYBOARD_THRESHOLD = 150; // pixels
+
+      const onResize = () => {
+        const currentHeight = window.visualViewport.height;
+        const diff = initialHeight - currentHeight;
+        const keyboardOpen = diff > KEYBOARD_THRESHOLD;
+        const activeEl = document.activeElement;
+        const isEditorFocused = activeEl && (
+          activeEl.classList.contains('editor-textarea') ||
+          activeEl.closest('.editor-pane-half')
+        );
+
+        if (this.editorToolbar) {
+          if (keyboardOpen && isEditorFocused) {
+            // Position toolbar just above keyboard
+            this.editorToolbar.style.bottom = `${diff}px`;
+            this.editorToolbar.classList.add('visible');
+            // Hide bottom nav when keyboard is open
+            const bottomNav = document.getElementById('mobile-bottom-nav');
+            if (bottomNav) bottomNav.style.display = 'none';
+          } else {
+            this.editorToolbar.classList.remove('visible');
+            const bottomNav = document.getElementById('mobile-bottom-nav');
+            if (bottomNav) bottomNav.style.display = '';
+          }
+        }
+      };
+
+      window.visualViewport.addEventListener('resize', onResize);
+      window.visualViewport.addEventListener('scroll', onResize);
+
+      // Update initial height on orientation change
+      window.addEventListener('orientationchange', () => {
+        setTimeout(() => { initialHeight = window.visualViewport.height; }, 500);
+      });
+    } else {
+      // Fallback: listen for focus/blur on textareas
+      document.addEventListener('focusin', (e) => {
+        if (e.target.classList?.contains('editor-textarea')) {
+          if (this.editorToolbar) {
+            this.editorToolbar.classList.add('visible');
+          }
+        }
+      });
+      document.addEventListener('focusout', (e) => {
+        if (e.target.classList?.contains('editor-textarea')) {
+          setTimeout(() => {
+            if (this.editorToolbar && !document.activeElement?.classList?.contains('editor-textarea')) {
+              this.editorToolbar.classList.remove('visible');
+            }
+          }, 200);
+        }
+      });
+    }
   }
 }
