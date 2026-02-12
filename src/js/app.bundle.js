@@ -19274,6 +19274,21 @@ A snapshot of the current version will be created first.`)) return;
       this.disableHoverOnTouch();
       this.initMobileRibbon();
       this.preventDoubleTapZoom();
+      this.initSidebarAutoClose();
+      this.ensureSidebarStartsClosed();
+    }
+    initSidebarAutoClose() {
+      document.addEventListener('click', (e) => {
+        const treeItem = e.target.closest('.tree-item, .tree-item-name, .tree-item-inner');
+        if (treeItem && document.body.classList.contains('sidebar-mobile-open')) {
+          setTimeout(() => this.closeSidebar(), 150);
+        }
+      });
+    }
+    ensureSidebarStartsClosed() {
+      document.body.classList.remove('sidebar-mobile-open');
+      const sidebar = document.getElementById('sidebar');
+      if (sidebar) sidebar.classList.add('collapsed');
     }
     // === Swipe Gestures ===
     initSwipeGestures() {
