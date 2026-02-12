@@ -1,162 +1,100 @@
 /* ===================================================================
-   OXIDIAN — Android Mobile UI/UX Redesign v2
-   Material Design 3 · Touch-first · Fairphone 6 optimized (1080x2400)
+   OXIDIAN — Mobile Redesign v3.1 (Clean Slate)
    
-   Design Principles Applied:
-   - 48dp minimum touch targets with invisible expansion
-   - 32px side margins, 8/16/24/32 spacing scale
-   - 16px+ editor font (prevents mobile browser zoom)
-   - Bottom sheets for dialogs, floating toolbar for editor
-   - MD3 bottom nav with pill indicator
-   - Safe area insets for notched/punch-hole devices
-   - AA contrast minimum throughout
+   Design System:
+   - 4 Font Sizes: 32 / 20 / 16 / 12
+   - 2 Font Weights: 600 (bold) / 400 (normal)
+   - 8-Point Grid: 8 / 16 / 24 / 32 / 48
+   - 60/30/10 Color Rule: 60% dark bg, 30% surface, 10% accent
+   - 48dp Touch Targets minimum
+   - Safe Area Insets everywhere
    =================================================================== */
 
-/* ===== 1. ROOT VARIABLES ===== */
+/* ===== MOBILE ONLY ===== */
 @media (max-width: 767px) {
 
+  /* --- 1. DESIGN TOKENS --- */
   :root {
-    /* MD3 Spacing & Touch */
-    --md3-touch-target: 48px;
-    --md3-nav-height: 64px;
-    --md3-nav-height-safe: calc(64px + env(safe-area-inset-bottom, 0px));
-    
-    /* MD3 Corner Radii */
-    --md3-corner-xs: 4px;
-    --md3-corner-sm: 8px;
-    --md3-corner-md: 12px;
-    --md3-corner-lg: 16px;
-    --md3-corner-xl: 28px;
-    --md3-corner-full: 9999px;
-    
-    /* MD3 Tonal Surfaces (Dark) */
-    --md3-surface: #1C1B1F;
-    --md3-surface-1: #25232A;
-    --md3-surface-2: #2B2930;
-    --md3-surface-3: #312F37;
-    --md3-surface-4: #36343D;
-    --md3-surface-5: #3B3944;
-    
-    /* Mobile-optimized backgrounds */
-    --bg-primary: #121218;
-    --bg-secondary: #1a1a24;
-    --bg-surface: #1e1e2a;
-    --bg-tertiary: #0e0e16;
-    
-    /* Mobile font sizes */
-    --font-size-base: 16px;
-    --font-size-sm: 14px;
-    --font-size-xs: 12px;
-    
-    /* Canonical margins */
-    --margin-screen: 32px;  /* Side margins from screen edge */
-    --margin-group: 24px;   /* Between groups */
-    --margin-item: 16px;    /* Within groups */
-    --margin-related: 8px;  /* Between closely related elements */
+    --m-touch: 48px;
+    --m-nav-h: 64px;
+    --m-nav-h-safe: calc(64px + env(safe-area-inset-bottom, 0px));
+    --m-radius-sm: 8px;
+    --m-radius-md: 12px;
+    --m-radius-lg: 16px;
+    --m-radius-xl: 24px;
+    --m-radius-full: 9999px;
+    /* Spacing (8-point grid) */
+    --m-sp-1: 8px;
+    --m-sp-2: 16px;
+    --m-sp-3: 24px;
+    --m-sp-4: 32px;
+    --m-sp-6: 48px;
+    /* Surfaces (60/30/10) */
+    --m-bg: var(--bg-primary, #121218);           /* 60% */
+    --m-surface: var(--bg-secondary, #1a1a24);    /* 30% */
+    --m-surface-2: var(--bg-surface, #1e1e2a);    /* elevated */
+    /* Font sizes */
+    --m-fs-xl: 32px;
+    --m-fs-lg: 20px;
+    --m-fs-base: 16px;
+    --m-fs-sm: 12px;
   }
 
-  /* ===== 2. GLOBAL RESETS ===== */
-  
-  /* Prevent overscroll bounce */
+  /* --- 2. GLOBAL RESETS --- */
   html, body {
     overscroll-behavior: none;
     -webkit-overflow-scrolling: auto;
   }
 
-  #app {
-    overscroll-behavior: none;
+  body {
+    padding-bottom: var(--m-nav-h-safe) !important;
+    font-size: var(--m-fs-base);
+    -webkit-text-size-adjust: 100%;
   }
 
-  /* Safe area on main layout */
+  body.sidebar-mobile-open {
+    overflow: hidden;
+  }
+
   #main-layout {
     padding-top: env(safe-area-inset-top, 0px);
     padding-left: env(safe-area-inset-left, 0px);
     padding-right: env(safe-area-inset-right, 0px);
   }
 
-  /* ===== 3. GLOBAL TOUCH TARGETS ===== */
-  /* Every interactive element gets 48dp minimum */
-  button,
-  a,
-  [role="button"],
-  .icon-btn,
-  .ribbon-btn,
-  .view-toolbar-btn,
-  .breadcrumb-nav-btn,
-  .tab,
-  .tree-item,
-  .ctx-item,
-  .dropdown-item,
-  .slash-item,
-  .search-result-item,
-  .settings-nav-item,
-  .command-palette-item,
-  .tag-pill,
-  .backlink-item,
-  .welcome-btn {
-    min-height: var(--md3-touch-target) !important;
-    position: relative;
-  }
-
-  /* Invisible touch expansion for small icons */
-  .icon-btn::before,
-  .ribbon-btn::before,
-  .view-toolbar-btn::before,
-  .breadcrumb-nav-btn::before,
-  .tab-close::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: var(--md3-touch-target);
-    height: var(--md3-touch-target);
-    border-radius: 50%;
-  }
-
-  /* Shared tap highlight */
-  button,
-  a,
-  [role="button"],
-  .tree-item,
-  .ctx-item,
-  .dropdown-item,
-  .search-result-item,
-  .welcome-btn {
-    -webkit-tap-highlight-color: rgba(var(--accent-rgb), 0.1);
+  /* Touch defaults */
+  button, a, [role="button"] {
+    -webkit-tap-highlight-color: rgba(var(--accent-rgb, 127,109,242), 0.1);
     touch-action: manipulation;
-    user-select: none;
   }
 
-  /* ===== 4. HIDE DESKTOP ELEMENTS ===== */
-  #ribbon {
+  /* --- 3. HIDE DESKTOP ELEMENTS --- */
+  #ribbon,
+  #sidebar-resize,
+  .keyboard-shortcuts-overlay,
+  .pane-split-handle {
     display: none !important;
   }
 
-  #sidebar-resize {
+  /* Hide JS-created duplicate ribbon */
+  #mobile-ribbon {
     display: none !important;
   }
 
-  .keyboard-shortcuts-overlay {
-    display: none !important;
-  }
-
-  /* ===== 5. HAMBURGER MENU BUTTON ===== */
+  /* --- 4. HAMBURGER BUTTON --- */
   .mobile-menu-btn {
     position: fixed !important;
     top: env(safe-area-inset-top, 0px) !important;
     left: 0 !important;
-    z-index: calc(var(--z-fixed, 100) + 5) !important;
-    width: var(--md3-touch-target) !important;
-    height: var(--md3-touch-target) !important;
+    z-index: 1010 !important;
+    width: var(--m-touch) !important;
+    height: var(--m-touch) !important;
     display: flex !important;
     align-items: center;
     justify-content: center;
-    background: var(--bg-primary) !important;
-    border-bottom-right-radius: var(--md3-corner-md);
+    background: var(--m-bg) !important;
     border: none;
-    touch-action: manipulation;
-    -webkit-tap-highlight-color: transparent;
+    border-bottom-right-radius: var(--m-radius-sm);
   }
 
   .mobile-menu-btn svg {
@@ -164,101 +102,188 @@
     height: 24px;
   }
 
-  .mobile-menu-btn:active {
-    background: var(--bg-active) !important;
+  /* --- 5. SIDEBAR (Full-Screen Overlay) --- */
+  #sidebar {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    min-width: 0 !important;
+    z-index: 1000 !important;
+    transform: translateX(-100%) !important;
+    transition: transform 300ms cubic-bezier(0.2, 0, 0, 1) !important;
+    pointer-events: none !important;
+    background: var(--m-bg) !important;
+    border-right: none !important;
+    box-shadow: none !important;
+    padding-top: env(safe-area-inset-top, 0px);
+    display: flex;
+    flex-direction: column;
   }
 
-  /* ===== 6. TAB BAR ===== */
+  body.sidebar-mobile-open #sidebar {
+    transform: translateX(0) !important;
+    pointer-events: auto !important;
+  }
+
+  #sidebar.collapsed {
+    transform: translateX(-100%) !important;
+    pointer-events: none !important;
+  }
+
+  /* Overlay backdrop */
+  .sidebar-overlay {
+    display: none;
+    position: fixed !important;
+    inset: 0 !important;
+    background: rgba(0, 0, 0, 0.5) !important;
+    z-index: 999 !important;
+    transition: opacity 300ms ease !important;
+  }
+
+  body.sidebar-mobile-open .sidebar-overlay {
+    display: block !important;
+  }
+
+  /* Sidebar header */
+  .sidebar-panel-header {
+    padding: var(--m-sp-2) var(--m-sp-2) var(--m-sp-1);
+    min-height: var(--m-touch);
+    display: flex;
+    align-items: center;
+  }
+
+  .panel-title {
+    font-size: var(--m-fs-sm);
+    font-weight: 600;
+    letter-spacing: 1.2px;
+  }
+
+  .sidebar-actions .icon-btn {
+    width: var(--m-touch);
+    height: var(--m-touch);
+    border-radius: var(--m-radius-full);
+  }
+
+  /* All sidebar panels full width */
+  .sidebar-panel,
+  .sidebar-panel.active {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* File tree items — 48dp touch targets */
+  .tree-item {
+    min-height: var(--m-touch) !important;
+    padding: var(--m-sp-1) var(--m-sp-1) var(--m-sp-1) var(--m-sp-2) !important;
+    margin: 2px var(--m-sp-1) !important;
+    border-radius: var(--m-radius-sm) !important;
+    font-size: var(--m-fs-base) !important;
+    font-weight: 400;
+    display: flex;
+    align-items: center;
+  }
+
+  .tree-item .icon svg { width: 20px; height: 20px; }
+
+  .tree-item[data-depth="0"] { padding-left: var(--m-sp-2) !important; }
+  .tree-item[data-depth="1"] { padding-left: var(--m-sp-4) !important; }
+  .tree-item[data-depth="2"] { padding-left: var(--m-sp-6) !important; }
+  .tree-item[data-depth="3"] { padding-left: 64px !important; }
+
+  .tree-item:active {
+    background: rgba(var(--accent-rgb, 127,109,242), 0.12) !important;
+  }
+
+  /* Search input */
+  .search-input-wrap {
+    padding: var(--m-sp-1) var(--m-sp-2);
+  }
+
+  #search-input {
+    height: var(--m-touch);
+    font-size: var(--m-fs-base); /* prevents zoom */
+    padding: var(--m-sp-1) var(--m-sp-2);
+    border-radius: var(--m-radius-sm);
+  }
+
+  .search-result-item {
+    min-height: var(--m-touch);
+    padding: var(--m-sp-1) var(--m-sp-2);
+    margin: 4px var(--m-sp-1);
+    border-radius: var(--m-radius-sm);
+    font-size: var(--m-fs-base);
+  }
+
+  .search-result-item:active {
+    background: rgba(var(--accent-rgb, 127,109,242), 0.12) !important;
+  }
+
+  /* Tag pills */
+  .tag-pill {
+    min-height: 36px;
+    padding: var(--m-sp-1) var(--m-sp-2);
+    font-size: var(--m-fs-sm);
+  }
+
+  /* --- 6. TAB BAR --- */
   #tab-bar {
     height: 44px;
     min-height: 44px;
-    padding: 0;
-    padding-left: 52px !important; /* Clear hamburger */
+    padding-left: 52px !important; /* clear hamburger */
+    overflow-x: auto !important;
     -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
     scroll-snap-type: x mandatory;
-    background: var(--md3-surface-1);
-    border-bottom-color: rgba(255, 255, 255, 0.04);
+    background: var(--m-surface);
   }
+
+  #tab-bar::-webkit-scrollbar { display: none; }
 
   .tab {
     min-height: 44px !important;
-    padding: 0 16px;
-    font-size: 13px;
-    font-weight: 500;
+    padding: 0 var(--m-sp-2);
+    font-size: var(--m-fs-sm);
+    font-weight: 600;
     scroll-snap-align: start;
     min-width: 100px;
     flex-shrink: 0;
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
   }
 
   .tab .tab-close {
-    width: 28px;
-    height: 28px;
-    opacity: 1; /* Always visible on mobile */
+    width: 32px;
+    height: 32px;
+    min-height: 32px !important;
+    opacity: 1;
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 28px;
-    position: relative;
-  }
-
-  /* Invisible touch expansion on close button */
-  .tab .tab-close::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 44px;
-    height: 44px;
   }
 
   #tab-new-btn {
-    width: var(--md3-touch-target);
-    min-width: var(--md3-touch-target);
-    font-size: 20px;
-    -webkit-tap-highlight-color: transparent;
+    width: var(--m-touch);
+    min-width: var(--m-touch);
+    font-size: var(--m-fs-lg);
   }
 
-  /* ===== 7. BREADCRUMB BAR ===== */
+  /* --- 7. BREADCRUMB BAR --- */
   #breadcrumb-bar {
     height: 40px;
     min-height: 40px;
-    padding: 0 var(--margin-related) !important;
-    gap: 2px !important;
-    background: var(--md3-surface-1);
-    border-bottom-color: rgba(255, 255, 255, 0.04);
+    padding: 0 var(--m-sp-1) !important;
+    gap: 4px !important;
+    background: var(--m-surface);
   }
 
   .breadcrumb-nav-btn {
-    width: 36px !important;
-    height: 36px !important;
-    min-width: 36px !important;
-    min-height: 36px !important;
-    font-size: 18px !important;
-    border-radius: var(--md3-corner-full);
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
-    position: relative;
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    min-height: 40px !important;
+    border-radius: var(--m-radius-full);
+    font-size: var(--m-fs-base) !important;
   }
 
-  /* Invisible 48px touch expansion */
-  .breadcrumb-nav-btn::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 48px;
-    height: 48px;
-  }
-
-  .breadcrumb-nav-btn:active:not(:disabled) {
-    background: var(--bg-active);
-  }
-
-  /* View toolbar buttons */
   .view-toolbar-btn {
     width: 40px !important;
     height: 40px !important;
@@ -268,159 +293,178 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: var(--md3-corner-full);
-    -webkit-tap-highlight-color: transparent;
+    border-radius: var(--m-radius-full);
   }
 
-  .view-toolbar-btn svg {
-    width: 20px;
-    height: 20px;
-  }
-
-  .view-mode-label {
-    display: none !important;
-  }
+  .view-toolbar-btn svg { width: 20px; height: 20px; }
+  .view-mode-label { display: none !important; }
 
   #btn-audio-recorder {
     width: 40px !important;
     height: 40px !important;
-    min-width: 40px;
-    min-height: 40px;
-    border-radius: var(--md3-corner-full);
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    border-radius: var(--m-radius-full);
   }
 
-  /* ===== 8. CONTENT AREA ===== */
+  /* --- 8. CONTENT AREA --- */
   #content-area {
     padding-top: 0 !important;
-    padding-bottom: calc(var(--md3-nav-height-safe) + 4px) !important;
+    padding-bottom: calc(var(--m-nav-h-safe) + 8px) !important;
     margin-left: 0 !important;
   }
 
-  /* ===== 9. WELCOME SCREEN ===== */
+  #editor-area {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    padding: 0 !important;
+  }
+
+  #pane-container {
+    flex: 1 !important;
+    flex-direction: column !important;
+    min-height: 0 !important;
+  }
+
+  .pane {
+    flex: 1 !important;
+    min-height: 0 !important;
+    flex-direction: column !important;
+  }
+
+  /* Editor full width */
+  .editor-wrapper { flex-direction: column !important; }
+  .editor-pane-half,
+  .editor-textarea,
+  .cm-editor,
+  .cm-content {
+    width: 100% !important;
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+  }
+
+  .editor-textarea,
+  .pane.reading-mode .reading-view {
+    padding: var(--m-sp-2) var(--m-sp-4) !important;
+    padding-bottom: 80px !important;
+    max-width: 100% !important;
+    font-size: var(--m-fs-base) !important;
+    line-height: 1.6 !important;
+    caret-color: var(--text-accent);
+  }
+
+  .preview-content {
+    padding: var(--m-sp-2) var(--m-sp-4) !important;
+    max-width: 100% !important;
+  }
+
+  .reading-view, .preview-pane-half {
+    width: 100% !important;
+  }
+
+  /* Properties panel — collapsed by default, stacked above editor */
+  .properties-panel {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--border-color) !important;
+  }
+
+  .properties-panel.collapsed {
+    padding: 4px 0 !important;
+  }
+
+  .properties-panel.collapsed .properties-content {
+    display: none !important;
+  }
+
+  /* --- 9. WELCOME SCREEN --- */
   #welcome-screen {
-    background: var(--bg-primary);
-    background-image:
-      radial-gradient(ellipse at 20% 0%, rgba(var(--accent-rgb), 0.08) 0%, transparent 50%),
-      radial-gradient(ellipse at 80% 100%, rgba(45, 212, 191, 0.05) 0%, transparent 40%);
+    background: var(--m-bg);
     padding: 0;
-    padding-bottom: var(--md3-nav-height-safe);
+    padding-bottom: var(--m-nav-h-safe);
     align-items: flex-start;
     overflow-y: auto;
-    overflow-x: hidden;
-    -webkit-overflow-scrolling: touch;
-    z-index: 15 !important; /* Above tab bar */
+    z-index: 15 !important;
   }
 
   .welcome-content {
     width: 100%;
     max-width: 100% !important;
-    box-sizing: border-box;
-    padding: var(--margin-group) var(--margin-screen) var(--margin-screen) !important;
-    padding-top: calc(env(safe-area-inset-top, 0px) + 64px) !important; /* Below status bar + hamburger */
+    padding: var(--m-sp-3) var(--m-sp-4) var(--m-sp-4) !important;
+    padding-top: calc(env(safe-area-inset-top, 0px) + 64px) !important;
     text-align: left;
-    overflow: visible;
-    animation: welcome-mobile-enter 600ms cubic-bezier(0.2, 0, 0, 1);
   }
 
-  @keyframes welcome-mobile-enter {
-    from { opacity: 0; transform: translateY(24px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  /* Title — high contrast, proper hierarchy */
   .welcome-content h1 {
-    font-size: 32px !important;
+    font-size: var(--m-fs-xl) !important;
     font-weight: 400 !important;
     letter-spacing: -0.5px;
-    margin-bottom: 4px;
-    color: var(--text-primary) !important; /* High contrast white, not muted purple */
+    margin-bottom: var(--m-sp-1);
+    color: var(--text-primary) !important;
   }
 
-  /* Subtitle — readable contrast */
   .welcome-content > p {
-    font-size: 16px !important;
-    color: var(--text-secondary) !important; /* ~#9898a8, AA compliant */
-    margin-bottom: var(--margin-screen);
+    font-size: var(--m-fs-base) !important;
+    color: var(--text-secondary) !important;
+    margin-bottom: var(--m-sp-4);
     line-height: 1.5;
   }
 
-  /* Action buttons as full-width cards */
   .welcome-actions {
     display: flex;
     flex-direction: column;
-    gap: var(--margin-item);
-    margin-bottom: var(--margin-screen);
+    gap: var(--m-sp-2);
+    margin-bottom: var(--m-sp-4);
   }
 
   .welcome-btn {
     width: 100%;
-    box-sizing: border-box !important;
-    max-width: 100% !important;
-    padding: 18px 20px !important;
-    border-radius: var(--md3-corner-lg) !important;
-    font-size: 16px !important;
-    font-weight: 500;
+    padding: var(--m-sp-2) var(--m-sp-3) !important;
+    border-radius: var(--m-radius-lg) !important;
+    font-size: var(--m-fs-base) !important;
+    font-weight: 400;
     justify-content: flex-start;
-    gap: 14px;
+    gap: var(--m-sp-2);
     text-align: left;
     min-height: 56px !important;
     border: 1px solid var(--border-color);
-    background: var(--bg-surface);
-    color: var(--text-primary);
+    background: var(--m-surface);
     overflow: hidden;
-    transition: all 200ms cubic-bezier(0.2, 0, 0, 1);
-    cursor: pointer;
   }
 
-  .welcome-btn svg {
-    width: 22px !important;
-    height: 22px !important;
-    flex-shrink: 0;
-    color: var(--text-accent);
-  }
+  .welcome-btn svg { width: 24px !important; height: 24px !important; flex-shrink: 0; }
 
   .welcome-btn:active {
     transform: scale(0.98) !important;
     background: var(--bg-active);
-    transition-duration: 80ms;
   }
 
-  /* Primary CTA */
   .welcome-btn.primary {
     background: var(--text-accent) !important;
     border: none !important;
     color: #fff !important;
     font-weight: 600;
-    box-shadow: 0 2px 6px rgba(var(--accent-rgb), 0.25) !important;
+    box-shadow: 0 2px 8px rgba(var(--accent-rgb, 127,109,242), 0.25) !important;
   }
 
-  .welcome-btn.primary svg {
-    color: #fff !important;
-  }
+  .welcome-btn.primary svg { color: #fff !important; }
 
-  .welcome-btn.primary:active {
-    box-shadow: 0 1px 4px rgba(var(--accent-rgb), 0.2) !important;
-    filter: brightness(0.95);
-  }
-
-  /* Shortcuts/tips card */
   .welcome-shortcuts {
     text-align: left;
-    background: var(--bg-surface);
-    border-radius: var(--md3-corner-sm);
-    padding: var(--margin-item) 20px;
+    background: var(--m-surface);
+    border-radius: var(--m-radius-sm);
+    padding: var(--m-sp-2);
     border: 1px solid var(--border-color);
   }
 
   .welcome-shortcuts h3 {
-    font-size: 11px;
+    font-size: var(--m-fs-sm);
     text-transform: uppercase;
     letter-spacing: 1.2px;
     color: var(--text-faint);
-    margin-bottom: var(--margin-item);
+    margin-bottom: var(--m-sp-2);
     font-weight: 600;
   }
 
@@ -428,242 +472,31 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 0;
+    padding: var(--m-sp-1) 0;
     color: var(--text-secondary);
-    font-size: 14px;
+    font-size: var(--m-fs-base);
     border-bottom: 1px solid var(--border-light);
     min-height: 44px;
   }
 
-  .shortcut:last-child {
-    border-bottom: none;
-  }
+  .shortcut:last-child { border-bottom: none; }
+  .welcome-shortcuts .shortcut kbd { display: none !important; }
 
-  /* Hide kbd on mobile — replace with gesture tips via JS */
-  .welcome-shortcuts .shortcut kbd {
-    display: none !important;
-  }
-
-  /* ===== 10. SIDEBAR DRAWER ===== */
-  #sidebar {
-    width: 300px !important;
-    max-width: 85vw !important;
-    background: var(--md3-surface-1) !important;
-    border-right: none !important;
-    box-shadow: 8px 0 32px rgba(0, 0, 0, 0.4) !important;
-    transition: transform 300ms cubic-bezier(0.2, 0, 0, 1) !important;
-    padding-top: env(safe-area-inset-top, 0px);
-  }
-
-  body.sidebar-mobile-open #sidebar {
-    transform: translateX(0) !important;
-  }
-
-  .sidebar-overlay {
-    transition: opacity 300ms ease !important;
-    background: rgba(0, 0, 0, 0.6) !important;
-  }
-
-  /* Drag handle at top of sidebar */
-  #sidebar::before {
-    content: '';
-    display: block;
-    width: 32px;
-    height: 4px;
-    background: var(--text-faint);
-    border-radius: 2px;
-    margin: 12px auto var(--margin-related);
-    opacity: 0.4;
-  }
-
-  /* Sidebar header */
-  .sidebar-panel-header {
-    padding: 14px var(--margin-item) var(--margin-related);
-    min-height: 44px;
-  }
-
-  .sidebar-actions .icon-btn {
-    width: var(--md3-touch-target);
-    height: var(--md3-touch-target);
-    border-radius: var(--md3-corner-full);
-  }
-
-  /* File tree items — 48dp rows with proper padding */
-  .tree-item {
-    min-height: var(--md3-touch-target) !important;
-    padding: 12px 12px 12px var(--margin-item) !important;
-    margin: 2px var(--margin-related) !important;
-    border-radius: var(--md3-corner-md) !important;
-    font-size: 14px !important;
-    display: flex;
-    align-items: center;
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
-  }
-
-  .tree-item .icon {
-    margin-right: 10px;
-  }
-
-  .tree-item .icon svg {
-    width: 20px;
-    height: 20px;
-  }
-
-  /* Tree depth indentation */
-  .tree-item[data-depth="0"] { padding-left: 16px !important; }
-  .tree-item[data-depth="1"] { padding-left: 32px !important; }
-  .tree-item[data-depth="2"] { padding-left: 48px !important; }
-  .tree-item[data-depth="3"] { padding-left: 64px !important; }
-  .tree-item[data-depth="4"] { padding-left: 80px !important; }
-
-  /* Search input */
-  .search-input-wrap {
-    padding: var(--margin-related) var(--margin-item) var(--margin-item);
-  }
-
-  #search-input {
-    height: var(--md3-touch-target);
-    font-size: 16px; /* Prevents iOS/Android zoom */
-    padding: 12px var(--margin-item);
-    border-radius: var(--md3-corner-sm);
-  }
-
-  /* Search results */
-  .search-result-item {
-    padding: 12px 14px;
-    min-height: var(--md3-touch-target);
-    margin: 4px var(--margin-related);
-    border-radius: var(--md3-corner-sm);
-  }
-
-  /* Tag pills */
-  .tag-pill {
-    min-height: 36px;
-    padding: 6px 14px;
-    font-size: 13px;
-    display: inline-flex;
-    align-items: center;
-  }
-
-  /* ===== 11. EDITOR — MOBILE OPTIMIZED ===== */
-  
-  /* Editor area reset */
-  #editor-area {
-    padding: 0 !important;
-  }
-
-  /* Textarea: 16px prevents zoom, 32px side padding, comfortable line height */
-  .editor-textarea,
-  .pane.reading-mode .reading-view {
-    padding: var(--margin-item) var(--margin-screen) !important;
-    padding-bottom: 80px !important; /* Space for floating toolbar */
-    max-width: 100% !important;
-    font-size: 16px !important;
-    line-height: 1.6 !important;
-    caret-color: var(--text-accent);
-  }
-
-  .preview-content {
-    padding: var(--margin-item) var(--margin-screen) !important;
-    max-width: 100% !important;
-  }
-
-  /* ===== 12. FLOATING MARKDOWN TOOLBAR ===== */
-  /* Positioned above the virtual keyboard */
-  .mobile-editor-toolbar {
-    display: none; /* Hidden by default, shown by JS when keyboard opens */
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 44px;
-    background: var(--md3-surface-3);
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
-    z-index: calc(var(--z-fixed, 100) + 10);
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    white-space: nowrap;
-    padding: 0 var(--margin-related);
-    gap: 2px;
-    align-items: center;
-    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.2);
-  }
-
-  .mobile-editor-toolbar::-webkit-scrollbar {
-    display: none;
-  }
-
-  .mobile-editor-toolbar.visible {
-    display: flex !important;
-  }
-
-  .mobile-editor-toolbar button {
-    flex-shrink: 0;
-    width: 40px;
-    height: 36px;
-    min-height: 36px !important;
-    border: none;
-    background: transparent;
-    color: var(--text-secondary);
-    font-size: 16px;
-    font-weight: 600;
-    border-radius: var(--md3-corner-xs);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
-  }
-
-  .mobile-editor-toolbar button:active {
-    background: rgba(var(--accent-rgb), 0.15);
-    color: var(--text-accent);
-  }
-
-  .mobile-editor-toolbar button svg {
-    width: 18px;
-    height: 18px;
-  }
-
-  .mobile-editor-toolbar .toolbar-separator {
-    width: 1px;
-    height: 24px;
-    background: rgba(255, 255, 255, 0.08);
-    flex-shrink: 0;
-    margin: 0 4px;
-  }
-
-  /* ===== 13. BOTTOM NAVIGATION — MD3 ===== */
-  
-  /* Static HTML bottom nav */
+  /* --- 10. BOTTOM NAVIGATION (MD3) --- */
   #mobile-bottom-nav {
     display: flex !important;
     position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
-    height: var(--md3-nav-height-safe);
-    background: var(--md3-surface-2);
-    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.15);
-    z-index: var(--z-fixed, 100);
+    height: var(--m-nav-h-safe);
+    background: var(--m-surface);
+    box-shadow: 0 -1px 8px rgba(0, 0, 0, 0.2);
+    z-index: 998 !important;
     justify-content: space-around;
     align-items: flex-start;
-    padding: 0;
-    padding-top: 4px;
+    padding: 4px 0 0 0;
     padding-bottom: env(safe-area-inset-bottom, 0px);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-  }
-
-  /* Hide JS-created mobile ribbon if static one exists */
-  #mobile-bottom-nav ~ .mobile-ribbon,
-  body.is-mobile #mobile-bottom-nav ~ .mobile-ribbon,
-  body.is-mobile .mobile-ribbon {
-    display: none !important;
   }
 
   #mobile-bottom-nav .mobile-ribbon-btn {
@@ -674,19 +507,16 @@
     background: none;
     border: none;
     color: var(--text-muted);
-    padding: 6px 0;
-    min-height: var(--md3-touch-target) !important;
-    min-width: var(--md3-touch-target) !important;
+    padding: var(--m-sp-1) 0;
+    min-height: var(--m-touch) !important;
+    min-width: var(--m-touch) !important;
     width: 64px;
     cursor: pointer;
     border-radius: 0;
-    transition: color 200ms ease;
     position: relative;
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
   }
 
-  /* MD3 active pill indicator */
+  /* Active pill indicator */
   #mobile-bottom-nav .mobile-ribbon-btn.active {
     color: var(--text-accent);
   }
@@ -698,26 +528,19 @@
     left: 50%;
     transform: translateX(-50%);
     width: 56px;
-    height: 32px;
-    background: rgba(var(--accent-rgb), 0.15);
-    border-radius: var(--md3-corner-full);
+    height: var(--m-sp-4);
+    background: rgba(var(--accent-rgb, 127,109,242), 0.15);
+    border-radius: var(--m-radius-full);
     z-index: -1;
-    animation: md3-pill-in 300ms cubic-bezier(0.2, 0, 0, 1);
-  }
-
-  @keyframes md3-pill-in {
-    from { width: 0; opacity: 0; }
-    to { width: 56px; opacity: 1; }
   }
 
   #mobile-bottom-nav .mobile-ribbon-icon {
     display: flex;
     align-items: center;
     justify-content: center;
-    height: 32px;
+    height: var(--m-sp-4);
     width: 56px;
-    border-radius: var(--md3-corner-full);
-    transition: background 200ms ease;
+    border-radius: var(--m-radius-full);
   }
 
   #mobile-bottom-nav .mobile-ribbon-icon svg {
@@ -730,9 +553,8 @@
 
   #mobile-bottom-nav .mobile-ribbon-label {
     font-size: 11px;
-    font-weight: 500;
+    font-weight: 400;
     margin-top: 2px;
-    letter-spacing: 0.01em;
     line-height: 1;
   }
 
@@ -740,12 +562,64 @@
     font-weight: 600;
   }
 
-  /* Ripple on tap */
   #mobile-bottom-nav .mobile-ribbon-btn:active .mobile-ribbon-icon {
-    background: rgba(var(--accent-rgb), 0.1);
+    background: rgba(var(--accent-rgb, 127,109,242), 0.1);
   }
 
-  /* ===== 14. DIALOGS — BOTTOM SHEETS ===== */
+  /* --- 11. FLOATING EDITOR TOOLBAR --- */
+  .mobile-editor-toolbar {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 44px;
+    background: var(--m-surface-2);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    z-index: 1020;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    white-space: nowrap;
+    padding: 0 var(--m-sp-1);
+    gap: 2px;
+    align-items: center;
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.2);
+  }
+
+  .mobile-editor-toolbar::-webkit-scrollbar { display: none; }
+  .mobile-editor-toolbar.visible { display: flex !important; }
+
+  .mobile-editor-toolbar button {
+    flex-shrink: 0;
+    width: 40px;
+    height: 36px;
+    min-height: 36px !important;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: var(--m-fs-base);
+    font-weight: 600;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .mobile-editor-toolbar button:active {
+    background: rgba(var(--accent-rgb, 127,109,242), 0.15);
+    color: var(--text-accent);
+  }
+
+  .mobile-editor-toolbar .toolbar-separator {
+    width: 1px;
+    height: var(--m-sp-3);
+    background: rgba(255, 255, 255, 0.08);
+    flex-shrink: 0;
+    margin: 0 4px;
+  }
+
+  /* --- 12. DIALOGS (Bottom Sheets) --- */
   .dialog-overlay {
     align-items: flex-end !important;
     background: rgba(0, 0, 0, 0.6) !important;
@@ -757,16 +631,16 @@
     max-width: 100% !important;
     min-width: 0 !important;
     margin: 0 !important;
-    border-radius: var(--md3-corner-xl) var(--md3-corner-xl) 0 0 !important;
+    border-radius: var(--m-radius-xl) var(--m-radius-xl) 0 0 !important;
     padding: 0 !important;
     max-height: 90vh;
     overflow-y: auto;
-    animation: md3-sheet-enter 350ms cubic-bezier(0.2, 0, 0, 1) !important;
+    animation: m-sheet-up 300ms cubic-bezier(0.2, 0, 0, 1) !important;
     box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.3) !important;
-    background: var(--md3-surface-3) !important;
+    background: var(--m-surface-2) !important;
   }
 
-  @keyframes md3-sheet-enter {
+  @keyframes m-sheet-up {
     from { transform: translateY(100%); }
     to { transform: translateY(0); }
   }
@@ -775,107 +649,82 @@
   .dialog::before {
     content: '';
     display: block;
-    width: 32px;
+    width: var(--m-sp-4);
     height: 4px;
     background: var(--text-faint);
     border-radius: 2px;
-    margin: 12px auto var(--margin-related);
+    margin: var(--m-sp-1) auto var(--m-sp-1);
     opacity: 0.5;
   }
 
   .dialog h3 {
-    padding: 12px var(--margin-group) 0 !important;
-    font-size: 18px;
+    padding: var(--m-sp-1) var(--m-sp-3) 0 !important;
+    font-size: var(--m-fs-lg);
     font-weight: 600;
   }
 
   .dialog input[type="text"],
   .dialog input[type="number"],
   .dialog input[type="password"] {
-    margin: 12px 20px !important;
-    width: calc(100% - 40px) !important;
-    height: var(--md3-touch-target);
-    font-size: 16px !important; /* Prevent zoom */
-    border-radius: var(--md3-corner-sm) !important;
-    padding: 12px var(--margin-item) !important;
+    margin: var(--m-sp-1) var(--m-sp-3) !important;
+    width: calc(100% - var(--m-sp-6)) !important;
+    height: var(--m-touch);
+    font-size: var(--m-fs-base) !important;
+    border-radius: var(--m-radius-sm) !important;
+    padding: var(--m-sp-1) var(--m-sp-2) !important;
   }
 
   .dialog-actions {
-    padding: var(--margin-item) 20px var(--margin-group) !important;
-    padding-bottom: calc(var(--margin-group) + env(safe-area-inset-bottom, 0px)) !important;
-    gap: 12px;
+    padding: var(--m-sp-2) var(--m-sp-3) var(--m-sp-3) !important;
+    padding-bottom: calc(var(--m-sp-3) + env(safe-area-inset-bottom, 0px)) !important;
+    gap: var(--m-sp-1);
   }
 
   .dialog-actions .btn-primary,
   .dialog-actions .btn-secondary {
-    min-height: var(--md3-touch-target) !important;
-    padding: 12px var(--margin-group) !important;
-    border-radius: var(--md3-corner-md) !important;
-    font-size: 15px !important;
+    min-height: var(--m-touch) !important;
+    padding: var(--m-sp-1) var(--m-sp-3) !important;
+    border-radius: var(--m-radius-md) !important;
+    font-size: var(--m-fs-base) !important;
     flex: 1;
   }
 
-  .dialog-close-btn {
-    width: 44px !important;
-    height: 44px !important;
-    min-width: 44px;
-    min-height: 44px;
-    top: var(--margin-related) !important;
-    right: var(--margin-related) !important;
-    border-radius: var(--md3-corner-full) !important;
-    font-size: 20px !important;
-    z-index: 10;
-  }
-
-  /* ===== 15. CONTEXT MENU ===== */
+  /* --- 13. CONTEXT MENU --- */
   .context-menu {
     min-width: 240px;
-    max-width: calc(100vw - var(--margin-screen));
-    border-radius: var(--md3-corner-lg) !important;
-    background: var(--md3-surface-4) !important;
-    border-color: rgba(255, 255, 255, 0.06) !important;
+    max-width: calc(100vw - var(--m-sp-4));
+    border-radius: var(--m-radius-lg) !important;
   }
 
   .ctx-item {
-    min-height: var(--md3-touch-target) !important;
-    padding: 12px var(--margin-item) !important;
-    font-size: 15px;
-    border-radius: var(--md3-corner-sm) !important;
+    min-height: var(--m-touch) !important;
+    padding: var(--m-sp-1) var(--m-sp-2) !important;
+    font-size: var(--m-fs-base);
+    border-radius: var(--m-radius-sm) !important;
   }
 
-  /* ===== 16. DROPDOWN MENU ===== */
-  .dropdown-menu {
-    border-radius: var(--md3-corner-lg) !important;
-  }
+  .dropdown-menu { border-radius: var(--m-radius-lg) !important; }
 
   .dropdown-item {
-    min-height: var(--md3-touch-target) !important;
-    padding: 12px var(--margin-item) !important;
-    font-size: 15px;
-    border-radius: var(--md3-corner-sm) !important;
+    min-height: var(--m-touch) !important;
+    padding: var(--m-sp-1) var(--m-sp-2) !important;
+    font-size: var(--m-fs-base);
     display: flex;
     align-items: center;
   }
 
-  /* ===== 17. STATUS BAR ===== */
+  /* --- 14. STATUS BAR --- */
   #statusbar {
-    height: 28px;
-    font-size: 11px;
-    padding: 0 var(--margin-item);
-    border-top: 1px solid var(--border-light);
+    height: var(--m-sp-3);
+    font-size: var(--m-fs-sm);
+    padding: 0 var(--m-sp-2);
     margin-bottom: 0 !important;
   }
 
-  /* Hide excess status items on mobile */
-  .status-right > span:nth-child(n+4) {
-    display: none;
-  }
+  .status-right > span:nth-child(n+4) { display: none; }
+  .status-separator { display: none; }
 
-  .status-separator {
-    display: none;
-  }
-
-  /* ===== 18. COMMAND PALETTE — FULLSCREEN ===== */
+  /* --- 15. COMMAND PALETTE (Fullscreen) --- */
   .command-palette-overlay {
     padding-top: 0 !important;
     align-items: stretch !important;
@@ -892,13 +741,13 @@
 
   .command-palette-input {
     min-height: 56px;
-    font-size: 16px !important;
-    padding: var(--margin-item) 20px var(--margin-item) 52px !important;
+    font-size: var(--m-fs-base) !important;
+    padding: var(--m-sp-2) var(--m-sp-3) !important;
   }
 
   .command-palette-item {
-    min-height: var(--md3-touch-target) !important;
-    padding: 10px var(--margin-item) !important;
+    min-height: var(--m-touch) !important;
+    padding: var(--m-sp-1) var(--m-sp-2) !important;
   }
 
   .command-palette-results {
@@ -908,40 +757,22 @@
     -webkit-overflow-scrolling: touch;
   }
 
-  /* Close button for command palette */
-  .command-palette::after {
-    content: '✕';
-    position: absolute;
-    top: 12px;
-    right: 12px;
-    width: 44px;
-    height: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 20px;
-    color: var(--text-muted);
-    cursor: pointer;
-    border-radius: var(--md3-corner-full);
-    z-index: 10;
-  }
-
-  /* ===== 19. SLASH MENU ===== */
+  /* --- 16. SLASH MENU --- */
   .slash-menu {
     min-width: 260px;
-    max-width: calc(100vw - var(--margin-screen));
-    border-radius: var(--md3-corner-lg) !important;
+    max-width: calc(100vw - var(--m-sp-4));
+    border-radius: var(--m-radius-lg) !important;
   }
 
   .slash-item {
-    min-height: var(--md3-touch-target) !important;
-    padding: 10px 14px !important;
-    font-size: 15px;
+    min-height: var(--m-touch) !important;
+    padding: var(--m-sp-1) var(--m-sp-2) !important;
+    font-size: var(--m-fs-base);
   }
 
-  /* ===== 20. SETTINGS — SINGLE COLUMN ===== */
+  /* --- 17. SETTINGS (Single Column) --- */
   .settings-page {
-    padding: var(--margin-item) !important;
+    padding: var(--m-sp-2) !important;
   }
 
   .settings-body {
@@ -954,54 +785,48 @@
     position: static !important;
     flex-direction: row !important;
     overflow-x: auto;
-    gap: 4px;
-    padding-bottom: var(--margin-item);
-    margin-bottom: var(--margin-item);
+    gap: var(--m-sp-1);
+    padding-bottom: var(--m-sp-2);
+    margin-bottom: var(--m-sp-2);
     border-bottom: 1px solid var(--border-color);
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
-    scroll-snap-type: x mandatory;
   }
 
-  .settings-nav::-webkit-scrollbar {
-    display: none;
-  }
+  .settings-nav::-webkit-scrollbar { display: none; }
 
   .settings-nav-item {
     min-height: 40px !important;
     white-space: nowrap;
     flex-shrink: 0;
-    scroll-snap-align: start;
-    padding: var(--margin-related) var(--margin-item) !important;
-    border-radius: var(--md3-corner-full) !important;
-    font-size: 14px;
+    padding: var(--m-sp-1) var(--m-sp-2) !important;
+    border-radius: var(--m-radius-full) !important;
+    font-size: var(--m-fs-base);
   }
 
   .setting-row {
     flex-direction: column !important;
-    gap: 10px !important;
-    padding: var(--margin-item) 0 !important;
+    gap: var(--m-sp-1) !important;
+    padding: var(--m-sp-2) 0 !important;
   }
 
-  .setting-control {
-    width: 100%;
-  }
+  .setting-control { width: 100%; }
 
   .setting-control input[type="text"],
   .setting-control input[type="password"] {
     width: 100% !important;
-    height: var(--md3-touch-target);
-    font-size: 16px !important;
+    height: var(--m-touch);
+    font-size: var(--m-fs-base) !important;
   }
 
   .setting-control select {
     width: 100%;
-    height: var(--md3-touch-target);
-    font-size: 15px;
-    border-radius: var(--md3-corner-sm);
+    height: var(--m-touch);
+    font-size: var(--m-fs-base);
+    border-radius: var(--m-radius-sm);
   }
 
-  /* ===== 21. BACKLINKS PANEL — BOTTOM SHEET ===== */
+  /* --- 18. BACKLINKS PANEL (Bottom Sheet) --- */
   #backlinks-panel {
     position: fixed !important;
     bottom: 0;
@@ -1009,315 +834,85 @@
     right: 0;
     top: auto !important;
     width: 100% !important;
-    max-width: 100% !important;
     max-height: 60vh;
-    border-radius: var(--md3-corner-xl) var(--md3-corner-xl) 0 0;
+    border-radius: var(--m-radius-xl) var(--m-radius-xl) 0 0;
     border-left: none;
-    z-index: var(--z-modal, 200);
+    z-index: 200;
     box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.3) !important;
-    animation: md3-sheet-enter 300ms cubic-bezier(0.2, 0, 0, 1);
+    animation: m-sheet-up 300ms cubic-bezier(0.2, 0, 0, 1);
   }
 
   #backlinks-panel .backlink-panel-item {
-    min-height: var(--md3-touch-target);
-    padding: 12px var(--margin-item);
-    display: flex;
-    align-items: center;
+    min-height: var(--m-touch);
+    padding: var(--m-sp-1) var(--m-sp-2);
   }
 
-  /* ===== 22. NOTICES/TOASTS ===== */
+  /* --- 19. NOTICES/TOASTS --- */
   #obsidian-notice-container {
     top: auto !important;
-    bottom: calc(var(--md3-nav-height-safe) + 12px) !important;
-    left: 12px !important;
-    right: 12px !important;
+    bottom: calc(var(--m-nav-h-safe) + var(--m-sp-2)) !important;
+    left: var(--m-sp-2) !important;
+    right: var(--m-sp-2) !important;
   }
 
   .obsidian-notice {
     width: 100%;
-    border-radius: var(--md3-corner-md) !important;
-    font-size: 14px;
-    min-height: var(--md3-touch-target);
+    border-radius: var(--m-radius-md) !important;
+    font-size: var(--m-fs-base);
+    min-height: var(--m-touch);
     display: flex;
     align-items: center;
-    padding: 12px var(--margin-item);
+    padding: var(--m-sp-1) var(--m-sp-2);
   }
 
-  /* ===== 23. GRAPH VIEW — TOUCH ===== */
+  /* --- 20. GRAPH VIEW --- */
   .graph-controls {
-    bottom: calc(var(--md3-nav-height-safe) + 12px);
+    bottom: calc(var(--m-nav-h-safe) + var(--m-sp-2));
   }
 
   .graph-controls button {
-    width: var(--md3-touch-target);
-    height: var(--md3-touch-target);
-    border-radius: var(--md3-corner-sm);
+    width: var(--m-touch);
+    height: var(--m-touch);
   }
 
-  .graph-filter-btn {
-    min-height: 40px;
-    padding: var(--margin-related) 14px;
-    font-size: 13px;
-    border-radius: var(--md3-corner-full);
-  }
-
-  /* ===== 24. CANVAS VIEW ===== */
-  .canvas-view {
-    touch-action: pan-x pan-y pinch-zoom;
-  }
-
-  /* ===== 25. CHECKBOXES / TOGGLES ===== */
+  /* --- 21. CHECKBOXES --- */
   .checkbox-container {
-    min-width: var(--md3-touch-target);
-    min-height: var(--md3-touch-target);
+    min-width: var(--m-touch);
+    min-height: var(--m-touch);
     display: flex;
     align-items: center;
     justify-content: center;
   }
 
-  .checkbox-container input[type="checkbox"] {
-    width: 48px !important;
-    height: 26px !important;
-    border-radius: 13px !important;
-  }
-
-  .checkbox-container input[type="checkbox"]::before {
-    width: 20px !important;
-    height: 20px !important;
-    top: 3px;
-    left: 3px;
-  }
-
-  .checkbox-container input[type="checkbox"]:checked::before {
-    transform: translateX(22px) !important;
-  }
-
-  /* ===== 26. IMPROVED SCROLLING ===== */
+  /* --- 22. IMPROVED SCROLLING --- */
   #file-tree,
   #search-results,
   .command-palette-results,
   .settings-content,
-  .preview-pane-half,
   .pane.reading-mode .reading-view {
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
   }
 
-  /* ===== 27. ACTIVE STATES — RIPPLE FEEDBACK ===== */
-  .tree-item:active,
-  .search-result-item:active,
-  .ctx-item:active,
-  .dropdown-item:active,
-  .command-palette-item:active {
-    background: rgba(var(--accent-rgb), 0.12) !important;
-    transition-duration: 60ms;
-  }
-
-  /* ===== 28. PANEL TRANSITIONS ===== */
-  .sidebar-panel.active {
-    animation: md3-fade-through 250ms cubic-bezier(0.2, 0, 0, 1) !important;
-  }
-
-  @keyframes md3-fade-through {
-    0% { opacity: 0; transform: scale(0.96); }
-    50% { opacity: 0; }
-    100% { opacity: 1; transform: scale(1); }
-  }
-
-  .settings-section.active {
-    animation: md3-shared-axis-forward 300ms cubic-bezier(0.2, 0, 0, 1) !important;
-  }
-
-  @keyframes md3-shared-axis-forward {
-    from { opacity: 0; transform: translateX(30px); }
-    to { opacity: 1; transform: translateX(0); }
-  }
-
-  /* ===== 29. ONBOARDING ===== */
-  .onboarding-overlay {
-    padding: var(--margin-screen);
-  }
-
-
-/* ===== CRITICAL MOBILE LAYOUT FIXES v3.0.7 ===== */
-
-  /* --- FIX 1: Sidebar must be FULL WIDTH on mobile, not 300px --- */
-  #sidebar {
-    width: 100vw !important;
-    max-width: 100vw !important;
-    min-width: 0 !important;
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    bottom: 0 !important;
-    z-index: 1000 !important;
-    transform: translateX(-100%) !important;
-    pointer-events: none !important;
-  }
-
-  /* Only show when explicitly opened via body class */
-  body.sidebar-mobile-open #sidebar {
-    transform: translateX(0) !important;
-    pointer-events: auto !important;
-  }
-
-  /* Collapsed = hidden */
-  #sidebar.collapsed {
-    transform: translateX(-100%) !important;
-    width: 0 !important;
-    min-width: 0 !important;
-    pointer-events: none !important;
-  }
-
-  /* Overlay to close sidebar when tapping outside */
-  body.sidebar-mobile-open .sidebar-overlay {
-    display: block !important;
-    position: fixed !important;
-    inset: 0 !important;
-    background: rgba(0,0,0,0.5) !important;
-    z-index: 999 !important;
-  }
-
-  /* --- FIX 2: Properties panel stacked ABOVE editor, not side-by-side --- */
-  .pane {
-    flex-direction: column !important;
-  }
-
-  .editor-wrapper {
-    flex-direction: column !important;
-  }
-
-  .properties-panel {
-    width: 100% !important;
-    max-width: 100% !important;
-    border-right: none !important;
-    border-bottom: 1px solid var(--border-color) !important;
-    max-height: none !important;
-  }
-
-  .properties-panel.collapsed {
-    padding: 4px 0 !important;
-  }
-
-  .properties-panel.collapsed .properties-content {
-    display: none !important;
-  }
-
-  /* --- FIX 3: Editor takes FULL remaining space --- */
-  .editor-pane-half,
-  .editor-textarea,
-  .cm-editor,
-  .cm-content {
-    width: 100% !important;
-    min-width: 0 !important;
-    flex: 1 1 auto !important;
-  }
-
-  .pane-split-handle {
-    display: none !important;
-  }
-
-  /* Editor area fills all available space */
-  #editor-area {
-    flex: 1 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    min-height: 0 !important;
-    overflow: hidden !important;
-  }
-
-  #pane-container {
-    flex: 1 !important;
-    flex-direction: column !important;
-    min-height: 0 !important;
-  }
-
-  .pane {
-    min-height: 0 !important;
-    flex: 1 !important;
-  }
-
-  /* Reading view also full width */
-  .reading-view,
-  .preview-pane-half {
-    width: 100% !important;
-  }
-
-  /* --- FIX 4: Hide floating action buttons that overlap bottom nav --- */
-  /* These share/edit/delete FABs should not overlap navigation */
-  .floating-actions,
-  .action-buttons,
-  .fab-container,
-  .note-actions,
-  [class*="action-bar"],
-  [class*="float-btn"] {
-    bottom: calc(64px + env(safe-area-inset-bottom, 0px) + 8px) !important;
-    z-index: 99 !important;
-  }
-
-  /* --- FIX 5: Bottom nav must be ABOVE everything --- */
-  #mobile-bottom-nav,
-  .mobile-bottom-nav,
-  nav[id*="bottom"] {
-    position: fixed !important;
-    bottom: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    z-index: 999 !important;
-    height: 64px !important;
-  }
-
-  /* --- FIX 6: Search panel full width --- */
-  .search-panel,
-  .sidebar-panel,
-  .sidebar-panel.active {
-    width: 100% !important;
-    max-width: 100% !important;
-  }
-
-  /* --- FIX 7: Main content not hidden behind sidebar --- */
-  #app-container,
-  #main-content,
-  .app-body {
-    width: 100% !important;
-    margin-left: 0 !important;
-    padding-left: 0 !important;
-  }
-
-  /* --- FIX 8: Tab bar (top) should scroll horizontally, not clip --- */
-  #tab-bar,
-  .tab-bar {
-    overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch !important;
-    scrollbar-width: none !important;
-    padding-left: 48px !important; /* Space for hamburger */
-  }
-  
-  #tab-bar::-webkit-scrollbar,
-  .tab-bar::-webkit-scrollbar {
-    display: none !important;
-  }
-
-  /* --- FIX 9: Body padding for bottom nav --- */
-  body {
-    padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)) !important;
-  }
-
-  /* --- FIX 10: Breadcrumb bar simplified on mobile --- */
-  .breadcrumb-bar {
-    overflow-x: auto !important;
-    white-space: nowrap !important;
-    padding: 4px 8px !important;
-    -webkit-overflow-scrolling: touch !important;
-  }
-
-  /* --- FIX 11: View toolbar icons in a row, not stacked --- */
-  .view-toolbar,
-  .toolbar-icons {
-    display: flex !important;
-    flex-wrap: nowrap !important;
-    overflow-x: auto !important;
-    gap: 2px !important;
+  /* --- 23. GLOBAL TOUCH TARGETS (catch-all) --- */
+  button,
+  a,
+  [role="button"],
+  .icon-btn,
+  .view-toolbar-btn,
+  .breadcrumb-nav-btn,
+  .tab,
+  .tree-item,
+  .ctx-item,
+  .dropdown-item,
+  .slash-item,
+  .search-result-item,
+  .settings-nav-item,
+  .command-palette-item,
+  .tag-pill,
+  .backlink-item,
+  .welcome-btn {
+    min-height: var(--m-touch) !important;
   }
 
 } /* End @media (max-width: 767px) */
@@ -1326,23 +921,12 @@
 /* ===== LIGHT THEME MOBILE ===== */
 @media (max-width: 767px) {
   :root[data-theme="light"] {
-    --md3-surface-1: #f5f5f0;
-    --md3-surface-2: #ebebeb;
-    --md3-surface-3: #ffffff;
-    --md3-surface-4: #ffffff;
+    --m-surface: #f5f5f0;
+    --m-surface-2: #ffffff;
   }
 
   :root[data-theme="light"] #mobile-bottom-nav {
-    background: var(--md3-surface-2) !important;
-    box-shadow: 0 -1px 8px rgba(0, 0, 0, 0.08) !important;
-  }
-
-  :root[data-theme="light"] .dialog {
-    background: var(--md3-surface-3) !important;
-  }
-
-  :root[data-theme="light"] .context-menu {
-    background: var(--md3-surface-4) !important;
+    box-shadow: 0 -1px 4px rgba(0, 0, 0, 0.08) !important;
   }
 }
 

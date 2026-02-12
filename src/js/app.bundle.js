@@ -19272,8 +19272,10 @@ A snapshot of the current version will be created first.`)) return;
       this.initSwipeGestures();
       this.initLongPress();
       this.disableHoverOnTouch();
-      this.initMobileRibbon();
+      // initMobileRibbon removed — static HTML #mobile-bottom-nav is used instead
       this.preventDoubleTapZoom();
+      this.initFloatingEditorToolbar();
+      this.initKeyboardDetection();
       this.initSidebarAutoClose();
       this.ensureSidebarStartsClosed();
     }
@@ -19428,6 +19430,94 @@ A snapshot of the current version will be created first.`)) return;
         }
         lastTapTime = now;
       }, { passive: false });
+    }
+    // === Floating Markdown Editor Toolbar ===
+    initFloatingEditorToolbar() {
+      if (!this.isMobile) return;
+      this.editorToolbar = document.createElement("div");
+      this.editorToolbar.className = "mobile-editor-toolbar";
+      this.editorToolbar.setAttribute("role", "toolbar");
+      this.editorToolbar.setAttribute("aria-label", "Markdown formatting");
+      const actions2 = [
+        { label: "Bold", icon: "B", insert: "**", wrap: true },
+        { label: "Italic", icon: "I", insert: "_", wrap: true },
+        { label: "Heading", icon: "H", insert: "# ", wrap: false },
+        { label: "sep" },
+        { label: "Link", icon: "\u{1F517}", insert: "[](url)", wrap: false },
+        { label: "Code", icon: "`", insert: "`", wrap: true },
+        { label: "List", icon: "\u2022", insert: "- ", wrap: false },
+        { label: "Task", icon: "\u2610", insert: "- [ ] ", wrap: false },
+        { label: "sep" },
+        { label: "Tab", icon: "\u21E5", insert: "	", wrap: false },
+        { label: "Undo", icon: "\u21A9", action: "undo" },
+        { label: "Redo", icon: "\u21AA", action: "redo" }
+      ];
+      actions2.forEach(({ label, icon, insert, wrap, action }) => {
+        if (label === "sep") {
+          const sep = document.createElement("div");
+          sep.className = "toolbar-separator";
+          this.editorToolbar.appendChild(sep);
+          return;
+        }
+        const btn = document.createElement("button");
+        btn.setAttribute("aria-label", label);
+        btn.title = label;
+        btn.textContent = icon;
+        btn.addEventListener("click", (e2) => {
+          e2.preventDefault();
+          if (navigator.vibrate) navigator.vibrate(5);
+          if (action === "undo") { document.execCommand("undo"); return; }
+          if (action === "redo") { document.execCommand("redo"); return; }
+          const textarea = document.querySelector(".editor-textarea:focus, .editor-textarea");
+          if (!textarea) return;
+          textarea.focus();
+          const start = textarea.selectionStart;
+          const end = textarea.selectionEnd;
+          const selected = textarea.value.substring(start, end);
+          if (wrap && selected) {
+            textarea.setRangeText(insert + selected + insert, start, end, "select");
+          } else if (wrap) {
+            textarea.setRangeText(insert + insert, start, end, "end");
+            textarea.selectionStart = textarea.selectionEnd = start + insert.length;
+          } else {
+            textarea.setRangeText(insert, start, end, "end");
+          }
+          textarea.dispatchEvent(new Event("input", { bubbles: true }));
+        });
+        this.editorToolbar.appendChild(btn);
+      });
+      document.body.appendChild(this.editorToolbar);
+    }
+    // === Keyboard Detection ===
+    initKeyboardDetection() {
+      if (!this.isMobile) return;
+      if (window.visualViewport) {
+        let initialHeight = window.visualViewport.height;
+        const KEYBOARD_THRESHOLD = 150;
+        const onResize = () => {
+          const diff = initialHeight - window.visualViewport.height;
+          const keyboardOpen = diff > KEYBOARD_THRESHOLD;
+          const activeEl = document.activeElement;
+          const isEditorFocused = activeEl && (activeEl.classList.contains("editor-textarea") || activeEl.closest(".editor-pane-half, .cm-editor"));
+          if (this.editorToolbar) {
+            if (keyboardOpen && isEditorFocused) {
+              this.editorToolbar.style.bottom = `${diff}px`;
+              this.editorToolbar.classList.add("visible");
+              const bottomNav = document.getElementById("mobile-bottom-nav");
+              if (bottomNav) bottomNav.style.display = "none";
+            } else {
+              this.editorToolbar.classList.remove("visible");
+              const bottomNav = document.getElementById("mobile-bottom-nav");
+              if (bottomNav) bottomNav.style.display = "";
+            }
+          }
+        };
+        window.visualViewport.addEventListener("resize", onResize);
+        window.visualViewport.addEventListener("scroll", onResize);
+        window.addEventListener("orientationchange", () => {
+          setTimeout(() => { initialHeight = window.visualViewport.height; }, 500);
+        });
+      }
     }
   };
 
