@@ -57,9 +57,9 @@ export class MobileSupport {
     if (menuBtn) menuBtn.setAttribute('aria-expanded', 'true');
     const overlay = document.getElementById('sidebar-overlay');
     if (overlay) overlay.setAttribute('aria-hidden', 'false');
-    // Remove collapsed so CSS transition works
+    // Remove collapsed/hidden so CSS transition works
     const sidebar = document.getElementById('sidebar');
-    if (sidebar) sidebar.classList.remove('collapsed');
+    if (sidebar) { sidebar.classList.remove('collapsed'); sidebar.classList.remove('hidden'); }
   }
 
   closeSidebar() {

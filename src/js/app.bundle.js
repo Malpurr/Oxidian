@@ -19326,6 +19326,8 @@ A snapshot of the current version will be created first.`)) return;
       }
       const overlay = document.getElementById("sidebar-overlay");
       if (overlay) overlay.setAttribute("aria-hidden", "false");
+      const sidebar = document.getElementById("sidebar");
+      if (sidebar) { sidebar.classList.remove("collapsed"); sidebar.classList.remove("hidden"); }
     }
     closeSidebar() {
       document.body.classList.remove("sidebar-mobile-open");

@@ -121,9 +121,15 @@
     flex-direction: column;
   }
 
-  body.sidebar-mobile-open #sidebar {
+  body.sidebar-mobile-open #sidebar,
+  body.sidebar-mobile-open #sidebar.collapsed,
+  body.sidebar-mobile-open #sidebar.hidden {
     transform: translateX(0) !important;
     pointer-events: auto !important;
+    opacity: 1 !important;
+    width: 100vw !important;
+    min-width: 100vw !important;
+    display: flex !important;
   }
 
   #sidebar.collapsed {
