@@ -83,7 +83,7 @@ fn validate_path(vault_path: &str, relative_path: &str) -> Result<std::path::Pat
     let vault_canonical = Path::new(vault_path)
         .canonicalize()
         .map_err(|e| format!("Invalid vault path: {}", e))?;
-    let full_path = Path::new(vault_path).join(relative_path);
+    let full_path = vault_canonical.join(relative_path);
     
     // For new files that don't exist yet, check the parent directory
     let check_path = if full_path.exists() {

@@ -396,7 +396,7 @@ fn update_wiki_links(content: &str, old_name: &str, new_name: &str) -> String {
 
 pub fn validate_path(vault_path: &str, relative_path: &str) -> Result<PathBuf, String> {
     let vault_canonical = Path::new(vault_path).canonicalize().map_err(|e| format!("Invalid vault path: {}", e))?;
-    let full_path = Path::new(vault_path).join(relative_path);
+    let full_path = vault_canonical.join(relative_path);
     let check_path = if full_path.exists() {
         full_path.canonicalize().map_err(|e| format!("Invalid path: {}", e))?
     } else {
