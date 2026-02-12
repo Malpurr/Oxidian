@@ -10,6 +10,91 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* Hero Device Frames */
+    .hero-devices { margin-top: 48px; perspective: 1200px; }
+    .hero-devices-inner {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 32px;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+    .device-desktop {
+      flex: 1;
+      max-width: 720px;
+    }
+    .device-desktop-frame {
+      background: #11131e;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 2px solid #1e2030;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(180,190,254,0.05);
+      transform: perspective(1200px) rotateY(2deg);
+      transition: transform 0.4s ease;
+    }
+    .device-desktop-frame:hover { transform: perspective(1200px) rotateY(0deg); }
+    .desktop-titlebar {
+      height: 32px;
+      background: #0d0f18;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      gap: 8px;
+      border-bottom: 1px solid #1e2030;
+    }
+    .desktop-dots { display: flex; gap: 6px; }
+    .desktop-dots .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .desktop-dots .dot-red { background: #f38ba8; }
+    .desktop-dots .dot-yellow { background: #f9e2af; }
+    .desktop-dots .dot-green { background: #a6e3a1; }
+    .desktop-title { font-size: 11px; color: #585b70; margin-left: 8px; }
+    .device-mobile {
+      flex-shrink: 0;
+      text-align: center;
+    }
+    .device-mobile-frame {
+      width: 220px;
+      background: #11131e;
+      border-radius: 28px;
+      overflow: hidden;
+      border: 3px solid #313244;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(180,190,254,0.05);
+      position: relative;
+      transform: perspective(1200px) rotateY(-4deg);
+      transition: transform 0.4s ease;
+    }
+    .device-mobile-frame:hover { transform: perspective(1200px) rotateY(0deg); }
+    .mobile-notch {
+      width: 100px;
+      height: 20px;
+      background: #0d0f18;
+      border-radius: 0 0 16px 16px;
+      margin: 0 auto;
+    }
+    .device-screenshot {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+    .device-label {
+      margin-top: 12px;
+      font-size: 13px;
+      color: #6c7086;
+      font-weight: 500;
+    }
+    @media (max-width: 768px) {
+      .hero-devices-inner {
+        flex-direction: column;
+        align-items: center;
+        gap: 24px;
+      }
+      .device-desktop { max-width: 100%; }
+      .device-desktop-frame, .device-mobile-frame { transform: none; }
+      .device-mobile-frame { width: 180px; }
+    }
+  </style>
 </head>
 <body>
   <!-- Navigation -->
@@ -50,7 +135,7 @@
     <div class="hero-content">
       <div class="hero-badge fade-in">
         <span class="badge-dot"></span>
-        v2.0 — Rust Backend, 195 Tests, 101 Commands
+        v3.1 — Now on Android 📱 | Rust Backend, 195 Tests, 101 Commands
       </div>
       <h1 class="hero-title fade-in">
         <span class="hero-title-main">Oxidian</span>
@@ -89,70 +174,30 @@
         </a>
       </div>
 
-      <!-- App Mockup -->
-      <div class="hero-mockup fade-in">
-        <div class="mockup-glow"></div>
-        <div class="mockup-window">
-          <div class="mockup-titlebar">
-            <div class="mockup-dots">
-              <span class="dot dot-red"></span>
-              <span class="dot dot-yellow"></span>
-              <span class="dot dot-green"></span>
+      <!-- App Mockup — Desktop + Mobile -->
+      <div class="hero-devices fade-in">
+        <div class="hero-devices-inner">
+          <!-- Desktop Frame -->
+          <div class="device-desktop">
+            <div class="device-desktop-frame">
+              <div class="desktop-titlebar">
+                <div class="desktop-dots">
+                  <span class="dot dot-red"></span>
+                  <span class="dot dot-yellow"></span>
+                  <span class="dot dot-green"></span>
+                </div>
+                <div class="desktop-title">Oxidian v2.0 — Desktop</div>
+              </div>
+              <img src="screenshots/desktop-mockup.png" alt="Oxidian Desktop App" class="device-screenshot">
             </div>
-            <div class="mockup-title">Oxidian v2.0 — HyperMark Editor</div>
-            <div class="mockup-actions"></div>
           </div>
-          <div class="mockup-body">
-            <div class="mockup-sidebar">
-              <div class="sidebar-search">
-                <span class="search-icon">🔍</span>
-                <span class="search-text">Search notes...</span>
-              </div>
-              <div class="sidebar-section">
-                <div class="sidebar-heading">📂 Vault</div>
-                <div class="sidebar-item active">📄 Getting Started</div>
-                <div class="sidebar-item">📄 Project Ideas</div>
-                <div class="sidebar-item">📄 Daily Note — 2026-02-10</div>
-                <div class="sidebar-item">📄 Rust Notes</div>
-                <div class="sidebar-item">📁 Archive</div>
-              </div>
-              <div class="sidebar-section" style="margin-top: 12px;">
-                <div class="sidebar-heading">⭐ Bookmarks</div>
-                <div class="sidebar-item">📄 Project Ideas</div>
-                <div class="sidebar-item">📄 Rust Notes</div>
-              </div>
-              <div class="sidebar-section" style="margin-top: 12px;">
-                <div class="sidebar-heading">🧠 Remember</div>
-                <div class="sidebar-item">🔥 5-day streak</div>
-                <div class="sidebar-item">📊 12 cards due</div>
-              </div>
+          <!-- Mobile Frame -->
+          <div class="device-mobile">
+            <div class="device-mobile-frame">
+              <div class="mobile-notch"></div>
+              <img src="screenshots/mobile-mockup.png" alt="Oxidian Android App" class="device-screenshot">
             </div>
-            <div class="mockup-editor">
-              <div class="editor-line"><span class="md-h1" style="font-size: 1.3em;">Getting Started with Oxidian</span></div>
-              <div class="editor-line"><span class="md-text">Welcome to </span><span class="md-bold">Oxidian</span><span class="md-text"> — your new favorite note-taking app.</span></div>
-              <div class="editor-line"></div>
-              <div class="editor-line" style="background: rgba(127,109,242,0.08); border-left: 2px solid var(--accent); padding: 4px 8px; border-radius: 4px;"><span class="md-h2">## Quick Start|</span><span style="color: var(--accent); animation: pulse-glow 1s infinite;">█</span></div>
-              <div class="editor-line"></div>
-              <div class="editor-line"><span class="md-text">Features include:</span></div>
-              <div class="editor-line"><span class="md-list">• </span><span class="md-text">Wiki-style </span><span class="md-link">[[links]]</span></div>
-              <div class="editor-line"><span class="md-list">• </span><span class="md-text">Tags like </span><span class="md-tag">#rust</span><span class="md-text"> and </span><span class="md-tag">#notes</span></div>
-              <div class="editor-line"><span class="md-list">• </span><span class="md-text">Block-based editing with </span><span class="md-bold">HyperMark</span></div>
-              <div class="editor-line"></div>
-              <div class="editor-line"><span class="md-code-block">```rust</span></div>
-              <div class="editor-line"><span class="md-code-block">fn main() {</span></div>
-              <div class="editor-line"><span class="md-code-block">    println!("Hello, Oxidian!");</span></div>
-              <div class="editor-line"><span class="md-code-block">}</span></div>
-              <div class="editor-line"><span class="md-code-block">```</span></div>
-            </div>
-            <div class="mockup-outline">
-              <div style="color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; font-size: 0.65rem;">📑 Outline</div>
-              <div style="color: var(--accent-light); padding: 3px 6px; border-radius: 4px; background: var(--accent-glow); margin-bottom: 2px;">Getting Started</div>
-              <div style="color: var(--text-secondary); padding: 3px 6px 3px 16px; margin-bottom: 2px;">Quick Start</div>
-              <div style="color: var(--text-secondary); padding: 3px 6px 3px 16px; margin-bottom: 2px;">Features</div>
-              <div style="color: var(--text-muted); margin-top: 12px; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">📊 Info</div>
-              <div style="color: var(--text-secondary); padding: 2px 6px;">⏱ 3 min read</div>
-              <div style="color: var(--text-secondary); padding: 2px 6px;">📝 142 words</div>
-            </div>
+            <div class="device-label">Also on Android</div>
           </div>
         </div>
       </div>
@@ -532,6 +577,11 @@
             <svg class="platform-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12.504 0c-.155 0-.311.002-.465.007-6.07.145-10.166 4.046-10.88 9.235a10.553 10.553 0 00-.12 1.63c0 .1.004.198.007.297-.003.053-.007.105-.007.158 0 5.519 4.479 9.998 9.998 9.998 5.52 0 9.998-4.479 9.998-9.998C21.035 5.816 17.262.534 12.504 0zM9.95 5.532c.129-.008.261-.004.395.016.494.073.836.456.988.948.083.268.104.55.092.834-.017.398-.147.765-.393 1.07-.316.39-.684.537-1.103.452-.36-.073-.61-.316-.784-.63-.16-.285-.226-.597-.234-.919-.006-.243.03-.483.107-.711.148-.44.445-.775.852-.996a1.02 1.02 0 01.08-.064zm4.658.032c.42-.004.78.206 1.04.593.23.34.312.722.3 1.124-.01.283-.074.56-.199.818-.2.41-.524.666-.959.704-.474.042-.857-.179-1.107-.585-.178-.29-.257-.612-.268-.949-.01-.282.04-.558.148-.82.205-.5.565-.83 1.045-.885zm-6.4 6.406c1.273.098 2.377.588 3.272 1.546.103.11.196.228.283.35.03.04.065.077.072.139-.079.068-.163.129-.25.183-.573.35-1.194.527-1.855.529-.776.003-1.487-.21-2.111-.634a3.27 3.27 0 01-.453-.374c-.078-.08-.104-.122-.042-.21.2-.29.438-.543.715-.752.097-.072.2-.137.307-.193.015-.009.033-.012.062-.023v-.001zm7.75.036c.7.19 1.3.53 1.78 1.05.157.172.31.354.395.575.02.053.017.072-.03.104a3.67 3.67 0 01-1.94.776 3.64 3.64 0 01-1.74-.21 3.95 3.95 0 01-.73-.387c-.075-.049-.147-.103-.213-.163-.024-.022-.046-.06-.016-.094a3.03 3.03 0 011.266-.966c.325-.15.666-.247 1.013-.318.07-.014.14-.02.214-.03v-.001z"/></svg>
             <div class="platform-name">Linux x86_64</div>
             <div class="platform-status">Available Now</div>
+          </a>
+          <a href="https://github.com/Malpurr/Oxidian/releases" class="platform-card" target="_blank" rel="noopener">
+            <svg class="platform-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M17.523 2.476c-.276-.066-.553.131-.619.407l-.744 3.126c-1.334-.925-2.917-1.408-4.53-1.348-.846.032-1.676.193-2.459.476l-.744-3.126c-.066-.276-.343-.473-.619-.407-.276.066-.473.343-.407.619l.68 2.858C5.716 6.49 3.952 8.917 3.952 11.789h16.096c0-2.872-1.764-5.299-4.128-6.707l.68-2.858c.066-.276-.131-.553-.407-.619h-.67zM8.137 9.882a.9.9 0 110-1.8.9.9 0 010 1.8zm7.726 0a.9.9 0 110-1.8.9.9 0 010 1.8zM3.952 12.789v7.414c0 1.024.831 1.855 1.855 1.855h.927v2.083c0 .685.556 1.241 1.241 1.241s1.241-.556 1.241-1.241v-2.083h5.569v2.083c0 .685.556 1.241 1.241 1.241s1.241-.556 1.241-1.241v-2.083h.927c1.024 0 1.855-.831 1.855-1.855v-7.414H3.952zm-2.569.927c-.685 0-1.241.556-1.241 1.241v4.138c0 .685.556 1.241 1.241 1.241s1.241-.556 1.241-1.241v-4.138c0-.685-.556-1.241-1.241-1.241zm21.234 0c-.685 0-1.241.556-1.241 1.241v4.138c0 .685.556 1.241 1.241 1.241s1.241-.556 1.241-1.241v-4.138c0-.685-.556-1.241-1.241-1.241z"/></svg>
+            <div class="platform-name">Android</div>
+            <div class="platform-status">Available Now — APK</div>
           </a>
           <div class="platform-card platform-coming">
             <svg class="platform-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83"/><path d="M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
