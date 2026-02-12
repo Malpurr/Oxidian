@@ -1,0 +1,1056 @@
+/* ===================================================================
+   OXIDIAN — Android Mobile UI/UX Redesign
+   Material Design 3 inspired · Touch-first · 2026-02-12
+   
+   KEY FIXES:
+   - All touch targets minimum 48x48dp
+   - Welcome screen modernized with card-based layout
+   - Bottom navigation Material Design 3 style
+   - Improved dark theme with better contrast
+   - Smooth transitions & haptic-feel animations
+   - Safe area support for notched/punch-hole devices
+   =================================================================== */
+
+/* ===== 1. ANDROID-SPECIFIC ROOT OVERRIDES ===== */
+@media (max-width: 767px) {
+
+  :root {
+    /* Material Design 3 inspired spacing */
+    --md3-touch-target: 48px;
+    --md3-nav-height: 64px;
+    --md3-nav-height-safe: calc(64px + env(safe-area-inset-bottom, 0px));
+    --md3-corner-sm: 8px;
+    --md3-corner-md: 12px;
+    --md3-corner-lg: 16px;
+    --md3-corner-xl: 28px;
+    --md3-corner-full: 9999px;
+    
+    /* Improved dark surface colors — MD3 tonal surfaces */
+    --md3-surface: #1C1B1F;
+    --md3-surface-1: #25232A;  /* +5% primary */
+    --md3-surface-2: #2B2930;  /* +8% primary */
+    --md3-surface-3: #312F37;  /* +11% primary */
+    --md3-surface-4: #36343D;  /* +12% primary */
+    --md3-surface-5: #3B3944;  /* +14% primary */
+    
+    /* Better dark theme overrides */
+    --bg-primary: #121218;
+    --bg-secondary: #1a1a24;
+    --bg-surface: #1e1e2a;
+    --bg-tertiary: #0e0e16;
+    
+    /* Larger base font for mobile readability */
+    --font-size-base: 16px;
+    --font-size-sm: 14px;
+    --font-size-xs: 12px;
+    
+    /* Mobile content padding */
+    --content-padding-mobile: 16px;
+  }
+
+  /* ===== 2. GLOBAL TOUCH TARGET FIX ===== */
+  /* Ensure ALL interactive elements meet 48dp minimum */
+
+  button,
+  a,
+  [role="button"],
+  input[type="checkbox"],
+  input[type="radio"],
+  .icon-btn,
+  .ribbon-btn,
+  .view-toolbar-btn,
+  .breadcrumb-nav-btn,
+  .tab,
+  .tree-item,
+  .ctx-item,
+  .dropdown-item,
+  .slash-item,
+  .search-result-item,
+  .settings-nav-item,
+  .command-palette-item,
+  .tag-pill,
+  .backlink-item,
+  .welcome-btn {
+    min-height: var(--md3-touch-target) !important;
+    position: relative;
+  }
+
+  /* Invisible touch target expansion for small visual elements */
+  .icon-btn::before,
+  .ribbon-btn::before,
+  .view-toolbar-btn::before,
+  .breadcrumb-nav-btn::before,
+  .tab-close::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: var(--md3-touch-target);
+    height: var(--md3-touch-target);
+    border-radius: 50%;
+  }
+
+  /* ===== 3. WELCOME SCREEN — Complete Redesign ===== */
+  #welcome-screen {
+    background: var(--bg-primary);
+    background-image:
+      radial-gradient(ellipse at 20% 0%, rgba(var(--accent-rgb), 0.08) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 100%, rgba(45, 212, 191, 0.05) 0%, transparent 40%);
+    padding: 0;
+    padding-bottom: var(--md3-nav-height-safe);
+    align-items: flex-start;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .welcome-content {
+    width: 100%;
+    max-width: 100%;
+    padding: 24px var(--content-padding-mobile) 32px;
+    text-align: left;
+    animation: welcome-mobile-enter 600ms cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  @keyframes welcome-mobile-enter {
+    from { 
+      opacity: 0; 
+      transform: translateY(24px); 
+    }
+    to { 
+      opacity: 1; 
+      transform: translateY(0); 
+    }
+  }
+
+  .welcome-content h1 {
+    font-size: 28px;
+    font-weight: 300;
+    letter-spacing: -0.5px;
+    margin-bottom: 4px;
+    margin-top: 48px; /* Space for status bar */
+  }
+
+  .welcome-content > p {
+    font-size: 15px;
+    color: var(--text-muted);
+    margin-bottom: 32px;
+  }
+
+  /* Welcome actions as full-width cards */
+  .welcome-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 32px;
+  }
+
+  .welcome-btn {
+    width: 100%;
+    padding: 18px 20px !important;
+    border-radius: var(--md3-corner-lg) !important;
+    font-size: 16px !important;
+    font-weight: 500;
+    justify-content: flex-start;
+    gap: 14px;
+    text-align: left;
+    min-height: 56px !important;
+    border: 1px solid var(--border-color);
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    transition: all 200ms cubic-bezier(0.2, 0, 0, 1);
+    /* Remove pointer-events issues */
+    cursor: pointer;
+    -webkit-tap-highlight-color: rgba(var(--accent-rgb), 0.1);
+    touch-action: manipulation;
+    user-select: none;
+  }
+
+  .welcome-btn svg {
+    width: 22px !important;
+    height: 22px !important;
+    flex-shrink: 0;
+    color: var(--text-accent);
+  }
+
+  .welcome-btn:active {
+    transform: scale(0.98) !important;
+    background: var(--bg-active);
+    transition-duration: 80ms;
+  }
+
+  .welcome-btn.primary {
+    background: var(--text-accent) !important;
+    border: none !important;
+    color: #fff !important;
+    font-weight: 600;
+    box-shadow: 
+      0 2px 8px rgba(var(--accent-rgb), 0.3),
+      0 1px 3px rgba(0, 0, 0, 0.2);
+  }
+
+  .welcome-btn.primary svg {
+    color: #fff !important;
+  }
+
+  .welcome-btn.primary:active {
+    box-shadow: 0 1px 4px rgba(var(--accent-rgb), 0.2);
+    filter: brightness(0.95);
+  }
+
+  /* Welcome shortcuts section */
+  .welcome-shortcuts {
+    text-align: left;
+    background: var(--bg-surface);
+    border-radius: var(--md3-corner-lg);
+    padding: 16px 20px;
+    border: 1px solid var(--border-color);
+  }
+
+  .welcome-shortcuts h3 {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--text-faint);
+    margin-bottom: 12px;
+    font-weight: 600;
+  }
+
+  .shortcut {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+    color: var(--text-secondary);
+    font-size: 14px;
+    border-bottom: 1px solid var(--border-light);
+    min-height: 44px;
+  }
+
+  .shortcut:last-child {
+    border-bottom: none;
+  }
+
+  .shortcut kbd {
+    font-size: 12px;
+    padding: 4px 10px;
+    min-width: auto;
+    background: var(--bg-primary);
+    border-color: var(--border-color);
+  }
+
+  /* ===== 4. BOTTOM NAVIGATION — Material Design 3 ===== */
+  
+  /* Hide desktop sidebar/ribbon on mobile (already in responsive.css but reinforcing) */
+  #ribbon {
+    display: none !important;
+  }
+
+  /* Restyle the mobile ribbon as MD3 bottom nav */
+  body.is-mobile .mobile-ribbon,
+  .mobile-ribbon {
+    display: flex !important;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: var(--md3-nav-height-safe);
+    background: var(--md3-surface-2);
+    border-top: none;
+    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.15);
+    z-index: var(--z-fixed);
+    justify-content: space-around;
+    align-items: flex-start;
+    padding: 0;
+    padding-top: 4px;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  .mobile-ribbon-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    padding: 6px 0;
+    min-height: var(--md3-touch-target) !important;
+    min-width: var(--md3-touch-target) !important;
+    width: 64px;
+    cursor: pointer;
+    border-radius: 0;
+    transition: color 200ms ease;
+    position: relative;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  /* MD3 pill indicator behind active icon */
+  .mobile-ribbon-btn.active {
+    color: var(--text-accent);
+  }
+
+  .mobile-ribbon-btn.active::before {
+    content: '';
+    position: absolute;
+    top: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 56px;
+    height: 32px;
+    background: rgba(var(--accent-rgb), 0.15);
+    border-radius: var(--md3-corner-full);
+    z-index: -1;
+    animation: md3-pill-in 300ms cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  @keyframes md3-pill-in {
+    from { 
+      width: 0; 
+      opacity: 0; 
+    }
+    to { 
+      width: 56px; 
+      opacity: 1; 
+    }
+  }
+
+  .mobile-ribbon-icon {
+    font-size: 22px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 32px;
+    width: 56px;
+    border-radius: var(--md3-corner-full);
+    transition: background 200ms ease;
+  }
+
+  .mobile-ribbon-icon svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .mobile-ribbon-label {
+    font-size: 12px;
+    font-weight: 500;
+    margin-top: 2px;
+    letter-spacing: 0.01em;
+    line-height: 1;
+  }
+
+  .mobile-ribbon-btn.active .mobile-ribbon-label {
+    font-weight: 600;
+  }
+
+  /* Ripple effect on tap */
+  .mobile-ribbon-btn:active .mobile-ribbon-icon {
+    background: rgba(var(--accent-rgb), 0.1);
+  }
+
+  /* ===== 5. CONTENT AREA MOBILE FIX ===== */
+  #content-area {
+    padding-top: 0 !important;
+    padding-bottom: var(--md3-nav-height-safe) !important;
+    margin-left: 0 !important;
+  }
+
+  /* Mobile hamburger button — larger touch target */
+  .mobile-menu-btn {
+    width: var(--md3-touch-target) !important;
+    height: var(--md3-touch-target) !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    top: 4px;
+    left: 4px;
+    border-radius: var(--md3-corner-full);
+    z-index: calc(var(--z-fixed) + 1);
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .mobile-menu-btn svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .mobile-menu-btn:active {
+    background: var(--bg-active);
+  }
+
+  /* ===== 6. TAB BAR — Mobile Optimized ===== */
+  #tab-bar {
+    height: 44px;
+    min-height: 44px;
+    padding: 0;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+  }
+
+  .tab {
+    min-height: 44px !important;
+    padding: 0 16px;
+    font-size: 13px;
+    scroll-snap-align: start;
+    min-width: 100px;
+    flex-shrink: 0;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .tab .tab-close {
+    width: 28px;
+    height: 28px;
+    opacity: 1; /* Always visible on mobile — no hover */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 28px;
+  }
+
+  #tab-new-btn {
+    width: var(--md3-touch-target);
+    min-width: var(--md3-touch-target);
+    font-size: 20px;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* ===== 7. BREADCRUMB BAR — Mobile ===== */
+  #breadcrumb-bar {
+    height: 40px;
+    min-height: 40px;
+    padding: 0 8px;
+    gap: 4px;
+  }
+
+  .breadcrumb-nav-btn {
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px;
+    min-height: 40px;
+    border-radius: var(--md3-corner-full);
+    font-size: 16px;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .breadcrumb-nav-btn:active:not(:disabled) {
+    background: var(--bg-active);
+  }
+
+  /* View toolbar buttons */
+  .view-toolbar-btn {
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px;
+    min-height: 40px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--md3-corner-full);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .view-toolbar-btn svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .view-mode-label {
+    display: none !important;
+  }
+
+  /* ===== 8. SIDEBAR — Mobile Drawer ===== */
+  #sidebar {
+    width: 300px !important;
+    max-width: 85vw !important;
+    background: var(--md3-surface-1) !important;
+    border-right: none !important;
+    box-shadow: 8px 0 32px rgba(0, 0, 0, 0.4) !important;
+    transition: transform 300ms cubic-bezier(0.2, 0, 0, 1) !important;
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  body.sidebar-mobile-open #sidebar {
+    transform: translateX(0) !important;
+  }
+
+  .sidebar-overlay {
+    transition: opacity 300ms ease !important;
+    background: rgba(0, 0, 0, 0.6) !important;
+  }
+
+  /* Sidebar header touch targets */
+  .sidebar-panel-header {
+    padding: 14px 16px 8px;
+    min-height: 44px;
+  }
+
+  .sidebar-actions .icon-btn {
+    width: var(--md3-touch-target);
+    height: var(--md3-touch-target);
+    border-radius: var(--md3-corner-full);
+  }
+
+  /* File tree items — proper touch targets */
+  .tree-item {
+    min-height: var(--md3-touch-target) !important;
+    padding: 12px 12px 12px 16px !important;
+    margin: 2px 8px !important;
+    border-radius: var(--md3-corner-md) !important;
+    font-size: 14px !important;
+    display: flex;
+    align-items: center;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .tree-item .icon {
+    margin-right: 10px;
+  }
+
+  .tree-item .icon svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  /* Indent adjustment for touch */
+  .tree-item[data-depth="0"] { padding-left: 16px !important; }
+  .tree-item[data-depth="1"] { padding-left: 32px !important; }
+  .tree-item[data-depth="2"] { padding-left: 48px !important; }
+  .tree-item[data-depth="3"] { padding-left: 64px !important; }
+  .tree-item[data-depth="4"] { padding-left: 80px !important; }
+
+  /* Search input */
+  .search-input-wrap {
+    padding: 8px 12px 12px;
+  }
+
+  #search-input {
+    height: var(--md3-touch-target);
+    font-size: 16px; /* Prevents iOS zoom */
+    padding: 12px 16px;
+    border-radius: var(--md3-corner-md);
+  }
+
+  /* Search results touch targets */
+  .search-result-item {
+    padding: 12px 14px;
+    min-height: var(--md3-touch-target);
+    margin: 4px 8px;
+    border-radius: var(--md3-corner-md);
+  }
+
+  /* Tag pills */
+  .tag-pill {
+    min-height: 36px;
+    padding: 6px 14px;
+    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  /* ===== 9. EDITOR AREA — Mobile Optimized ===== */
+  .editor-textarea,
+  .pane.reading-mode .reading-view {
+    padding: 16px var(--content-padding-mobile) !important;
+    max-width: 100% !important;
+    font-size: 16px !important; /* Prevents zoom on focus */
+  }
+
+  .preview-content {
+    padding: 16px var(--content-padding-mobile) !important;
+    max-width: 100% !important;
+  }
+
+  /* Editor area — remove excess padding */
+  #editor-area {
+    padding: 0 !important;
+  }
+
+  /* ===== 10. DIALOGS — Bottom Sheet Style ===== */
+  .dialog-overlay {
+    align-items: flex-end !important;
+    background: rgba(0, 0, 0, 0.6) !important;
+    backdrop-filter: blur(8px);
+  }
+
+  .dialog {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    border-radius: var(--md3-corner-xl) var(--md3-corner-xl) 0 0 !important;
+    padding: 0 !important;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: md3-sheet-enter 350ms cubic-bezier(0.2, 0, 0, 1) !important;
+    box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.3) !important;
+  }
+
+  @keyframes md3-sheet-enter {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+
+  /* Bottom sheet drag handle */
+  .dialog::before {
+    content: '';
+    display: block;
+    width: 32px;
+    height: 4px;
+    background: var(--text-faint);
+    border-radius: 2px;
+    margin: 12px auto 8px;
+    opacity: 0.5;
+  }
+
+  .dialog h3 {
+    padding: 12px 24px 0 !important;
+    font-size: 18px;
+  }
+
+  .dialog input[type="text"],
+  .dialog input[type="number"],
+  .dialog input[type="password"] {
+    margin: 12px 20px !important;
+    width: calc(100% - 40px) !important;
+    height: var(--md3-touch-target);
+    font-size: 16px !important; /* Prevent zoom */
+    border-radius: var(--md3-corner-md) !important;
+    padding: 12px 16px !important;
+  }
+
+  .dialog-actions {
+    padding: 16px 20px 24px !important;
+    padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)) !important;
+    gap: 12px;
+  }
+
+  .dialog-actions .btn-primary,
+  .dialog-actions .btn-secondary {
+    min-height: var(--md3-touch-target) !important;
+    padding: 12px 24px !important;
+    border-radius: var(--md3-corner-lg) !important;
+    font-size: 15px !important;
+    flex: 1;
+  }
+
+  /* ===== 11. CONTEXT MENU — Mobile ===== */
+  .context-menu {
+    min-width: 240px;
+    max-width: calc(100vw - 32px);
+    border-radius: var(--md3-corner-lg) !important;
+  }
+
+  .ctx-item {
+    min-height: var(--md3-touch-target) !important;
+    padding: 12px 16px !important;
+    font-size: 15px;
+    border-radius: var(--md3-corner-md) !important;
+  }
+
+  /* ===== 12. DROPDOWN MENU — Mobile ===== */
+  .dropdown-menu {
+    border-radius: var(--md3-corner-lg) !important;
+  }
+
+  .dropdown-item {
+    min-height: var(--md3-touch-target) !important;
+    padding: 12px 16px !important;
+    font-size: 15px;
+    border-radius: var(--md3-corner-md) !important;
+    display: flex;
+    align-items: center;
+  }
+
+  /* ===== 13. STATUS BAR — Compact Mobile ===== */
+  #statusbar {
+    height: 28px;
+    font-size: 11px;
+    padding: 0 12px;
+    border-top: 1px solid var(--border-light);
+    margin-bottom: var(--md3-nav-height-safe);
+  }
+
+  /* Hide excess status items */
+  .status-right > span:nth-child(n+4) {
+    display: none;
+  }
+
+  .status-separator {
+    display: none;
+  }
+
+  /* ===== 14. COMMAND PALETTE — Full Screen Mobile ===== */
+  .command-palette-overlay {
+    padding-top: 0 !important;
+    align-items: stretch !important;
+  }
+
+  .command-palette {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 0 !important;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .command-palette-input {
+    min-height: 56px;
+    font-size: 16px !important; /* Prevent zoom */
+    padding: 16px 20px 16px 52px !important;
+  }
+
+  .command-palette-item {
+    min-height: var(--md3-touch-target) !important;
+    padding: 10px 16px !important;
+  }
+
+  .command-palette-results {
+    flex: 1;
+    max-height: none;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* ===== 15. SLASH MENU — Mobile ===== */
+  .slash-menu {
+    min-width: 260px;
+    max-width: calc(100vw - 32px);
+    border-radius: var(--md3-corner-lg) !important;
+  }
+
+  .slash-item {
+    min-height: var(--md3-touch-target) !important;
+    padding: 10px 14px !important;
+    font-size: 15px;
+  }
+
+  /* ===== 16. SETTINGS — Mobile Single Column ===== */
+  .settings-page {
+    padding: 16px !important;
+  }
+
+  .settings-body {
+    flex-direction: column !important;
+    gap: 0 !important;
+  }
+
+  .settings-nav {
+    width: 100% !important;
+    position: static !important;
+    flex-direction: row !important;
+    overflow-x: auto;
+    gap: 4px;
+    padding-bottom: 12px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--border-color);
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    scroll-snap-type: x mandatory;
+  }
+
+  .settings-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .settings-nav-item {
+    min-height: 40px !important;
+    white-space: nowrap;
+    flex-shrink: 0;
+    scroll-snap-align: start;
+    padding: 8px 16px !important;
+    border-radius: var(--md3-corner-full) !important;
+    font-size: 14px;
+  }
+
+  .setting-row {
+    flex-direction: column !important;
+    gap: 10px !important;
+    padding: 16px 0 !important;
+  }
+
+  .setting-control {
+    width: 100%;
+  }
+
+  .setting-control input[type="text"],
+  .setting-control input[type="password"] {
+    width: 100% !important;
+    height: var(--md3-touch-target);
+    font-size: 16px !important;
+  }
+
+  .setting-control select {
+    width: 100%;
+    height: var(--md3-touch-target);
+    font-size: 15px;
+    border-radius: var(--md3-corner-md);
+  }
+
+  .setting-control input[type="range"] {
+    width: 100%;
+  }
+
+  /* ===== 17. BACKLINKS PANEL — Mobile Bottom Sheet ===== */
+  #backlinks-panel {
+    position: fixed !important;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    top: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 60vh;
+    border-radius: var(--md3-corner-xl) var(--md3-corner-xl) 0 0;
+    border-left: none;
+    z-index: var(--z-modal);
+    box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.3) !important;
+    animation: md3-sheet-enter 300ms cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  #backlinks-panel .backlink-panel-item {
+    min-height: var(--md3-touch-target);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+  }
+
+  /* ===== 18. IMPROVED DARK THEME REFINEMENTS ===== */
+  
+  /* Better surface layering */
+  #tab-bar {
+    background: var(--md3-surface-1);
+    border-bottom-color: rgba(255, 255, 255, 0.04);
+  }
+
+  #breadcrumb-bar {
+    background: var(--md3-surface-1);
+    border-bottom-color: rgba(255, 255, 255, 0.04);
+  }
+
+  /* Improved elevation through subtle surfaces */
+  .dialog {
+    background: var(--md3-surface-3) !important;
+  }
+
+  .context-menu {
+    background: var(--md3-surface-4) !important;
+    border-color: rgba(255, 255, 255, 0.06) !important;
+  }
+
+  /* Better active states with ripple-like feedback */
+  .tree-item:active,
+  .search-result-item:active,
+  .ctx-item:active,
+  .dropdown-item:active,
+  .command-palette-item:active {
+    background: rgba(var(--accent-rgb), 0.12) !important;
+    transition-duration: 60ms;
+  }
+
+  /* ===== 19. SMOOTH TRANSITIONS ===== */
+  
+  /* Page transitions */
+  .sidebar-panel.active {
+    animation: md3-fade-through 250ms cubic-bezier(0.2, 0, 0, 1) !important;
+  }
+
+  @keyframes md3-fade-through {
+    0% { opacity: 0; transform: scale(0.96); }
+    50% { opacity: 0; }
+    100% { opacity: 1; transform: scale(1); }
+  }
+
+  /* Shared axis transition for settings sections */
+  .settings-section.active {
+    animation: md3-shared-axis-forward 300ms cubic-bezier(0.2, 0, 0, 1) !important;
+  }
+
+  @keyframes md3-shared-axis-forward {
+    from { 
+      opacity: 0; 
+      transform: translateX(30px); 
+    }
+    to { 
+      opacity: 1; 
+      transform: translateX(0); 
+    }
+  }
+
+  /* ===== 20. RESIZE HANDLE — Hidden on Mobile ===== */
+  #sidebar-resize {
+    display: none !important;
+  }
+
+  /* ===== 21. ONBOARDING — Mobile Optimized ===== */
+  .onboarding-overlay {
+    padding: var(--content-padding-mobile);
+  }
+
+  /* ===== 22. GRAPH VIEW — Touch Optimized ===== */
+  .graph-controls {
+    bottom: calc(var(--md3-nav-height-safe) + 12px);
+  }
+
+  .graph-controls button {
+    width: var(--md3-touch-target);
+    height: var(--md3-touch-target);
+    border-radius: var(--md3-corner-md);
+  }
+
+  .graph-filter-btn {
+    min-height: 40px;
+    padding: 8px 14px;
+    font-size: 13px;
+    border-radius: var(--md3-corner-full);
+  }
+
+  /* ===== 23. KEYBOARD SHORTCUTS — Hidden on Mobile ===== */
+  .keyboard-shortcuts-overlay {
+    display: none !important;
+  }
+
+  /* ===== 24. NOTICES/TOASTS — Mobile Position ===== */
+  #obsidian-notice-container {
+    top: auto !important;
+    bottom: calc(var(--md3-nav-height-safe) + 12px) !important;
+    left: 12px !important;
+    right: 12px !important;
+  }
+
+  .obsidian-notice {
+    width: 100%;
+    border-radius: var(--md3-corner-lg) !important;
+    font-size: 14px;
+    min-height: var(--md3-touch-target);
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+  }
+
+  /* ===== 25. AUDIO RECORDER BUTTON ===== */
+  #btn-audio-recorder {
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px;
+    min-height: 40px;
+    border-radius: var(--md3-corner-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ===== 26. PREVENT OVERSCROLL BOUNCE ===== */
+  html, body {
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: auto;
+  }
+
+  #app {
+    overscroll-behavior: none;
+  }
+
+  /* ===== 27. SAFE AREA HANDLING ===== */
+  #main-layout {
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+
+  /* ===== 28. IMPROVED SCROLLING ===== */
+  #file-tree,
+  #search-results,
+  .command-palette-results,
+  .settings-content,
+  .preview-pane-half,
+  .pane.reading-mode .reading-view {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  /* ===== 29. CHECKBOX / TOGGLE — Touch Sized ===== */
+  .checkbox-container {
+    min-width: var(--md3-touch-target);
+    min-height: var(--md3-touch-target);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .checkbox-container input[type="checkbox"] {
+    width: 48px !important;
+    height: 26px !important;
+    border-radius: 13px !important;
+  }
+
+  .checkbox-container input[type="checkbox"]::before {
+    width: 20px !important;
+    height: 20px !important;
+    top: 3px;
+    left: 3px;
+  }
+
+  .checkbox-container input[type="checkbox"]:checked::before {
+    transform: translateX(22px) !important;
+  }
+
+  .toggle {
+    width: 48px;
+    height: 26px;
+    min-width: var(--md3-touch-target);
+    min-height: var(--md3-touch-target);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ===== 30. CANVAS VIEW — Mobile ===== */
+  .canvas-view {
+    touch-action: pan-x pan-y pinch-zoom;
+  }
+
+} /* End @media (max-width: 767px) */
+
+
+/* ===== DARK THEME GLOBAL IMPROVEMENTS (all sizes) ===== */
+/* These apply regardless of screen size for better dark theme */
+
+:root,
+:root[data-theme="dark"] {
+  /* Slightly warmer dark surface for reduced eye strain */
+  --color-bg-base: #0c0c14;
+  --color-bg-surface: #14141e;
+  --color-bg-elevated: #1c1c28;
+}
+
+/* ===== LIGHT THEME MOBILE OVERRIDES ===== */
+@media (max-width: 767px) {
+  :root[data-theme="light"] {
+    --md3-surface-1: #f5f5f0;
+    --md3-surface-2: #ebebeb;
+    --md3-surface-3: #ffffff;
+    --md3-surface-4: #ffffff;
+  }
+
+  :root[data-theme="light"] .mobile-ribbon {
+    background: var(--md3-surface-2) !important;
+    box-shadow: 0 -1px 8px rgba(0, 0, 0, 0.08) !important;
+  }
+
+  :root[data-theme="light"] .dialog {
+    background: var(--md3-surface-3) !important;
+  }
+
+  :root[data-theme="light"] .context-menu {
+    background: var(--md3-surface-4) !important;
+  }
+}
