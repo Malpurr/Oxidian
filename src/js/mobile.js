@@ -196,11 +196,11 @@ export class MobileSupport {
     switch (action) {
       case 'explorer':
         this.openSidebar();
-        if (this.app.switchPanel) this.app.switchPanel('explorer');
+        if (this.app.switchSidebarPanel) this.app.switchSidebarPanel('explorer');
         break;
       case 'search':
         this.openSidebar();
-        if (this.app.switchPanel) this.app.switchPanel('search');
+        if (this.app.switchSidebarPanel) this.app.switchSidebarPanel('search');
         break;
       case 'new-note':
         if (this.app.showNewNoteDialog) this.app.showNewNoteDialog();
@@ -209,7 +209,7 @@ export class MobileSupport {
         if (this.app.openDailyNote) this.app.openDailyNote();
         break;
       case 'settings':
-        if (this.app.openSettings) this.app.openSettings();
+        if (this.app.openSettingsPage) this.app.openSettingsPage();
         break;
     }
   }

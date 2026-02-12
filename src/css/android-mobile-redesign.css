@@ -1018,6 +1018,270 @@
     touch-action: pan-x pan-y pinch-zoom;
   }
 
+  /* ===== 31. CRITICAL FIX: Welcome Screen Overflow ===== */
+  /* The welcome-screen sits absolute inside content-area. 
+     Ensure no horizontal clipping from overflow:hidden ancestors */
+  #welcome-screen {
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .welcome-content {
+    /* Defensive: ensure padding is never eaten by box-sizing issues */
+    box-sizing: border-box;
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+    max-width: 100% !important;
+    overflow: visible;
+  }
+
+  .welcome-btn {
+    /* Prevent button from extending beyond parent */
+    box-sizing: border-box !important;
+    max-width: 100% !important;
+    overflow: hidden;
+  }
+
+  .welcome-btn.primary {
+    /* Reduce box-shadow spread that gets clipped at edges */
+    box-shadow: 0 2px 6px rgba(var(--accent-rgb), 0.25) !important;
+  }
+
+  /* ===== 32. CRITICAL FIX: Welcome Screen Contrast ===== */
+  .welcome-content h1 {
+    color: var(--text-primary) !important; /* #e8e8ed — not muted purple */
+    font-weight: 400 !important;
+    font-size: 32px !important;
+  }
+
+  .welcome-content > p {
+    color: var(--text-secondary) !important; /* #9898a8 — much better than --text-muted */
+    font-size: 16px !important;
+  }
+
+  /* ===== 33. CRITICAL FIX: Hamburger Menu vs Tab Bar ===== */
+  /* The hamburger at fixed top:4px overlaps tab bar. 
+     Move it into the breadcrumb bar flow instead of floating */
+  .mobile-menu-btn {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    z-index: calc(var(--z-fixed) + 5) !important;
+    width: 48px !important;
+    height: 48px !important;
+    background: var(--bg-primary) !important;
+    border-bottom-right-radius: var(--md3-corner-lg);
+  }
+
+  /* Give content-area top padding to account for hamburger */
+  #content-area {
+    padding-top: 0 !important;
+  }
+
+  /* Tab bar needs left-padding so it doesn't go under hamburger */
+  #tab-bar {
+    padding-left: 52px !important;
+  }
+
+  /* ===== 34. CRITICAL FIX: Bottom Nav Static Fallback ===== */
+  /* Style the static HTML bottom nav (fallback if JS fails) */
+  #mobile-bottom-nav {
+    display: none; /* Hidden on desktop */
+  }
+
+  #mobile-bottom-nav {
+    display: flex !important;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: var(--md3-nav-height-safe);
+    background: var(--md3-surface-2);
+    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.15);
+    z-index: var(--z-fixed);
+    justify-content: space-around;
+    align-items: flex-start;
+    padding: 0;
+    padding-top: 4px;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  #mobile-bottom-nav .mobile-ribbon-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    padding: 6px 0;
+    min-height: 48px;
+    min-width: 48px;
+    width: 64px;
+    cursor: pointer;
+    border-radius: 0;
+    transition: color 200ms ease;
+    position: relative;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  #mobile-bottom-nav .mobile-ribbon-btn.active {
+    color: var(--text-accent);
+  }
+
+  #mobile-bottom-nav .mobile-ribbon-btn.active::before {
+    content: '';
+    position: absolute;
+    top: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 56px;
+    height: 32px;
+    background: rgba(var(--accent-rgb), 0.15);
+    border-radius: var(--md3-corner-full);
+    z-index: -1;
+  }
+
+  #mobile-bottom-nav .mobile-ribbon-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 32px;
+    width: 56px;
+  }
+
+  #mobile-bottom-nav .mobile-ribbon-icon svg {
+    width: 24px;
+    height: 24px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 2;
+  }
+
+  #mobile-bottom-nav .mobile-ribbon-label {
+    font-size: 12px;
+    font-weight: 500;
+    margin-top: 2px;
+    letter-spacing: 0.01em;
+    line-height: 1;
+  }
+
+  /* Hide the JS-created mobile ribbon if static one exists */
+  #mobile-bottom-nav ~ .mobile-ribbon,
+  body.is-mobile #mobile-bottom-nav ~ .mobile-ribbon {
+    display: none !important;
+  }
+
+  /* ===== 35. FIX: Breadcrumb Compact + Touch Targets ===== */
+  #breadcrumb-bar {
+    padding-left: 4px !important;
+    gap: 2px !important;
+  }
+
+  .breadcrumb-nav-btn {
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
+    font-size: 18px !important;
+    /* Invisible touch expansion to 48px */
+    position: relative;
+  }
+
+  .breadcrumb-nav-btn::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 48px;
+    height: 48px;
+  }
+
+  /* ===== 36. FIX: Mobile Shortcuts → Gesture Tips ===== */
+  /* Replace keyboard shortcuts with gesture tips on mobile via CSS */
+  .welcome-shortcuts .shortcut kbd {
+    display: none !important;
+  }
+
+  /* ===== 37. FIX: Dialog Close Button Touch Target ===== */
+  .dialog-close-btn {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px;
+    min-height: 44px;
+    top: 8px !important;
+    right: 8px !important;
+    border-radius: var(--md3-corner-full) !important;
+    font-size: 20px !important;
+    z-index: 10;
+  }
+
+  /* ===== 38. FIX: Status Bar Not Hidden Behind Bottom Nav ===== */
+  #statusbar {
+    margin-bottom: 0 !important;
+    /* The content-area padding-bottom handles the bottom nav space */
+  }
+
+  #content-area {
+    padding-bottom: calc(var(--md3-nav-height-safe) + 4px) !important;
+  }
+
+  /* ===== 39. FIX: Tab Close Invisible Touch Expansion ===== */
+  .tab .tab-close {
+    position: relative;
+  }
+
+  .tab .tab-close::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 44px;
+    height: 44px;
+  }
+
+  /* ===== 40. FIX: Command Palette Close on Mobile ===== */
+  .command-palette::after {
+    content: '✕';
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-radius: var(--md3-corner-full);
+    z-index: 10;
+  }
+
+  /* ===== 41. FIX: Prevent Welcome Screen Under Tab Bar ===== */
+  /* Welcome screen should cover the full content-area including tab/breadcrumb */
+  #welcome-screen {
+    z-index: 15 !important; /* Above tab bar z-index */
+  }
+
+  /* ===== 42. FIX: Sidebar Close Button ===== */
+  /* Add visual close affordance at the top of sidebar */
+  #sidebar::before {
+    content: '';
+    display: block;
+    width: 32px;
+    height: 4px;
+    background: var(--text-faint);
+    border-radius: 2px;
+    margin: 12px auto 8px;
+    opacity: 0.4;
+  }
+
 } /* End @media (max-width: 767px) */
 
 

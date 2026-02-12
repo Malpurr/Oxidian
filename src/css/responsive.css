@@ -500,6 +500,13 @@ body.is-mobile .mobile-ribbon {
   }
 }
 
+/* Hide mobile bottom nav on tablet+ */
+@media (min-width: 768px) {
+  #mobile-bottom-nav {
+    display: none !important;
+  }
+}
+
 /* ===== TABLET-SPECIFIC STYLES ===== */
 @media (min-width: 768px) and (max-width: 1023px) {
   /* Tablet gets a collapsible sidebar */
@@ -532,7 +539,8 @@ body.is-mobile .mobile-ribbon {
 @media (min-width: 1024px) {
   /* Hide mobile-only elements */
   .mobile-menu-btn,
-  .sidebar-overlay {
+  .sidebar-overlay,
+  #mobile-bottom-nav {
     display: none !important;
   }
   
