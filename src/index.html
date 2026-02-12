@@ -14,6 +14,35 @@
     <link rel="stylesheet" href="css/android-mobile-redesign.css">
 </head>
 <body>
+    <!-- Splash Screen -->
+    <div id="splash-screen">
+      <div class="splash-logo">⬡</div>
+      <div class="splash-text">Oxidian</div>
+    </div>
+    <script>setTimeout(function(){document.body.classList.add('splash-done')},1500);</script>
+
+    <!-- Reading Progress Bar -->
+    <div id="reading-progress-bar"></div>
+
+    <!-- Mobile App Bar -->
+    <div id="mobile-app-bar">
+      <button id="appbar-left-btn" class="appbar-btn" aria-label="Menu">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div id="appbar-title">Oxidian</div>
+      <div class="appbar-actions">
+        <button class="appbar-btn" id="appbar-edit-toggle" aria-label="Toggle edit mode">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </button>
+        <button class="appbar-btn" id="appbar-more" aria-label="More options">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Swipe Edge Indicator -->
+    <div id="swipe-edge-indicator"></div>
+
     <div id="app">
         <div id="main-layout">
             <!-- Mobile Hamburger Button -->
@@ -71,6 +100,9 @@
 
             <!-- Sidebar Panel -->
             <aside id="sidebar" role="complementary" aria-label="Sidebar panels">
+                <button id="sidebar-close-btn" class="sidebar-close-btn" aria-label="Close sidebar">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
                 <div id="panel-explorer" class="sidebar-panel active">
                     <div class="sidebar-panel-header">
                         <span class="panel-title">EXPLORER</span>
@@ -152,6 +184,9 @@
                 <div id="panel-settings" class="sidebar-panel">
                     <div id="settings-sidebar-container"></div>
                 </div>
+                <div id="sidebar-vault-info" class="sidebar-vault-info">
+                    <span id="vault-stats">0 notes</span>
+                </div>
             </aside>
 
             <!-- Sidebar Resize Handle -->
@@ -216,23 +251,42 @@
                 <!-- Welcome Screen -->
                 <div id="welcome-screen">
                     <div class="welcome-content">
-                        <h1>◈ Oxidian</h1>
-                        <p>Your open-source note-taking companion</p>
-                        <div class="welcome-actions">
-                            <button id="btn-welcome-daily" class="welcome-btn primary" type="button">
-                                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                                Open Today's Daily Note
+                        <div class="welcome-greeting" id="welcome-greeting">Good afternoon</div>
+                        <p class="welcome-subtitle">What would you like to work on?</p>
+                        
+                        <div class="welcome-quick-actions">
+                            <button id="btn-welcome-daily" class="welcome-action-card" type="button">
+                                <div class="action-icon daily-icon">
+                                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                </div>
+                                <span class="action-label">Daily Note</span>
                             </button>
-                            <button id="btn-welcome-new" class="welcome-btn" type="button">
-                                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-                                Create New Note
+                            <button id="btn-welcome-new" class="welcome-action-card" type="button">
+                                <div class="action-icon new-icon">
+                                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                                </div>
+                                <span class="action-label">New Note</span>
+                            </button>
+                            <button id="btn-welcome-random" class="welcome-action-card" type="button">
+                                <div class="action-icon random-icon">
+                                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>
+                                </div>
+                                <span class="action-label">Random</span>
                             </button>
                         </div>
+
+                        <div class="welcome-recent" id="welcome-recent">
+                            <h3 class="welcome-section-title">Recent</h3>
+                            <div id="welcome-recent-list" class="welcome-recent-list">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+
                         <div class="welcome-shortcuts">
-                            <h3>Quick Tips</h3>
-                            <div class="shortcut"><kbd>Ctrl+P</kbd> Command Palette</div>
-                            <div class="shortcut"><kbd>Ctrl+N</kbd> New Note</div>
-                            <div class="shortcut"><kbd>/</kbd> Slash Commands</div>
+                            <h3 class="welcome-section-title">Shortcuts</h3>
+                            <div class="shortcut"><span>Command Palette</span><kbd>Ctrl+P</kbd></div>
+                            <div class="shortcut"><span>New Note</span><kbd>Ctrl+N</kbd></div>
+                            <div class="shortcut"><span>Slash Commands</span><kbd>/</kbd></div>
                         </div>
                     </div>
                 </div>
@@ -326,6 +380,7 @@
 
     <!-- Mobile Bottom Navigation (static fallback — JS enhances but doesn't create) -->
     <nav id="mobile-bottom-nav" role="navigation" aria-label="Quick actions">
+      <div class="bottom-nav-pill" id="bottom-nav-pill"></div>
       <button class="mobile-ribbon-btn active" data-action="explorer" aria-label="Files">
         <span class="mobile-ribbon-icon">
           <svg viewBox="0 0 24 24"><path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
@@ -512,6 +567,15 @@
                 });
             });
         });
+    </script>
+    <script>
+      // Welcome greeting (inline for immediate render)
+      (function(){
+        var g=document.getElementById('welcome-greeting');
+        if(!g)return;
+        var h=new Date().getHours();
+        g.textContent=h<5?'Good night':h<12?'Good morning':h<18?'Good afternoon':'Good evening';
+      })();
     </script>
     <script src="js/codemirror-bundle.js"></script>
     <script src="js/app.bundle.js"></script>

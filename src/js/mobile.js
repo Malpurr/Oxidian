@@ -1,6 +1,6 @@
 /**
- * Oxidian Mobile Support v3.1
- * Clean rewrite — no duplicate bottom nav, sidebar = full-screen overlay
+ * Oxidian Mobile Support v4.0 — Extreme Redesign
+ * Splash screen, swipe gestures, app bar, welcome dashboard
  */
 
 export class MobileSupport {
@@ -16,11 +16,14 @@ export class MobileSupport {
     this.SWIPE_THRESHOLD = 50;
     this.EDGE_ZONE = 30;
     this.LONG_PRESS_DURATION = 500;
+    this.SWIPE_MAX_TIME = 300;
 
     this.detect();
     if (this.isTouch) {
       this.init();
     }
+    // Splash screen runs for everyone
+    this.initSplashScreen();
   }
 
   detect() {
@@ -48,8 +51,180 @@ export class MobileSupport {
     this.initBackButton();
     this.ensureSidebarStartsClosed();
     this.initGlobalErrorHandler();
-    // NOTE: We do NOT call initMobileRibbon() — the static HTML #mobile-bottom-nav
-    // is the single source of truth. No JS-created duplicate.
+    this.initAppBar();
+    this.initBottomNavPill();
+    this.initSidebarCloseBtn();
+    this.initWelcomeScreen();
+    this.initReadingProgress();
+    this.initScrollToTop();
+  }
+
+  // --- Splash Screen ---
+  initSplashScreen() {
+    // Auto-dismiss after 1500ms
+    setTimeout(() => {
+      document.body.classList.add('splash-done');
+    }, 1500);
+  }
+
+  // --- App Bar ---
+  initAppBar() {
+    const appBar = document.getElementById('mobile-app-bar');
+    const leftBtn = document.getElementById('appbar-left-btn');
+    const editToggle = document.getElementById('appbar-edit-toggle');
+    const moreBtn = document.getElementById('appbar-more');
+
+    if (leftBtn) {
+      leftBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (navigator.vibrate) navigator.vibrate(5);
+        this.openSidebar();
+      });
+    }
+
+    if (editToggle) {
+      editToggle.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (navigator.vibrate) navigator.vibrate(5);
+        // Toggle view mode via app
+        const btn = document.getElementById('btn-view-mode');
+        if (btn) btn.click();
+      });
+    }
+
+    if (moreBtn) {
+      moreBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (navigator.vibrate) navigator.vibrate(5);
+        const btn = document.getElementById('btn-more-options');
+        if (btn) btn.click();
+      });
+    }
+  }
+
+  // Update app bar title when note changes
+  updateAppBarTitle(title) {
+    const titleEl = document.getElementById('appbar-title');
+    const appBar = document.getElementById('mobile-app-bar');
+    if (titleEl) {
+      titleEl.textContent = title || 'Oxidian';
+    }
+    if (appBar) {
+      appBar.classList.toggle('has-note', !!title);
+    }
+  }
+
+  // --- Bottom Nav Pill ---
+  initBottomNavPill() {
+    const nav = document.getElementById('mobile-bottom-nav');
+    const pill = document.getElementById('bottom-nav-pill');
+    if (!nav || !pill) return;
+
+    const updatePill = () => {
+      const active = nav.querySelector('.mobile-ribbon-btn.active');
+      if (!active) return;
+      const navRect = nav.getBoundingClientRect();
+      const btnRect = active.getBoundingClientRect();
+      const x = btnRect.left - navRect.left + (btnRect.width - 64) / 2;
+      pill.style.transform = `translateX(${x}px)`;
+    };
+
+    // Initial position
+    requestAnimationFrame(updatePill);
+
+    // Update on click (the existing click handler sets .active)
+    nav.addEventListener('click', () => {
+      requestAnimationFrame(() => requestAnimationFrame(updatePill));
+    });
+  }
+
+  // --- Sidebar Close Button ---
+  initSidebarCloseBtn() {
+    const btn = document.getElementById('sidebar-close-btn');
+    if (btn) {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (navigator.vibrate) navigator.vibrate(5);
+        this.closeSidebar();
+      });
+    }
+  }
+
+  // --- Welcome Screen ---
+  initWelcomeScreen() {
+    // Set greeting based on time
+    const greetingEl = document.getElementById('welcome-greeting');
+    if (greetingEl) {
+      const h = new Date().getHours();
+      let greeting;
+      if (h < 5) greeting = 'Good night';
+      else if (h < 12) greeting = 'Good morning';
+      else if (h < 18) greeting = 'Good afternoon';
+      else greeting = 'Good evening';
+      greetingEl.textContent = greeting;
+    }
+
+    // Random note button
+    const randomBtn = document.getElementById('btn-welcome-random');
+    if (randomBtn) {
+      randomBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (navigator.vibrate) navigator.vibrate(10);
+        if (window.app?.openRandomNote) window.app.openRandomNote();
+      });
+    }
+  }
+
+  // --- Reading Progress Bar ---
+  initReadingProgress() {
+    const bar = document.getElementById('reading-progress-bar');
+    if (!bar) return;
+
+    const update = () => {
+      // Find the active scrollable area
+      const reading = document.querySelector('.pane.reading-mode .reading-view');
+      const editor = document.querySelector('.editor-textarea');
+      const el = reading || editor;
+      if (!el) { bar.style.width = '0%'; return; }
+
+      const scrollTop = el.scrollTop;
+      const scrollHeight = el.scrollHeight - el.clientHeight;
+      if (scrollHeight <= 0) { bar.style.width = '0%'; return; }
+      const pct = Math.min(100, (scrollTop / scrollHeight) * 100);
+      bar.style.width = pct + '%';
+    };
+
+    // Attach to scroll events on content area
+    document.addEventListener('scroll', update, true);
+    setInterval(update, 500); // fallback
+  }
+
+  // --- Scroll to Top (tap status bar area) ---
+  initScrollToTop() {
+    const appBar = document.getElementById('mobile-app-bar');
+    if (!appBar) return;
+
+    let tapCount = 0;
+    let tapTimer = null;
+
+    appBar.addEventListener('click', (e) => {
+      // Only on title area (not buttons)
+      if (e.target.closest('.appbar-btn')) return;
+      
+      tapCount++;
+      if (tapCount === 2) {
+        tapCount = 0;
+        clearTimeout(tapTimer);
+        // Scroll to top
+        const reading = document.querySelector('.pane.reading-mode .reading-view');
+        const editor = document.querySelector('.editor-textarea');
+        const el = reading || editor;
+        if (el) el.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        tapTimer = setTimeout(() => { tapCount = 0; }, 300);
+      }
+    });
   }
 
   // --- Sidebar ---
@@ -59,10 +234,8 @@ export class MobileSupport {
     if (menuBtn) menuBtn.setAttribute('aria-expanded', 'true');
     const overlay = document.getElementById('sidebar-overlay');
     if (overlay) overlay.setAttribute('aria-hidden', 'false');
-    // Remove collapsed/hidden so CSS transition works
     const sidebar = document.getElementById('sidebar');
     if (sidebar) { sidebar.classList.remove('collapsed'); sidebar.classList.remove('hidden'); }
-    // BUG-01 FIX: Push history state so Android back button can close sidebar
     if (this.isMobile && !this._sidebarHistoryPushed) {
       history.pushState({ sidebarOpen: true }, '');
       this._sidebarHistoryPushed = true;
@@ -84,10 +257,8 @@ export class MobileSupport {
     if (sidebar) sidebar.classList.add('collapsed');
   }
 
-  // Auto-close sidebar when a file is tapped
   initSidebarAutoClose() {
     document.addEventListener('click', (e) => {
-      // BUG-10 FIX: Use [data-path] as the reliable selector for file tree items
       const treeItem = e.target.closest('[data-path], .tree-item, .tree-item-name, .tree-item-inner');
       if (treeItem && document.body.classList.contains('sidebar-mobile-open')) {
         setTimeout(() => this.closeSidebar(), 150);
@@ -95,9 +266,11 @@ export class MobileSupport {
     });
   }
 
-  // --- Swipe Gestures ---
+  // --- Swipe Gestures (Enhanced) ---
   initSwipeGestures() {
     let tracking = false;
+    let editorSwipe = false;
+    const indicator = document.getElementById('swipe-edge-indicator');
 
     document.addEventListener('touchstart', (e) => {
       if (e.touches.length !== 1) return;
@@ -105,39 +278,89 @@ export class MobileSupport {
       this.swipeStartX = touch.clientX;
       this.swipeStartY = touch.clientY;
       this.swipeStartTime = Date.now();
-      tracking = this.swipeStartX < this.EDGE_ZONE ||
-                 document.body.classList.contains('sidebar-mobile-open');
+
+      const isEdge = this.swipeStartX < this.EDGE_ZONE;
+      const isSidebarOpen = document.body.classList.contains('sidebar-mobile-open');
+      const isEditor = !!e.target.closest('#editor-area, #pane-container, .reading-view, .editor-textarea');
+
+      tracking = isEdge || isSidebarOpen;
+      editorSwipe = !isEdge && !isSidebarOpen && isEditor;
+
+      if (isEdge && indicator) {
+        indicator.classList.add('active');
+      }
+    }, { passive: true });
+
+    document.addEventListener('touchmove', (e) => {
+      if (!tracking && !editorSwipe) return;
+      if (e.touches.length !== 1) return;
+
+      const touch = e.touches[0];
+      const dx = touch.clientX - this.swipeStartX;
+
+      // Show edge indicator intensity
+      if (tracking && indicator && this.swipeStartX < this.EDGE_ZONE && dx > 0) {
+        const intensity = Math.min(1, dx / 100);
+        indicator.style.opacity = intensity;
+        indicator.style.width = (4 + intensity * 4) + 'px';
+      }
     }, { passive: true });
 
     document.addEventListener('touchend', (e) => {
-      if (!tracking || e.changedTouches.length !== 1) return;
-      tracking = false;
+      // Hide indicator
+      if (indicator) {
+        indicator.classList.remove('active');
+        indicator.style.opacity = '';
+        indicator.style.width = '';
+      }
+
+      if (!tracking && !editorSwipe) return;
+      if (e.changedTouches.length !== 1) return;
+
       const touch = e.changedTouches[0];
       const dx = touch.clientX - this.swipeStartX;
       const dy = touch.clientY - this.swipeStartY;
       const dt = Date.now() - this.swipeStartTime;
 
-      if (dt > 300 || Math.abs(dy) > Math.abs(dx)) return;
+      const isTracking = tracking;
+      tracking = false;
+      const isEditorSwipe = editorSwipe;
+      editorSwipe = false;
 
-      if (dx > this.SWIPE_THRESHOLD && this.swipeStartX < this.EDGE_ZONE) {
-        this.openSidebar();
-      } else if (dx < -this.SWIPE_THRESHOLD && document.body.classList.contains('sidebar-mobile-open')) {
-        this.closeSidebar();
+      if (dt > this.SWIPE_MAX_TIME || Math.abs(dy) > Math.abs(dx)) return;
+
+      if (isTracking) {
+        if (dx > this.SWIPE_THRESHOLD && this.swipeStartX < this.EDGE_ZONE) {
+          this.openSidebar();
+        } else if (dx < -this.SWIPE_THRESHOLD && document.body.classList.contains('sidebar-mobile-open')) {
+          this.closeSidebar();
+        }
+      } else if (isEditorSwipe) {
+        // Navigate between notes
+        if (dx < -this.SWIPE_THRESHOLD) {
+          // Swipe left = forward
+          const fwdBtn = document.getElementById('btn-nav-forward');
+          if (fwdBtn && !fwdBtn.disabled) fwdBtn.click();
+        } else if (dx > this.SWIPE_THRESHOLD) {
+          // Swipe right = back
+          const backBtn = document.getElementById('btn-nav-back');
+          if (backBtn && !backBtn.disabled) backBtn.click();
+        }
       }
     }, { passive: true });
   }
 
-  // --- Back Button (Android) --- BUG-01 FIX
+  // --- Back Button (Android) ---
   initBackButton() {
     this._sidebarHistoryPushed = false;
-    window.addEventListener('popstate', (e) => {
+    window.addEventListener('popstate', () => {
       if (document.body.classList.contains('sidebar-mobile-open')) {
         this.closeSidebar();
       }
     });
   }
 
-  // --- Global Error Handler --- BUG-12 FIX
+  // --- Global Error Handler ---
   initGlobalErrorHandler() {
     window.addEventListener('unhandledrejection', (e) => {
       console.error('[Oxidian] Unhandled promise rejection:', e.reason);
@@ -151,7 +374,6 @@ export class MobileSupport {
       const fileItem = e.target.closest('.file-tree-item, .file-item, [data-path]');
       if (!fileItem) return;
 
-      // BUG-02 FIX: Store touch coords synchronously since we can't preventDefault in setTimeout
       if (e.touches[0]) {
         longPressTouch = { clientX: e.touches[0].clientX, clientY: e.touches[0].clientY };
       }
@@ -235,17 +457,14 @@ export class MobileSupport {
         e.preventDefault();
         if (navigator.vibrate) navigator.vibrate(5);
 
-        // BUG-09 FIX: Use CM6 undo/redo when available, fall back to execCommand
         if (action === 'undo') {
-          const cm = document.querySelector('.cm-editor');
-          if (cm?.__view) { cm.__view.dispatch({ effects: [] }); } // trigger via app
           document.dispatchEvent(new CustomEvent('oxidian:editor-action', { detail: { action: 'undo' } }));
-          document.execCommand('undo'); // fallback for textarea
+          document.execCommand('undo');
           return;
         }
         if (action === 'redo') {
           document.dispatchEvent(new CustomEvent('oxidian:editor-action', { detail: { action: 'redo' } }));
-          document.execCommand('redo'); // fallback for textarea
+          document.execCommand('redo');
           return;
         }
 
@@ -281,7 +500,7 @@ export class MobileSupport {
     if (window.visualViewport) {
       let initialHeight = window.visualViewport.height;
       const KEYBOARD_THRESHOLD = 150;
-      let _rafPending = false; // BUG-03 FIX: debounce with rAF
+      let _rafPending = false;
 
       const onResize = () => {
         if (_rafPending) return;
@@ -314,21 +533,18 @@ export class MobileSupport {
       window.visualViewport.addEventListener('resize', onResize);
       window.visualViewport.addEventListener('scroll', onResize);
 
-      // BUG-07 FIX: Use next resize event after orientation change instead of fixed 500ms
       window.addEventListener('orientationchange', () => {
         const updateHeight = () => {
           initialHeight = window.visualViewport.height;
           window.visualViewport.removeEventListener('resize', updateHeight);
         };
         window.visualViewport.addEventListener('resize', updateHeight);
-        // Fallback in case resize doesn't fire
         setTimeout(() => {
           window.visualViewport.removeEventListener('resize', updateHeight);
           initialHeight = window.visualViewport.height;
         }, 1000);
       });
     } else {
-      // Fallback
       document.addEventListener('focusin', (e) => {
         if (e.target.classList?.contains('editor-textarea') || e.target.closest?.('.cm-editor')) {
           if (this.editorToolbar) this.editorToolbar.classList.add('visible');
